@@ -11,6 +11,25 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
 
+### Production ingress review
+
+The production application router is expected to connect to the API server only
+from these loopback proxy peers:
+
+- `127.0.0.1/32`
+- `::1/128`
+
+The expected peer list is recorded in
+`artifacts/api-server/.replit-artifact/artifact.toml` as
+`PRODUCTION_PROXY_PEERS`. On startup, production logs a verified or unexpected
+proxy configuration signal. The API also emits an error when a request arrives
+from a socket peer outside the expected loopback addresses; inspect that signal
+before changing deployment networking.
+
+Changing the trusted proxy list, the recorded production peer list, or the
+deployment ingress path requires an explicit security review. Do not replace
+the exact loopback CIDRs with `true`, a hop count, or a broader network range.
+
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9

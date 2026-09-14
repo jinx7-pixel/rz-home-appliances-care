@@ -27,6 +27,9 @@ args = ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
 [services.production.run.env]
 PORT = "8080"
 NODE_ENV = "production"
+# Deployment runbook: these are the only proxy peers trusted by src/app.ts.
+# Changing this value or the trusted proxy list requires a security review.
+PRODUCTION_PROXY_PEERS = "127.0.0.1/32,::1/128"
 
 [services.production.health.startup]
 path = "/api/healthz"
