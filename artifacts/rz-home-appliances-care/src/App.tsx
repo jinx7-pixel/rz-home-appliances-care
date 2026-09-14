@@ -96,6 +96,33 @@ const serviceCards: ServiceCard[] = [
   },
 ];
 
+type HowItWorksStep = {
+  number: string;
+  title: string;
+  description: string;
+};
+
+const howItWorksSteps: HowItWorksStep[] = [
+  {
+    number: '01',
+    title: 'Tell us what is happening',
+    description:
+      'Share a few details in the form or give us a call. A real person reviews every request.',
+  },
+  {
+    number: '02',
+    title: 'Choose a time that works',
+    description:
+      'We find a practical appointment window and arrive ready to diagnose the problem.',
+  },
+  {
+    number: '03',
+    title: 'Get back to normal',
+    description:
+      'You get a clear quote before work starts, then a careful fix with no surprises.',
+  },
+];
+
 function BrandMark() {
   return (
     <span
@@ -362,6 +389,70 @@ function ServicesSection() {
   );
 }
 
+function HowItWorksSection() {
+  return (
+    <section
+      aria-labelledby="how-it-works-heading"
+      className="bg-[hsl(215_48%_14%)] px-5 py-20 text-[hsl(210_40%_98%)] sm:px-8 sm:py-24 lg:px-12 lg:py-28"
+      id="how-it-works"
+    >
+      <div className="mx-auto w-full max-w-[1440px]">
+        <header className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,1fr)_minmax(17rem,0.62fr)] md:items-end md:gap-16 lg:gap-24">
+          <div>
+            <p
+              className="mb-5 text-[0.68rem] font-extrabold uppercase tracking-[0.22em] text-[hsl(184_85%_64%)] sm:text-[0.72rem]"
+              data-testid="text-how-it-works-eyebrow"
+            >
+              THE SIMPLE ROUTE BACK
+            </p>
+            <h2
+              className="max-w-[11ch] text-[clamp(2.65rem,5.2vw,4.65rem)] font-extrabold leading-[0.94] tracking-[-0.075em] text-[hsl(210_40%_98%)]"
+              data-testid="heading-how-it-works"
+              id="how-it-works-heading"
+            >
+              <span className="block">Three good steps.</span>
+              <span className="block text-[hsl(184_85%_68%)]">No runaround.</span>
+            </h2>
+          </div>
+          <p
+            className="max-w-[22rem] pb-1 text-[0.92rem] leading-[1.7] text-[hsl(215_24%_76%)] md:justify-self-end"
+            data-testid="text-how-it-works-description"
+          >
+            You should never need to become an appliance expert to get a straight answer.
+          </p>
+        </header>
+
+        <div className="mt-11 border-t border-[hsl(215_25%_30%/0.82)] pt-7 sm:mt-12 sm:pt-8">
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8 lg:gap-16">
+            {howItWorksSteps.map((step) => (
+              <article key={step.number} data-testid={`how-it-works-step-${step.number}`}>
+                <p
+                  className="text-[2.15rem] font-extrabold leading-none tracking-[-0.06em] text-[hsl(184_85%_56%)] sm:text-[2.3rem]"
+                  data-testid={`text-how-it-works-number-${step.number}`}
+                >
+                  {step.number}
+                </p>
+                <h3
+                  className="mt-5 max-w-[15rem] text-[0.98rem] font-extrabold leading-[1.35] text-[hsl(210_40%_98%)] sm:text-[1rem]"
+                  data-testid={`heading-how-it-works-step-${step.number}`}
+                >
+                  {step.title}
+                </h3>
+                <p
+                  className="mt-3 max-w-[19rem] text-[0.84rem] leading-[1.7] text-[hsl(215_24%_73%)]"
+                  data-testid={`text-how-it-works-step-${step.number}`}
+                >
+                  {step.description}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function AboutSection() {
   return (
     <section
@@ -568,6 +659,7 @@ function Home() {
         </div>
       </main>
       <ServicesSection />
+      <HowItWorksSection />
       <AboutSection />
     </div>
   );
