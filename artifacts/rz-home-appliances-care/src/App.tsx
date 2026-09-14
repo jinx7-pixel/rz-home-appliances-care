@@ -263,16 +263,15 @@ function HomeNavbar() {
             }
 
             return (
-              <a
-                className="group relative inline-flex min-h-11 items-center justify-center rounded-xl px-3 text-[0.78rem] font-semibold tracking-[0.005em] text-[hsl(215_20%_41%)] transition-colors duration-200 hover:text-[hsl(215_82%_38%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(210_40%_98%)]"
+              <MenuHoverLink
+                className="inline-flex min-h-11 items-center justify-center rounded-xl px-3 text-[0.78rem] font-semibold tracking-[0.005em] text-[hsl(215_74%_28%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(210_40%_98%)]"
                 data-testid={`link-${link.label.toLowerCase().replaceAll(' ', '-')}`}
                 href={link.href}
                 key={link.label}
                 onClick={closeMenu}
               >
                 {link.label}
-                <span className="absolute inset-x-3 bottom-1.5 h-px origin-left scale-x-0 bg-[hsl(199_82%_62%)] transition-transform duration-200 group-hover:scale-x-100" />
-              </a>
+              </MenuHoverLink>
             );
           })}
         </div>
@@ -309,24 +308,50 @@ function HomeNavbar() {
             const isContact = link.label === 'Contact Us';
             const isSignIn = link.label === 'Sign In';
 
+            if (isContact) {
+              return (
+                <a
+                  className="mt-2 flex min-h-12 items-center justify-between rounded-xl bg-[hsl(215_82%_38%)] px-4 text-[0.9rem] font-semibold text-[hsl(210_40%_98%)] shadow-[0_10px_22px_-15px_hsl(215_82%_38%)] transition duration-200 hover:bg-[hsl(215_82%_32%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(204_100%_99%)]"
+                  data-testid={`mobile-link-${index + 1}`}
+                  href={link.href}
+                  key={link.label}
+                  onClick={closeMenu}
+                  tabIndex={isMenuOpen ? 0 : -1}
+                >
+                  <span>{link.label}</span>
+                  <ArrowRight aria-hidden="true" className="size-4" />
+                </a>
+              );
+            }
+
+            if (isSignIn) {
+              return (
+                <a
+                  className="mt-2 flex min-h-12 items-center justify-between rounded-xl border border-[hsl(214_30%_82%)] px-4 text-[0.9rem] font-semibold text-[hsl(215_74%_28%)] transition duration-200 hover:border-[hsl(215_65%_62%)] hover:bg-[hsl(199_82%_94%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(204_100%_99%)]"
+                  data-testid={`mobile-link-${index + 1}`}
+                  href={link.href}
+                  key={link.label}
+                  onClick={closeMenu}
+                  tabIndex={isMenuOpen ? 0 : -1}
+                >
+                  <span>{link.label}</span>
+                  <ArrowRight aria-hidden="true" className="size-4" />
+                </a>
+              );
+            }
+
             return (
-              <a
-                className={`flex min-h-12 items-center justify-between rounded-xl px-4 text-[0.9rem] font-semibold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(204_100%_99%)] ${
-                  isContact
-                    ? 'mt-2 bg-[hsl(215_82%_38%)] text-[hsl(210_40%_98%)] shadow-[0_10px_22px_-15px_hsl(215_82%_38%)] hover:bg-[hsl(215_82%_32%)]'
-                    : isSignIn
-                      ? 'mt-2 border border-[hsl(214_30%_82%)] text-[hsl(215_74%_28%)] hover:border-[hsl(215_65%_62%)] hover:bg-[hsl(199_82%_94%)]'
-                      : 'text-[hsl(215_20%_35%)] hover:bg-[hsl(199_82%_94%)] hover:text-[hsl(215_82%_38%)]'
-                }`}
+              <MenuHoverLink
+                className="flex min-h-12 items-center justify-between rounded-xl px-4 text-[0.9rem] font-semibold text-[hsl(215_74%_28%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(204_100%_99%)]"
                 data-testid={`mobile-link-${index + 1}`}
+                endContent={<ArrowRight aria-hidden="true" className="size-4" />}
                 href={link.href}
                 key={link.label}
                 onClick={closeMenu}
                 tabIndex={isMenuOpen ? 0 : -1}
               >
-                <span>{link.label}</span>
-                <ArrowRight aria-hidden="true" className="size-4" />
-              </a>
+                {link.label}
+              </MenuHoverLink>
             );
           })}
         </div>
