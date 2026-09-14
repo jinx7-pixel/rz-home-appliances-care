@@ -5,9 +5,12 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import applianceCareImage from '@assets/ChatGPT_Image_Sep_14,_2026,_03_54_12_PM_1789381955049.png';
+import siddiqBashaImage from '@assets/ChatGPT_Image_Sep_14,_2026,_04_32_51_PM_1789383963232.png';
 import {
   ArrowRight,
   House,
+  Mail,
+  MapPin,
   Menu,
   Microwave,
   Phone,
@@ -359,6 +362,123 @@ function ServicesSection() {
   );
 }
 
+function AboutSection() {
+  return (
+    <section
+      aria-labelledby="about-heading"
+      className="relative isolate overflow-hidden bg-[hsl(204_67%_95%)] px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28"
+      id="about"
+    >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-36 top-16 -z-10 size-80 rounded-full border-[1.5rem] border-[hsl(199_82%_62%/0.13)] sm:size-[26rem]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-24 left-[8%] -z-10 size-52 rounded-full bg-[hsl(215_82%_43%/0.07)] blur-3xl"
+      />
+
+      <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 items-center gap-12 md:gap-16 lg:grid-cols-[minmax(0,0.84fr)_minmax(0,1fr)] lg:gap-20 xl:gap-28">
+        <figure className="relative mx-auto w-full max-w-[34rem] lg:mx-0">
+          <div
+            aria-hidden="true"
+            className="absolute -inset-4 -z-10 rounded-[2.75rem] bg-[hsl(199_82%_62%/0.18)] blur-2xl sm:-inset-6"
+          />
+          <div className="relative overflow-hidden rounded-[2rem] border border-[hsl(215_35%_82%/0.75)] bg-[hsl(204_100%_99%)] p-2 shadow-[0_30px_58px_-34px_hsl(215_53%_23%/0.7)] sm:rounded-[2.5rem] sm:p-3">
+            <img
+              alt="Siddiq Basha, owner of RZ Home Appliances Care"
+              className="block h-auto max-h-[45rem] w-full rounded-[1.45rem] object-contain object-top sm:rounded-[2rem]"
+              data-testid="img-siddiq-basha"
+              height="1390"
+              src={siddiqBashaImage}
+              width="1132"
+            />
+            <figcaption className="absolute bottom-5 left-5 rounded-xl border border-[hsl(210_40%_98%/0.7)] bg-[hsl(215_32%_14%/0.88)] px-4 py-3 text-[0.74rem] font-bold text-[hsl(210_40%_98%)] shadow-[0_12px_28px_-18px_hsl(215_53%_23%)] backdrop-blur-md sm:bottom-7 sm:left-7">
+              <span className="block text-[0.61rem] font-extrabold uppercase tracking-[0.18em] text-[hsl(199_82%_72%)]">
+                Owner
+              </span>
+              <span className="mt-1 block">Siddiq Basha</span>
+            </figcaption>
+          </div>
+        </figure>
+
+        <div className="max-w-[39rem]">
+          <p
+            className="mb-5 text-[0.68rem] font-extrabold uppercase tracking-[0.22em] text-[hsl(188_75%_40%)] sm:text-[0.72rem]"
+            data-testid="text-about-eyebrow"
+          >
+            ABOUT US
+          </p>
+          <h2
+            className="max-w-[13ch] text-[clamp(2.65rem,5.2vw,4.65rem)] font-extrabold leading-[0.98] tracking-[-0.075em] text-[hsl(215_32%_14%)]"
+            data-testid="heading-about"
+            id="about-heading"
+          >
+            About RZ Home Appliances Care
+          </h2>
+          <p
+            className="mt-7 max-w-[33rem] text-[1.05rem] font-bold leading-[1.52] tracking-[-0.025em] text-[hsl(215_74%_28%)] sm:mt-8 sm:text-[1.16rem]"
+            data-testid="text-about-subheading"
+          >
+            Reliable service. Honest solutions. Care for every home.
+          </p>
+          <div className="mt-6 max-w-[37rem] space-y-5 text-[0.96rem] leading-[1.78] text-[hsl(215_20%_40%)] sm:mt-7 sm:text-[1rem]">
+            <p data-testid="text-about-intro">
+              RZ Home Appliances Care is dedicated to providing dependable home appliance repair and maintenance services. Led by Siddiq Basha, our goal is to make appliance care simple, transparent, and stress-free for every customer. From everyday repairs to essential maintenance, we focus on practical solutions, careful workmanship, and service you can trust.
+            </p>
+            <p data-testid="text-about-supporting">
+              We believe every repair should be handled with attention to detail, clear communication, and respect for your home. Our commitment is to help keep your essential appliances working efficiently so you can get back to what matters most.
+            </p>
+          </div>
+
+          <div className="mt-8 grid max-w-[37rem] gap-3 sm:mt-9 sm:grid-cols-3 sm:gap-2">
+            <a
+              aria-label="Email RZ Home Appliances Care"
+              className="group flex min-h-12 items-center gap-3 rounded-xl border border-[hsl(215_35%_82%/0.8)] bg-[hsl(210_40%_98%/0.72)] px-3.5 text-[0.76rem] font-bold text-[hsl(215_74%_28%)] transition duration-200 hover:-translate-y-0.5 hover:border-[hsl(199_82%_52%/0.75)] hover:bg-[hsl(210_40%_98%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(204_67%_95%)]"
+              data-testid="link-about-email"
+              href="mailto:homeappliancesrestore@gmail.com"
+            >
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(199_82%_90%)] text-[hsl(199_82%_38%)] transition-colors group-hover:bg-[hsl(199_82%_84%)]">
+                <Mail aria-hidden="true" className="size-4" />
+              </span>
+              <span className="min-w-0 truncate">homeappliancesrestore@gmail.com</span>
+            </a>
+            <a
+              aria-label="Call RZ Home Appliances Care"
+              className="group flex min-h-12 items-center gap-3 rounded-xl border border-[hsl(215_35%_82%/0.8)] bg-[hsl(210_40%_98%/0.72)] px-3.5 text-[0.78rem] font-bold text-[hsl(215_74%_28%)] transition duration-200 hover:-translate-y-0.5 hover:border-[hsl(199_82%_52%/0.75)] hover:bg-[hsl(210_40%_98%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(204_67%_95%)]"
+              data-testid="link-about-phone"
+              href="tel:+918073848334"
+            >
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(199_82%_90%)] text-[hsl(199_82%_38%)] transition-colors group-hover:bg-[hsl(199_82%_84%)]">
+                <Phone aria-hidden="true" className="size-4" />
+              </span>
+              <span className="whitespace-nowrap">+91 80738 48334</span>
+            </a>
+            <div
+              className="flex min-h-12 items-center gap-3 rounded-xl border border-[hsl(215_35%_82%/0.8)] bg-[hsl(210_40%_98%/0.72)] px-3.5 text-[0.78rem] font-bold text-[hsl(215_74%_28%)]"
+              data-testid="text-about-location"
+            >
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(199_82%_90%)] text-[hsl(199_82%_38%)]">
+                <MapPin aria-hidden="true" className="size-4" />
+              </span>
+              <span>Bengaluru, Karnataka, India</span>
+            </div>
+          </div>
+
+          <a
+            className="group mt-8 inline-flex min-h-14 items-center gap-4 rounded-2xl bg-[hsl(215_82%_38%)] px-6 text-[0.87rem] font-extrabold text-[hsl(210_40%_98%)] shadow-[0_18px_28px_-18px_hsl(215_82%_30%/0.9)] transition duration-200 hover:-translate-y-1 hover:bg-[hsl(215_82%_32%)] hover:shadow-[0_22px_30px_-17px_hsl(215_82%_30%/0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(204_67%_95%)] active:translate-y-0"
+            data-testid="link-about-contact"
+            href="#contact-us"
+          >
+            Talk to Siddiq
+            <ArrowRight aria-hidden="true" className="size-5 transition-transform duration-200 group-hover:translate-x-1" />
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Home() {
   return (
     <div className="min-h-[100dvh] w-full overflow-x-hidden bg-[hsl(210_40%_98%)]">
@@ -447,6 +567,7 @@ function Home() {
         </div>
       </main>
       <ServicesSection />
+      <AboutSection />
     </div>
   );
 }
