@@ -173,8 +173,6 @@ type RepairFormValues = {
   service: string;
   issue: string;
   address: string;
-  preferredDate: string;
-  preferredTime: string;
 };
 
 type RepairFormErrors = Partial<Record<keyof RepairFormValues, string>>;
@@ -740,8 +738,6 @@ function ContactSection() {
     service: '',
     issue: '',
     address: '',
-    preferredDate: '',
-    preferredTime: '',
   });
   const [formErrors, setFormErrors] = useState<RepairFormErrors>({});
   const [successMessage, setSuccessMessage] = useState('');
@@ -791,8 +787,6 @@ function ContactSection() {
           applianceType: formValues.service as (typeof repairServiceOptions)[number],
           problemDescription: formValues.issue.trim(),
           address: formValues.address.trim(),
-          preferredDate: formValues.preferredDate || null,
-          preferredTime: formValues.preferredTime.trim() || null,
         },
       });
 
@@ -806,8 +800,6 @@ function ContactSection() {
         service: '',
         issue: '',
         address: '',
-        preferredDate: '',
-        preferredTime: '',
       });
     } catch (error) {
       setSubmitError(getRepairRequestErrorMessage(error));
@@ -1079,36 +1071,6 @@ function ContactSection() {
                 {formErrors.address}
               </p>
             ) : null}
-          </div>
-
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
-            <div>
-              <label className="text-[0.88rem] font-extrabold text-[hsl(215_32%_28%)]" htmlFor="repair-preferred-date">
-                Preferred date <span className="font-medium text-[hsl(215_20%_52%)]">(optional)</span>
-              </label>
-              <input
-                className="mt-2 min-h-14 w-full rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
-                id="repair-preferred-date"
-                name="preferredDate"
-                onChange={(event) => updateField('preferredDate', event.target.value)}
-                type="date"
-                value={formValues.preferredDate}
-              />
-            </div>
-            <div>
-              <label className="text-[0.88rem] font-extrabold text-[hsl(215_32%_28%)]" htmlFor="repair-preferred-time">
-                Preferred time <span className="font-medium text-[hsl(215_20%_52%)]">(optional)</span>
-              </label>
-              <input
-                className="mt-2 min-h-14 w-full rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
-                id="repair-preferred-time"
-                maxLength={100}
-                name="preferredTime"
-                onChange={(event) => updateField('preferredTime', event.target.value)}
-                type="time"
-                value={formValues.preferredTime}
-              />
-            </div>
           </div>
 
           <button
