@@ -144,6 +144,22 @@ const repairServiceOptions = [
   'LED TV Repair',
 ] as const;
 
+const footerQuickLinks = [
+  { label: 'Home', href: '#top' },
+  { label: 'Services', href: '#services' },
+  { label: 'How It Works', href: '#how-it-works' },
+  { label: 'About Us', href: '#about' },
+  { label: 'Why Choose Us', href: '#why-rz-appliances-care' },
+  { label: 'Contact Us', href: '#contact-us' },
+] as const;
+
+const footerServiceLinks = [
+  { label: 'Washing Machine Repair', href: '#services' },
+  { label: 'Refrigerator Repair', href: '#services' },
+  { label: 'Micro Oven Repair', href: '#services' },
+  { label: 'LED TV Repair', href: '#services' },
+] as const;
+
 type RepairFormValues = {
   name: string;
   phone: string;
@@ -975,9 +991,121 @@ function LocationSection() {
   );
 }
 
+function SiteFooter() {
+  return (
+    <footer
+      className="bg-[hsl(215_48%_14%)] px-5 py-16 text-[hsl(210_40%_98%)] sm:px-8 sm:py-20 lg:px-12 lg:py-24"
+      data-testid="site-footer"
+    >
+      <div className="mx-auto w-full max-w-[1440px]">
+        <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-[1.28fr_0.78fr_1fr_1fr] lg:gap-12 xl:gap-20">
+          <div className="max-w-[22rem]">
+            <a
+              aria-label="RZ Home Appliances Care home"
+              className="inline-flex items-center gap-3 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(184_85%_68%)] focus-visible:ring-offset-4 focus-visible:ring-offset-[hsl(215_48%_14%)]"
+              data-testid="footer-brand-link"
+              href="#top"
+            >
+              <BrandMark />
+              <span>
+                <span className="block text-[0.98rem] font-extrabold tracking-[-0.02em]">
+                  RZ Home Appliances
+                </span>
+                <span className="mt-0.5 block text-[0.63rem] font-semibold uppercase tracking-[0.18em] text-[hsl(215_24%_72%)]">
+                  Care
+                </span>
+              </span>
+            </a>
+            <span className="mt-6 block h-1 w-12 rounded-full bg-[hsl(184_85%_64%)]" />
+            <p className="mt-6 text-[0.92rem] leading-[1.75] text-[hsl(215_24%_76%)]">
+              Reliable home appliance repair and maintenance services in Bengaluru. We help keep your essential appliances working smoothly with practical solutions and dependable service.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="text-[0.72rem] font-extrabold uppercase tracking-[0.2em] text-[hsl(184_85%_64%)]">
+              Quick Links
+            </h2>
+            <nav aria-label="Footer quick links" className="mt-6">
+              <ul className="grid gap-3">
+                {footerQuickLinks.map((link) => (
+                  <li key={link.label}>
+                    <a
+                      className="inline-flex min-h-8 items-center text-[0.9rem] font-semibold text-[hsl(215_24%_82%)] transition-colors hover:text-[hsl(184_85%_68%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(184_85%_68%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(215_48%_14%)]"
+                      data-testid={`footer-quick-link-${link.label.toLowerCase().replaceAll(' ', '-')}`}
+                      href={link.href}
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </div>
+
+          <div>
+            <h2 className="text-[0.72rem] font-extrabold uppercase tracking-[0.2em] text-[hsl(184_85%_64%)]">
+              Our Services
+            </h2>
+            <nav aria-label="Footer service links" className="mt-6">
+              <ul className="grid gap-3">
+                {footerServiceLinks.map((link) => (
+                  <li key={link.label}>
+                    <a
+                      className="inline-flex min-h-8 items-center text-[0.9rem] font-semibold text-[hsl(215_24%_82%)] transition-colors hover:text-[hsl(184_85%_68%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(184_85%_68%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(215_48%_14%)]"
+                      data-testid={`footer-service-link-${link.label.toLowerCase().replaceAll(' ', '-')}`}
+                      href={link.href}
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </div>
+
+          <div>
+            <h2 className="text-[0.72rem] font-extrabold uppercase tracking-[0.2em] text-[hsl(184_85%_64%)]">
+              Contact Us
+            </h2>
+            <div className="mt-6 grid gap-4 text-[0.9rem] text-[hsl(215_24%_82%)]">
+              <p className="font-bold text-[hsl(210_40%_98%)]">Siddiq Basha</p>
+              <a
+                className="flex items-start gap-3 transition-colors hover:text-[hsl(184_85%_68%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(184_85%_68%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(215_48%_14%)]"
+                data-testid="footer-phone-link"
+                href="tel:+918073848334"
+              >
+                <Phone aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[hsl(184_85%_64%)]" />
+                <span>+91 80738 48334</span>
+              </a>
+              <a
+                className="flex items-start gap-3 break-all transition-colors hover:text-[hsl(184_85%_68%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(184_85%_68%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(215_48%_14%)]"
+                data-testid="footer-email-link"
+                href="mailto:homeappliancesrestore@gmail.com"
+              >
+                <Mail aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[hsl(184_85%_64%)]" />
+                <span>homeappliancesrestore@gmail.com</span>
+              </a>
+              <div className="flex items-start gap-3">
+                <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[hsl(184_85%_64%)]" />
+                <span>Bengaluru, Karnataka, India</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-14 flex flex-col gap-3 border-t border-[hsl(215_25%_30%/0.9)] pt-6 text-[0.78rem] text-[hsl(215_24%_70%)] sm:mt-16 sm:flex-row sm:items-center sm:justify-between">
+          <p>© 2026 RZ Home Appliances Care. All rights reserved.</p>
+          <p>Serving Bengaluru with care.</p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
 function Home() {
   return (
-    <div className="min-h-[100dvh] w-full overflow-x-hidden bg-[hsl(210_40%_98%)]">
+    <div className="min-h-[100dvh] w-full scroll-smooth overflow-x-hidden bg-[hsl(210_40%_98%)]" id="top">
       <HomeNavbar />
       <main
         aria-labelledby="hero-heading"
@@ -1068,6 +1196,7 @@ function Home() {
       <AboutSection />
       <ContactSection />
       <LocationSection />
+      <SiteFooter />
     </div>
   );
 }
