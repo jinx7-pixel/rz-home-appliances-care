@@ -5,7 +5,19 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import applianceCareImage from '@assets/ChatGPT_Image_Sep_14,_2026,_03_54_12_PM_1789381955049.png';
-import { ArrowRight, House, Menu, Phone, ShieldCheck, X } from 'lucide-react';
+import {
+  ArrowRight,
+  House,
+  Menu,
+  Microwave,
+  Phone,
+  Refrigerator,
+  ShieldCheck,
+  Tv,
+  WashingMachine,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import {
   Route,
   Switch,
@@ -23,6 +35,63 @@ const navigationLinks = [
   { label: 'Sign In', href: '#sign-in' },
   { label: 'Contact Us', href: '#contact-us' },
 ] as const;
+
+type ServiceCard = {
+  label: string;
+  title: string;
+  description: string;
+  accent: string;
+  icon: LucideIcon;
+  iconLabel: string;
+  decoration: string;
+};
+
+const serviceCards: ServiceCard[] = [
+  {
+    label: '01 / SERVICE',
+    title: 'All Types of Washing Machine Repair',
+    description:
+      'Top-load, front-load, semi-automatic, and fully automatic machines diagnosed and repaired.',
+    accent: 'bg-[hsl(215_82%_43%)] text-[hsl(210_40%_98%)]',
+    icon: WashingMachine,
+    iconLabel: 'Washing machine repair',
+    decoration:
+      'bg-[radial-gradient(circle_at_38%_38%,hsl(199_82%_62%_/_0.28),hsl(199_82%_62%_/_0.08)_62%,transparent_63%)]',
+  },
+  {
+    label: '02 / SERVICE',
+    title: 'All Types of Refrigerator Repair',
+    description:
+      'Careful replacement of faulty appliance parts with clear guidance and dependable workmanship.',
+    accent: 'bg-[hsl(188_75%_45%)] text-[hsl(210_40%_98%)]',
+    icon: Refrigerator,
+    iconLabel: 'Refrigerator repair',
+    decoration:
+      'bg-[radial-gradient(circle_at_38%_38%,hsl(188_75%_55%_/_0.24),hsl(188_75%_55%_/_0.07)_62%,transparent_63%)]',
+  },
+  {
+    label: '03 / SERVICE',
+    title: 'Micro Oven Repair',
+    description:
+      'Heating, control panel, turntable, sparking, and power issues handled with safety-first care.',
+    accent: 'bg-[hsl(215_48%_18%)] text-[hsl(210_40%_98%)]',
+    icon: Microwave,
+    iconLabel: 'Microwave repair',
+    decoration:
+      'bg-[radial-gradient(circle_at_38%_38%,hsl(174_54%_66%_/_0.21),hsl(174_54%_66%_/_0.06)_62%,transparent_63%)]',
+  },
+  {
+    label: '04 / SERVICE',
+    title: 'LED TV Repair',
+    description:
+      'Display, sound, backlight, power, and connectivity faults diagnosed for all common LED TVs.',
+    accent: 'bg-[hsl(215_82%_43%)] text-[hsl(210_40%_98%)]',
+    icon: Tv,
+    iconLabel: 'LED TV repair',
+    decoration:
+      'bg-[radial-gradient(circle_at_38%_38%,hsl(215_82%_62%_/_0.2),hsl(215_82%_62%_/_0.06)_62%,transparent_63%)]',
+  },
+];
 
 function BrandMark() {
   return (
@@ -190,6 +259,106 @@ function HomeNavbar() {
   );
 }
 
+function ServicesSection() {
+  return (
+    <section
+      aria-labelledby="services-heading"
+      className="bg-[hsl(210_40%_99.3%)] px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28"
+      id="services"
+    >
+      <div className="mx-auto w-full max-w-[1440px]">
+        <header className="grid grid-cols-1 items-end gap-8 lg:grid-cols-[0.82fr_1fr] lg:gap-16 xl:gap-24">
+          <div>
+            <p
+              className="mb-5 text-[0.68rem] font-extrabold uppercase tracking-[0.22em] text-[hsl(188_75%_40%)] sm:text-[0.72rem]"
+              data-testid="text-services-eyebrow"
+            >
+              WHAT WE FIX
+            </p>
+            <h2
+              className="max-w-[12ch] text-[clamp(2.65rem,5.2vw,4.65rem)] font-extrabold leading-[0.98] tracking-[-0.075em] text-[hsl(215_32%_14%)]"
+              data-testid="heading-services"
+              id="services-heading"
+            >
+              <span className="block">The essentials,</span>
+              <span className="block">handled.</span>
+            </h2>
+          </div>
+          <p
+            className="max-w-[38rem] pb-1 text-[1rem] leading-[1.72] tracking-[-0.015em] text-[hsl(215_20%_40%)] sm:text-[1.06rem] lg:justify-self-end"
+            data-testid="text-services-description"
+          >
+            From the first strange sound to the final spin cycle, our technicians bring practical answers and the right parts to every visit.
+          </p>
+        </header>
+
+        <div className="mt-14 grid grid-cols-1 gap-4 md:grid-cols-2 xl:mt-16 xl:grid-cols-4">
+          {serviceCards.map((service, index) => {
+            const Icon = service.icon;
+
+            return (
+              <article
+                className={`group relative isolate flex min-h-[27rem] flex-col overflow-hidden rounded-[2rem] p-6 transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_38px_-28px_hsl(215_45%_28%/0.65)] sm:p-7 ${[
+                  'bg-[hsl(212_56%_96%)]',
+                  'bg-[hsl(204_67%_95%)]',
+                  'bg-[hsl(171_43%_96%)]',
+                  'bg-[hsl(219_57%_96%)]',
+                ][index]}`}
+                data-testid={`card-service-${index + 1}`}
+                key={service.title}
+              >
+                <div
+                  aria-hidden="true"
+                  className={`pointer-events-none absolute -right-12 -top-12 size-40 rounded-full transition-transform duration-500 group-hover:scale-110 ${service.decoration}`}
+                />
+
+                <div
+                  aria-label={service.iconLabel}
+                  className={`relative z-10 flex size-10 items-center justify-center rounded-[0.7rem] shadow-[0_9px_18px_-14px_hsl(215_50%_24%/0.8)] ${service.accent}`}
+                  role="img"
+                >
+                  <Icon aria-hidden="true" className="size-[1.15rem] stroke-[1.8]" />
+                </div>
+
+                <p
+                  className="relative z-10 mt-10 text-[0.64rem] font-extrabold uppercase tracking-[0.2em] text-[hsl(215_43%_56%)]"
+                  data-testid={`text-service-label-${index + 1}`}
+                >
+                  {service.label}
+                </p>
+                <h3
+                  className="relative z-10 mt-4 max-w-[13ch] text-[1.32rem] font-extrabold leading-[1.18] tracking-[-0.045em] text-[hsl(215_42%_18%)]"
+                  data-testid={`heading-service-${index + 1}`}
+                >
+                  {service.title}
+                </h3>
+                <p
+                  className="relative z-10 mt-4 max-w-[23rem] text-[0.88rem] leading-[1.72] text-[hsl(215_24%_42%)]"
+                  data-testid={`text-service-description-${index + 1}`}
+                >
+                  {service.description}
+                </p>
+                <a
+                  aria-label={`Request ${service.title}`}
+                  className="group/link relative z-10 mt-auto inline-flex w-fit items-center gap-2 pt-10 text-[0.72rem] font-extrabold text-[hsl(215_74%_38%)] transition-colors duration-200 hover:text-[hsl(215_82%_28%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-4"
+                  data-testid={`link-request-service-${index + 1}`}
+                  href="#contact-us"
+                >
+                  Request this service
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="size-3.5 transition-transform duration-200 group-hover/link:translate-x-1"
+                  />
+                </a>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Home() {
   return (
     <div className="min-h-[100dvh] w-full overflow-x-hidden bg-[hsl(210_40%_98%)]">
@@ -277,6 +446,7 @@ function Home() {
           </figure>
         </div>
       </main>
+      <ServicesSection />
     </div>
   );
 }
