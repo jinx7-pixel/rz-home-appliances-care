@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "RZ Home Appliances Care"
+description = "A focused web app build containing only a premium, responsive navigation bar for RZ Home Appliances Care, with accessible desktop and mobile navigation interactions."
+version = "1.0.0"
+id = "artifacts/rz-home-appliances-care"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23672
+
+[services.development]
+run = "pnpm --filter @workspace/rz-home-appliances-care run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/rz-home-appliances-care", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/rz-home-appliances-care/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23672"
+BASE_PATH = "/"
