@@ -23,7 +23,11 @@ const TEST_EMAIL_PREFIX = "auth-regression-";
 const TEST_PASSWORD = "ValidPass1";
 
 let server: ReturnType<typeof app.listen>;
+let ipv6Server: ReturnType<typeof app.listen> | undefined;
 let baseUrl: string;
+let ipv6BaseUrl: string | undefined;
+let ipv6MappedBaseUrl: string | undefined;
+let ipv6UnavailableReason: string | undefined;
 let clientIp = "198.51.100.1";
 let nextClientIpOctet = 1;
 
@@ -68,14 +72,15 @@ async function requestFromSource(
   body: Record<string, unknown>,
   sourceAddress: string,
   forwardedFor: string,
+  targetBaseUrl = baseUrl,
 ): Promise<{ status: number; body: Record<string, unknown> }> {
-  const url = new URL(path, baseUrl);
+  const url = new URL(path, targetBaseUrl);
   const payload = JSON.stringify(body);
 
   return new Promise((resolve, reject) => {
     const clientRequest = http.request(
       {
-        hostname: url.hostname,
+        hostname: url.hostname.replace(/^\[|\]$/g, ""),
         port: url.port,
         path: `${url.pathname}${url.search}`,
         method: "POST",
@@ -167,6 +172,32 @@ before(async () => {
   });
   const address = server.address() as AddressInfo;
   baseUrl = `http://127.0.0.1:${address.port}`;
+
+  try {
+    // Production calls app.listen(port) without a host, which uses the IPv6
+    // wildcard on IPv6-capable hosts and accepts both native and mapped peers.
+    ipv6Server = app.listen(0, "::");
+    await new Promise<void>((resolve, reject) => {
+      ipv6Server?.once("listening", resolve);
+      ipv6Server?.once("error", reject);
+    });
+    const ipv6Address = ipv6Server.address() as AddressInfo;
+    ipv6BaseUrl = `http://[::1]:${ipv6Address.port}`;
+    ipv6MappedBaseUrl = `http://[::ffff:127.0.0.1]:${ipv6Address.port}`;
+  } catch (error) {
+    const code =
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      typeof error.code === "string"
+        ? error.code
+        : undefined;
+    if (code !== "EAFNOSUPPORT" && code !== "EADDRNOTAVAIL") {
+      throw error;
+    }
+    ipv6UnavailableReason = `IPv6 loopback is unavailable (${code})`;
+    ipv6Server = undefined;
+  }
 });
 
 beforeEach(async () => {
@@ -179,6 +210,11 @@ after(async () => {
   await new Promise<void>((resolve, reject) => {
     server.close((error) => (error ? reject(error) : resolve()));
   });
+  if (ipv6Server) {
+    await new Promise<void>((resolve, reject) => {
+      ipv6Server?.close((error) => (error ? reject(error) : resolve()));
+    });
+  }
   await pool.end();
 });
 
@@ -355,6 +391,85 @@ test("rate limits trust forwarded IPs only from the configured proxy addresses",
     "203.0.113.6",
   );
   assert.equal(untrustedHeaderLimited.status, 429);
+});
+
+test("rate limits trust forwarded IPs from the IPv6 loopback proxy path", async (t) => {
+  if (!ipv6BaseUrl) {
+    t.skip(ipv6UnavailableReason ?? "IPv6 loopback is unavailable");
+    return;
+  }
+
+  const invalidSignup = {
+    fullName: "A",
+    email: "ipv6-trusted-limit@example.test",
+    password: "weak",
+    confirmPassword: "different",
+  };
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const response = await requestFromSource(
+      "/api/auth/signup",
+      invalidSignup,
+      "::1",
+      "198.51.100.60",
+      ipv6BaseUrl,
+    );
+    assert.equal(response.status, 400);
+  }
+
+  const limited = await requestFromSource(
+    "/api/auth/signup",
+    invalidSignup,
+    "::1",
+    "198.51.100.60",
+    ipv6BaseUrl,
+  );
+  assert.equal(limited.status, 429);
+
+  const differentTrustedClient = await requestFromSource(
+    "/api/auth/signup",
+    invalidSignup,
+    "::1",
+    "198.51.100.61",
+    ipv6BaseUrl,
+  );
+  assert.equal(differentTrustedClient.status, 400);
+});
+
+test("rejects a forged forwarded IP from an untrusted IPv6 source", async (t) => {
+  if (!ipv6BaseUrl) {
+    t.skip(ipv6UnavailableReason ?? "IPv6 loopback is unavailable");
+    return;
+  }
+
+  const invalidSignup = {
+    fullName: "A",
+    email: "ipv6-untrusted-limit@example.test",
+    password: "weak",
+    confirmPassword: "different",
+  };
+  const untrustedIpv6Source = "::ffff:127.0.0.2";
+  assert.ok(ipv6MappedBaseUrl);
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const response = await requestFromSource(
+      "/api/auth/signup",
+      invalidSignup,
+      untrustedIpv6Source,
+      "203.0.113.60",
+      ipv6MappedBaseUrl,
+    );
+    assert.equal(response.status, 400);
+  }
+
+  const limited = await requestFromSource(
+    "/api/auth/signup",
+    invalidSignup,
+    untrustedIpv6Source,
+    "203.0.113.61",
+    ipv6MappedBaseUrl,
+  );
+  assert.equal(limited.status, 429);
 });
 
 test("forgot password returns the same response for known and unknown emails", async () => {
