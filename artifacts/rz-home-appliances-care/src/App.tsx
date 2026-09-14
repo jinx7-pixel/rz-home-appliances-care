@@ -1587,6 +1587,9 @@ function Router() {
     // survives a page crash.
     <RoutedErrorBoundary>
       <Switch>
+        <Route path="/sign-in" component={SignInPage} />
+        <Route path="/forgot-password" component={() => <AuthInfoPage mode="forgot-password" />} />
+        <Route path="/sign-up" component={() => <AuthInfoPage mode="sign-up" />} />
         <Route path="/" component={Home} />
         <Route component={NotFound} />
       </Switch>
