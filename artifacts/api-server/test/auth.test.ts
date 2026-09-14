@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import assert from "node:assert/strict";
+import http from "node:http";
 import { after, before, beforeEach, test } from "node:test";
 import { eq, like } from "drizzle-orm";
 import type { AddressInfo } from "node:net";
@@ -62,6 +63,47 @@ async function request(
   };
 }
 
+async function requestFromSource(
+  path: string,
+  body: Record<string, unknown>,
+  sourceAddress: string,
+  forwardedFor: string,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  const url = new URL(path, baseUrl);
+  const payload = JSON.stringify(body);
+
+  return new Promise((resolve, reject) => {
+    const clientRequest = http.request(
+      {
+        hostname: url.hostname,
+        port: url.port,
+        path: `${url.pathname}${url.search}`,
+        method: "POST",
+        localAddress: sourceAddress,
+        headers: {
+          "content-type": "application/json",
+          "content-length": Buffer.byteLength(payload),
+          "x-forwarded-for": forwardedFor,
+        },
+      },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        response.on("end", () => {
+          const text = Buffer.concat(chunks).toString("utf8");
+          resolve({
+            status: response.statusCode ?? 0,
+            body: text ? (JSON.parse(text) as Record<string, unknown>) : {},
+          });
+        });
+      },
+    );
+
+    clientRequest.on("error", reject);
+    clientRequest.end(payload);
+  });
+}
+
 async function get(path: string, cookie?: string): Promise<JsonResponse> {
   const response = await fetch(`${baseUrl}${path}`, {
     headers: {
@@ -118,7 +160,6 @@ async function cleanupTestData(): Promise<void> {
 
 before(async () => {
   await cleanupTestData();
-  app.set("trust proxy", true);
   server = app.listen(0, "127.0.0.1");
   await new Promise<void>((resolve, reject) => {
     server.once("listening", resolve);
@@ -261,6 +302,59 @@ test("login rate limit allows ten attempts and returns a generic 429 on the elev
     JSON.stringify(limited.body),
     /login-limit@example\.test|WrongPass1/i,
   );
+});
+
+test("rate limits trust forwarded IPs only from the configured proxy addresses", async () => {
+  const invalidSignup = {
+    fullName: "A",
+    email: "not-an-email",
+    password: "weak",
+    confirmPassword: "different",
+  };
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const response = await request(
+      "/api/auth/signup",
+      invalidSignup,
+      undefined,
+      "198.51.100.50",
+    );
+    assert.equal(response.response.status, 400);
+  }
+
+  const trustedProxyLimited = await request(
+    "/api/auth/signup",
+    invalidSignup,
+    undefined,
+    "198.51.100.50",
+  );
+  assert.equal(trustedProxyLimited.response.status, 429);
+
+  const differentTrustedClient = await request(
+    "/api/auth/signup",
+    invalidSignup,
+    undefined,
+    "198.51.100.51",
+  );
+  assert.equal(differentTrustedClient.response.status, 400);
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const response = await requestFromSource(
+      "/api/auth/signup",
+      invalidSignup,
+      "127.0.0.2",
+      `203.0.113.${attempt + 1}`,
+    );
+    assert.equal(response.status, 400);
+  }
+
+  const untrustedHeaderLimited = await requestFromSource(
+    "/api/auth/signup",
+    invalidSignup,
+    "127.0.0.2",
+    "203.0.113.6",
+  );
+  assert.equal(untrustedHeaderLimited.status, 429);
 });
 
 test("forgot password returns the same response for known and unknown emails", async () => {
