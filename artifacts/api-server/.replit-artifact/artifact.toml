@@ -30,6 +30,12 @@ NODE_ENV = "production"
 # Deployment runbook: these are the only proxy peers trusted by src/app.ts.
 # Changing this value or the trusted proxy list requires a security review.
 PRODUCTION_PROXY_PEERS = "127.0.0.1/32,::1/128"
+# Operational alert: production-ingress-peer-drift; page the API deployment platform/on-call owner.
+# Match production structured logs with level=50 and either exact msg:
+# - Unexpected production proxy peer configuration; security review required before changing the trusted proxy list
+# - Request arrived from an unexpected production proxy peer; review the deployment ingress path before changing trusted proxy settings
+# Investigate only existing fields: configuredPeers, expectedPeers, method, path, remoteAddress.
+# Do not add forwarded client addresses or request headers to the alert.
 
 [services.production.health.startup]
 path = "/api/healthz"

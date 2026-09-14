@@ -30,6 +30,43 @@ Changing the trusted proxy list, the recorded production peer list, or the
 deployment ingress path requires an explicit security review. Do not replace
 the exact loopback CIDRs with `true`, a hop count, or a broader network range.
 
+#### On-call alert: `production-ingress-peer-drift`
+
+**Owner:** The API deployment's platform/on-call operator owns this alert and
+the review of any deployment networking change.
+
+Page the on-call operator when a production structured log has `level=50`
+(`error`) and its `msg` is either of these exact values:
+
+- `Unexpected production proxy peer configuration; security review required before changing the trusted proxy list`
+- `Request arrived from an unexpected production proxy peer; review the deployment ingress path before changing trusted proxy settings`
+
+Use the structured fields already emitted by the API when investigating:
+
+- Startup mismatch: compare `configuredPeers` with `expectedPeers`.
+- Request mismatch: review `method`, `path`, `remoteAddress`, and `expectedPeers`.
+
+Do not add `X-Forwarded-For`, forwarded client addresses, or request headers to
+this alert. `remoteAddress` is the API's socket peer and is the signal needed
+to review the ingress path.
+
+**Response steps:**
+
+1. Acknowledge the page and identify whether it is a startup configuration
+   mismatch or an unexpected request socket peer.
+2. Compare the event fields with the recorded
+   `PRODUCTION_PROXY_PEERS` value (`127.0.0.1/32,::1/128`) and confirm the
+   peer is still the intended application-router path.
+3. Review the deployment and ingress changes made immediately before the alert.
+   Treat an unexplained peer or configuration change as a security incident
+   until the deployment owner confirms it.
+4. Do not broaden the trusted proxy list or use a hop count/`true` as a
+   workaround. Roll back the networking change if the intended path cannot be
+   confirmed.
+5. If the networking change is approved, update the recorded peer list and
+   trusted-proxy configuration together through security review, then verify
+   the next production startup log reports the expected peer configuration.
+
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
