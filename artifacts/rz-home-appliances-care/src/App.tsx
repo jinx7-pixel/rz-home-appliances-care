@@ -205,7 +205,7 @@ function HomeNavbar() {
   const closeMenu = () => setIsMenuOpen(false);
 
   return (
-    <header className="relative z-20 w-full border-b border-[hsl(214_30%_88%/0.86)] bg-[hsl(210_40%_98%/0.94)] shadow-[0_10px_30px_-25px_hsl(215_40%_25%/0.55)] backdrop-blur-xl">
+      <header className="sticky top-0 z-50 w-full border-b border-[hsl(214_30%_88%/0.86)] bg-[hsl(210_40%_98%/0.94)] shadow-[0_10px_30px_-25px_hsl(215_40%_25%/0.55)] backdrop-blur-xl">
       <nav
         aria-label="Primary navigation"
         className="mx-auto flex min-h-[4.75rem] w-full max-w-[1440px] items-center justify-between gap-6 px-5 py-3 sm:px-8 lg:px-12"
@@ -214,7 +214,7 @@ function HomeNavbar() {
           aria-label="RZ Home Appliances Care home"
           className="group flex min-w-0 items-center gap-3 rounded-xl py-1.5 pr-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-4 focus-visible:ring-offset-[hsl(210_40%_98%)]"
           data-testid="link-brand-home"
-          href="/"
+          href="#top"
           onClick={closeMenu}
         >
           <BrandMark />
@@ -338,7 +338,7 @@ function ServicesSection() {
   return (
     <section
       aria-labelledby="services-heading"
-      className="bg-[hsl(210_40%_99.3%)] px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28"
+      className="scroll-mt-24 bg-[hsl(210_40%_99.3%)] px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28"
       id="services"
     >
       <div className="mx-auto w-full max-w-[1440px]">
@@ -438,7 +438,7 @@ function HowItWorksSection() {
   return (
     <section
       aria-labelledby="how-it-works-heading"
-      className="bg-[hsl(215_48%_14%)] px-5 py-20 text-[hsl(210_40%_98%)] sm:px-8 sm:py-24 lg:px-12 lg:py-28"
+      className="scroll-mt-24 bg-[hsl(215_48%_14%)] px-5 py-20 text-[hsl(210_40%_98%)] sm:px-8 sm:py-24 lg:px-12 lg:py-28"
       id="how-it-works"
     >
       <div className="mx-auto w-full max-w-[1440px]">
@@ -502,7 +502,7 @@ function WhyRzSection() {
   return (
     <section
       aria-labelledby="why-rz-heading"
-      className="bg-[hsl(204_40%_98%)] px-5 py-20 text-[hsl(215_32%_14%)] sm:px-8 sm:py-24 lg:px-12 lg:py-28"
+      className="scroll-mt-24 bg-[hsl(204_40%_98%)] px-5 py-20 text-[hsl(215_32%_14%)] sm:px-8 sm:py-24 lg:px-12 lg:py-28"
       id="why-rz-appliances-care"
     >
       <div className="mx-auto w-full max-w-[1440px]">
@@ -561,7 +561,7 @@ function AboutSection() {
   return (
     <section
       aria-labelledby="about-heading"
-      className="relative isolate overflow-hidden bg-[hsl(204_67%_95%)] px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28"
+      className="relative isolate scroll-mt-24 overflow-hidden bg-[hsl(204_67%_95%)] px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28"
       id="about"
     >
       <div
@@ -698,7 +698,7 @@ function ContactSection() {
   return (
     <section
       aria-labelledby="contact-heading"
-      className="bg-[hsl(210_40%_98%)] px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28"
+      className="scroll-mt-24 bg-[hsl(210_40%_98%)] px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28"
       id="contact-us"
     >
       <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] lg:items-start lg:gap-20 xl:gap-28">
@@ -924,7 +924,7 @@ function LocationSection() {
   return (
     <section
       aria-labelledby="location-heading"
-      className="bg-[hsl(204_40%_98%)] px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28"
+      className="scroll-mt-24 bg-[hsl(204_40%_98%)] px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28"
       id="location"
     >
       <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1fr)] lg:gap-20 xl:gap-28">
