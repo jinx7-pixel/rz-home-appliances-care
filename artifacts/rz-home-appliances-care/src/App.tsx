@@ -1105,7 +1105,7 @@ function SiteFooter() {
 
 function Home() {
   return (
-    <div className="min-h-[100dvh] w-full scroll-smooth overflow-x-hidden bg-[hsl(210_40%_98%)]" id="top">
+    <div className="min-h-[100dvh] w-full scroll-smooth bg-[hsl(210_40%_98%)]" id="top">
       <HomeNavbar />
       <main
         aria-labelledby="hero-heading"
