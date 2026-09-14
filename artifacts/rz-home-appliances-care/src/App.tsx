@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -130,6 +136,21 @@ const whyRzPoints = [
   'Quality replacement parts',
   'A team that answers',
 ] as const;
+
+const repairServiceOptions = [
+  'Washing Machine Repair',
+  'Refrigerator Repair',
+  'Micro Oven Repair',
+  'LED TV Repair',
+] as const;
+
+type RepairFormValues = {
+  name: string;
+  phone: string;
+  email: string;
+  service: string;
+  issue: string;
+};
 
 function BrandMark() {
   return (
