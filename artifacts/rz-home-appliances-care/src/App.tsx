@@ -904,6 +904,77 @@ function ContactSection() {
   );
 }
 
+function LocationSection() {
+  return (
+    <section
+      aria-labelledby="location-heading"
+      className="bg-[hsl(204_40%_98%)] px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28"
+      id="location"
+    >
+      <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1fr)] lg:gap-20 xl:gap-28">
+        <div>
+          <p
+            className="mb-6 text-[0.68rem] font-extrabold uppercase tracking-[0.22em] text-[hsl(188_75%_43%)] sm:text-[0.72rem]"
+            data-testid="text-location-eyebrow"
+          >
+            FIND US
+          </p>
+          <h2
+            className="max-w-[11ch] text-[clamp(3rem,6vw,5.65rem)] font-extrabold leading-[0.96] tracking-[-0.08em] text-[hsl(215_32%_14%)]"
+            data-testid="heading-location"
+            id="location-heading"
+          >
+            <span className="block">Serving Bengaluru,</span>
+            <span className="block">one repair at a time.</span>
+          </h2>
+          <p
+            className="mt-9 max-w-[35rem] text-[1.05rem] leading-[1.72] text-[hsl(215_24%_35%)] sm:mt-11 sm:text-[1.12rem]"
+            data-testid="text-location-description"
+          >
+            RZ Home Appliances Care proudly serves customers across Bengaluru, Karnataka. Get in touch with our team to discuss your appliance repair needs and service availability in your area.
+          </p>
+
+          <div className="mt-8 flex items-start gap-4 rounded-2xl border border-[hsl(215_35%_82%/0.8)] bg-[hsl(204_67%_95%/0.62)] p-5 sm:mt-10 sm:p-6">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[hsl(199_82%_90%)] text-[hsl(199_82%_38%)]">
+              <MapPin aria-hidden="true" className="size-5" />
+            </span>
+            <div>
+              <p className="text-[0.66rem] font-extrabold uppercase tracking-[0.17em] text-[hsl(215_20%_50%)]">
+                RZ HOME APPLIANCES CARE
+              </p>
+              <p className="mt-1 font-bold text-[hsl(215_32%_28%)]">
+                Bengaluru, Karnataka, India
+              </p>
+            </div>
+          </div>
+
+          <a
+            className="group mt-7 inline-flex min-h-14 items-center gap-3 rounded-2xl bg-[hsl(215_82%_38%)] px-6 text-[0.87rem] font-extrabold text-[hsl(210_40%_98%)] shadow-[0_18px_28px_-18px_hsl(215_82%_30%/0.9)] transition duration-200 hover:-translate-y-0.5 hover:bg-[hsl(215_82%_32%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-4 focus-visible:ring-offset-[hsl(204_40%_98%)] active:translate-y-0"
+            data-testid="link-open-google-maps"
+            href="https://www.google.com/maps/search/?api=1&query=Bengaluru%2C%20Karnataka%2C%20India"
+            rel="noreferrer"
+            target="_blank"
+          >
+            Open in Google Maps
+            <ArrowRight aria-hidden="true" className="size-5 transition-transform duration-200 group-hover:translate-x-1" />
+          </a>
+        </div>
+
+        <div className="overflow-hidden rounded-[2rem] border border-[hsl(215_35%_82%/0.85)] bg-[hsl(204_100%_99%)] p-2 shadow-[0_28px_60px_-38px_hsl(215_53%_23%/0.65)] sm:rounded-[2.5rem] sm:p-3">
+          <iframe
+            className="block aspect-[4/3] min-h-[20rem] w-full rounded-[1.5rem] border-0 sm:aspect-[16/11] sm:rounded-[2rem]"
+            data-testid="iframe-bengaluru-map"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            src="https://www.google.com/maps?q=Bengaluru%2C%20Karnataka%2C%20India&output=embed"
+            title="Map showing Bengaluru, Karnataka, India"
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Home() {
   return (
     <div className="min-h-[100dvh] w-full overflow-x-hidden bg-[hsl(210_40%_98%)]">
@@ -996,6 +1067,7 @@ function Home() {
       <WhyRzSection />
       <AboutSection />
       <ContactSection />
+      <LocationSection />
     </div>
   );
 }
