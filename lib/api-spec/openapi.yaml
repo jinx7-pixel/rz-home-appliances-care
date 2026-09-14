@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: repair-requests
+    description: Anonymous appliance repair request submissions
 paths:
   /healthz:
     get:
@@ -24,6 +26,49 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /repair-requests:
+    post:
+      operationId: createRepairRequest
+      tags: [repair-requests]
+      summary: Submit a repair request
+      description: Stores an anonymous repair request and sends business and customer email notifications.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RepairRequestInput"
+      responses:
+        "201":
+          description: Repair request accepted and both emails sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepairRequestSubmission"
+        "400":
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: Database or server failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "502":
+          description: Email delivery failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 components:
   schemas:
     HealthStatus:
@@ -33,3 +78,66 @@ components:
           type: string
       required:
         - status
+    RepairRequestInput:
+      type: object
+      additionalProperties: false
+      required:
+        - customerName
+        - phone
+        - email
+        - applianceType
+        - problemDescription
+        - address
+      properties:
+        customerName:
+          type: string
+          minLength: 2
+          maxLength: 100
+        phone:
+          type: string
+          pattern: "^[0-9]{10}$"
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        applianceType:
+          type: string
+          enum:
+            - Washing Machine Repair
+            - Refrigerator Repair
+            - Micro Oven Repair
+            - LED TV Repair
+        problemDescription:
+          type: string
+          minLength: 10
+          maxLength: 2000
+        address:
+          type: string
+          minLength: 10
+          maxLength: 500
+        preferredDate:
+          type: ["string", "null"]
+          format: date
+        preferredTime:
+          type: ["string", "null"]
+          maxLength: 100
+    RepairRequestSubmission:
+      type: object
+      required:
+        - success
+        - requestId
+        - message
+      properties:
+        success:
+          type: boolean
+        requestId:
+          type: string
+        message:
+          type: string
+    ApiError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string

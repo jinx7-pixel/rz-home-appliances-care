@@ -5,19 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export interface HealthStatus {
-  status: string;
-}
-
-export type RepairRequestInputApplianceType = typeof RepairRequestInputApplianceType[keyof typeof RepairRequestInputApplianceType];
-
-
-export const RepairRequestInputApplianceType = {
-  Washing_Machine_Repair: 'Washing Machine Repair',
-  Refrigerator_Repair: 'Refrigerator Repair',
-  Micro_Oven_Repair: 'Micro Oven Repair',
-  LED_TV_Repair: 'LED TV Repair',
-} as const;
+import type { RepairRequestInputApplianceType } from './repairRequestInputApplianceType';
 
 export interface RepairRequestInput {
   /**
@@ -41,20 +29,10 @@ export interface RepairRequestInput {
      */
   address: string;
   /** @nullable */
-  preferredDate?: string | null;
+  preferredDate?: Date | null;
   /**
      * @maxLength 100
      * @nullable
      */
   preferredTime?: string | null;
-}
-
-export interface RepairRequestSubmission {
-  success: boolean;
-  requestId: string;
-  message: string;
-}
-
-export interface ApiError {
-  error: string;
 }

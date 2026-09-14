@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useCreateRepairRequest } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { MenuHoverLink } from '@/components/ui/menu-hover-effects';
 import { Toaster } from '@/components/ui/toaster';
@@ -171,6 +172,27 @@ type RepairFormValues = {
   email: string;
   service: string;
   issue: string;
+  address: string;
+  preferredDate: string;
+  preferredTime: string;
+};
+
+type RepairFormErrors = Partial<Record<keyof RepairFormValues, string>>;
+
+function getRepairRequestErrorMessage(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'data' in error) {
+    const data = (error as { data?: unknown }).data;
+    if (
+      typeof data === 'object' &&
+      data !== null &&
+      'error' in data &&
+      typeof (data as { error?: unknown }).error === 'string'
+    ) {
+      return (data as { error: string }).error;
+    }
+  }
+
+  return 'We could not submit your repair request. Please try again.';
 };
 
 type SignInErrors = {
@@ -717,17 +739,79 @@ function ContactSection() {
     email: '',
     service: '',
     issue: '',
+    address: '',
+    preferredDate: '',
+    preferredTime: '',
   });
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [formErrors, setFormErrors] = useState<RepairFormErrors>({});
+  const [successMessage, setSuccessMessage] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const createRepairRequestMutation = useCreateRepairRequest();
 
   const updateField = (field: keyof RepairFormValues, value: string) => {
     setFormValues((current) => ({ ...current, [field]: value }));
-    setIsSubmitted(false);
+    setFormErrors((current) => ({ ...current, [field]: undefined }));
+    setSuccessMessage('');
+    setSubmitError('');
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setIsSubmitted(true);
+    if (createRepairRequestMutation.isPending) return;
+
+    const errors: RepairFormErrors = {};
+    if (formValues.name.trim().length < 2) errors.name = 'Please enter your full name.';
+    if (!/^[0-9]{10}$/.test(formValues.phone)) {
+      errors.phone = 'Please enter a valid 10-digit phone number.';
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formValues.email.trim())) {
+      errors.email = 'Please enter a valid email address.';
+    }
+    if (!repairServiceOptions.includes(formValues.service as (typeof repairServiceOptions)[number])) {
+      errors.service = 'Please select an appliance service.';
+    }
+    if (formValues.issue.trim().length < 10) {
+      errors.issue = 'Please describe the problem in at least 10 characters.';
+    }
+    if (formValues.address.trim().length < 10) {
+      errors.address = 'Please enter your complete service address.';
+    }
+
+    setFormErrors(errors);
+    setSuccessMessage('');
+    setSubmitError('');
+    if (Object.keys(errors).length > 0) return;
+
+    try {
+      const result = await createRepairRequestMutation.mutateAsync({
+        data: {
+          customerName: formValues.name.trim(),
+          phone: formValues.phone,
+          email: formValues.email.trim(),
+          applianceType: formValues.service as (typeof repairServiceOptions)[number],
+          problemDescription: formValues.issue.trim(),
+          address: formValues.address.trim(),
+          preferredDate: formValues.preferredDate || null,
+          preferredTime: formValues.preferredTime.trim() || null,
+        },
+      });
+
+      setSuccessMessage(
+        `Your repair request has been submitted successfully. Your request ID is ${result.requestId}. A confirmation email has been sent to your email address. Our team will contact you shortly.`,
+      );
+      setFormValues({
+        name: '',
+        phone: '',
+        email: '',
+        service: '',
+        issue: '',
+        address: '',
+        preferredDate: '',
+        preferredTime: '',
+      });
+    } catch (error) {
+      setSubmitError(getRepairRequestErrorMessage(error));
+    }
   };
 
   return (
@@ -824,6 +908,7 @@ function ContactSection() {
         <form
           className="rounded-[1.8rem] border border-[hsl(215_35%_82%/0.85)] bg-[hsl(204_67%_95%/0.54)] p-5 shadow-[0_28px_60px_-42px_hsl(215_53%_23%/0.65)] sm:rounded-[2.1rem] sm:p-8 lg:p-9"
           data-testid="form-repair-request"
+          noValidate
           onSubmit={handleSubmit}
         >
           <div className="flex items-start justify-between gap-4 border-b border-[hsl(215_35%_82%/0.85)] pb-6">
@@ -846,31 +931,49 @@ function ContactSection() {
                 Your name
               </label>
               <input
+                aria-describedby={formErrors.name ? 'repair-name-error' : undefined}
+                aria-invalid={Boolean(formErrors.name)}
                 autoComplete="name"
                 className="mt-2 min-h-14 w-full rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition placeholder:text-[hsl(215_20%_61%)] focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
                 id="repair-name"
+                maxLength={100}
                 name="name"
                 onChange={(event) => updateField('name', event.target.value)}
                 placeholder="Alex Morgan"
                 required
                 value={formValues.name}
               />
+              {formErrors.name ? (
+                <p className="mt-2 text-[0.78rem] font-semibold text-red-600" id="repair-name-error">
+                  {formErrors.name}
+                </p>
+              ) : null}
             </div>
             <div>
               <label className="text-[0.88rem] font-extrabold text-[hsl(215_32%_28%)]" htmlFor="repair-phone">
                 Phone number
               </label>
               <input
+                aria-describedby={formErrors.phone ? 'repair-phone-error' : undefined}
+                aria-invalid={Boolean(formErrors.phone)}
                 autoComplete="tel"
                 className="mt-2 min-h-14 w-full rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition placeholder:text-[hsl(215_20%_61%)] focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
                 id="repair-phone"
+                inputMode="numeric"
+                maxLength={10}
                 name="phone"
                 onChange={(event) => updateField('phone', event.target.value)}
                 placeholder="10-digit phone number"
+                pattern="[0-9]{10}"
                 required
                 type="tel"
                 value={formValues.phone}
               />
+              {formErrors.phone ? (
+                <p className="mt-2 text-[0.78rem] font-semibold text-red-600" id="repair-phone-error">
+                  {formErrors.phone}
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -879,9 +982,12 @@ function ContactSection() {
               Email address
             </label>
             <input
+              aria-describedby={formErrors.email ? 'repair-email-error' : undefined}
+              aria-invalid={Boolean(formErrors.email)}
               autoComplete="email"
               className="mt-2 min-h-14 w-full rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition placeholder:text-[hsl(215_20%_61%)] focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
               id="repair-email"
+              maxLength={254}
               name="email"
               onChange={(event) => updateField('email', event.target.value)}
               placeholder="alex@example.com"
@@ -889,6 +995,11 @@ function ContactSection() {
               type="email"
               value={formValues.email}
             />
+            {formErrors.email ? (
+              <p className="mt-2 text-[0.78rem] font-semibold text-red-600" id="repair-email-error">
+                {formErrors.email}
+              </p>
+            ) : null}
           </div>
 
           <div className="mt-5">
@@ -896,6 +1007,8 @@ function ContactSection() {
               Select a service
             </label>
             <select
+              aria-describedby={formErrors.service ? 'repair-service-error' : undefined}
+              aria-invalid={Boolean(formErrors.service)}
               className="mt-2 min-h-14 w-full appearance-none rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
               id="repair-service"
               name="service"
@@ -912,6 +1025,11 @@ function ContactSection() {
                 </option>
               ))}
             </select>
+            {formErrors.service ? (
+              <p className="mt-2 text-[0.78rem] font-semibold text-red-600" id="repair-service-error">
+                {formErrors.service}
+              </p>
+            ) : null}
           </div>
 
           <div className="mt-5">
@@ -919,34 +1037,110 @@ function ContactSection() {
               What is happening?
             </label>
             <textarea
+              aria-describedby={formErrors.issue ? 'repair-issue-error' : undefined}
+              aria-invalid={Boolean(formErrors.issue)}
               className="mt-2 min-h-36 w-full resize-y rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 py-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition placeholder:text-[hsl(215_20%_61%)] focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
               id="repair-issue"
+              maxLength={2000}
+              minLength={10}
               name="issue"
               onChange={(event) => updateField('issue', event.target.value)}
               placeholder="My washing machine is..."
               required
               value={formValues.issue}
             />
+            {formErrors.issue ? (
+              <p className="mt-2 text-[0.78rem] font-semibold text-red-600" id="repair-issue-error">
+                {formErrors.issue}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="mt-5">
+            <label className="text-[0.88rem] font-extrabold text-[hsl(215_32%_28%)]" htmlFor="repair-address">
+              Complete address
+            </label>
+            <textarea
+              aria-describedby={formErrors.address ? 'repair-address-error' : undefined}
+              aria-invalid={Boolean(formErrors.address)}
+              autoComplete="street-address"
+              className="mt-2 min-h-28 w-full resize-y rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 py-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition placeholder:text-[hsl(215_20%_61%)] focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
+              id="repair-address"
+              maxLength={500}
+              minLength={10}
+              name="address"
+              onChange={(event) => updateField('address', event.target.value)}
+              placeholder="House number, street, area, Bengaluru"
+              required
+              value={formValues.address}
+            />
+            {formErrors.address ? (
+              <p className="mt-2 text-[0.78rem] font-semibold text-red-600" id="repair-address-error">
+                {formErrors.address}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <div>
+              <label className="text-[0.88rem] font-extrabold text-[hsl(215_32%_28%)]" htmlFor="repair-preferred-date">
+                Preferred date <span className="font-medium text-[hsl(215_20%_52%)]">(optional)</span>
+              </label>
+              <input
+                className="mt-2 min-h-14 w-full rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
+                id="repair-preferred-date"
+                name="preferredDate"
+                onChange={(event) => updateField('preferredDate', event.target.value)}
+                type="date"
+                value={formValues.preferredDate}
+              />
+            </div>
+            <div>
+              <label className="text-[0.88rem] font-extrabold text-[hsl(215_32%_28%)]" htmlFor="repair-preferred-time">
+                Preferred time <span className="font-medium text-[hsl(215_20%_52%)]">(optional)</span>
+              </label>
+              <input
+                className="mt-2 min-h-14 w-full rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
+                id="repair-preferred-time"
+                maxLength={100}
+                name="preferredTime"
+                onChange={(event) => updateField('preferredTime', event.target.value)}
+                type="time"
+                value={formValues.preferredTime}
+              />
+            </div>
           </div>
 
           <button
             className="group mt-6 inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-[hsl(215_82%_43%)] px-5 text-[0.96rem] font-extrabold text-[hsl(210_40%_98%)] shadow-[0_18px_30px_-18px_hsl(215_82%_30%/0.9)] transition duration-200 hover:-translate-y-0.5 hover:bg-[hsl(215_82%_36%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-4 focus-visible:ring-offset-[hsl(204_67%_95%)] active:translate-y-0"
             data-testid="button-submit-repair-request"
+            disabled={createRepairRequestMutation.isPending}
             type="submit"
           >
-            Send my repair request
-            <ArrowRight aria-hidden="true" className="size-5 transition-transform duration-200 group-hover:translate-x-1" />
+            {createRepairRequestMutation.isPending ? 'Submitting your request...' : 'Send my repair request'}
+            {!createRepairRequestMutation.isPending ? (
+              <ArrowRight aria-hidden="true" className="size-5 transition-transform duration-200 group-hover:translate-x-1" />
+            ) : null}
           </button>
           <p className="mt-4 text-center text-[0.78rem] leading-6 text-[hsl(215_20%_48%)]">
             By submitting, you agree to be contacted about your repair request.
           </p>
-          {isSubmitted ? (
+          {successMessage ? (
             <p
               aria-live="polite"
               className="mt-4 rounded-xl bg-[hsl(170_54%_90%)] px-4 py-3 text-center text-[0.82rem] font-bold text-[hsl(215_74%_32%)]"
               data-testid="text-repair-request-success"
             >
-              Thanks — your repair request details are ready for review.
+              {successMessage}
+            </p>
+          ) : null}
+          {submitError ? (
+            <p
+              aria-live="assertive"
+              className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-[0.82rem] font-bold text-red-700"
+              data-testid="text-repair-request-error"
+            >
+              {submitError}
             </p>
           ) : null}
         </form>
