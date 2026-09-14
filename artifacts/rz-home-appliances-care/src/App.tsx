@@ -1105,21 +1105,22 @@ function SiteFooter() {
 
 function WhatsAppLogo() {
   return (
-    <svg
-      aria-hidden="true"
-      className="size-7"
-      fill="none"
-      viewBox="0 0 32 32"
-    >
-      <path
-        d="M16 3.5a12.5 12.5 0 0 0-10.77 18.85L3.5 28.5l6.34-1.66A12.5 12.5 0 1 0 16 3.5Z"
-        fill="currentColor"
-      />
-      <path
-        d="M11.04 9.49c.3-.35.65-.4.97-.4.25 0 .5 0 .72.02.24.02.56-.1.87.67.32.77 1.08 2.65 1.18 2.84.1.2.17.42.03.68-.14.25-.21.41-.42.63-.2.22-.44.48-.63.64-.2.18-.41.36-.18.73.24.37 1.03 1.7 2.22 2.75 1.52 1.34 2.79 1.76 3.18 1.96.39.2.62.17.85-.1.23-.26.98-1.14 1.24-1.53.25-.39.51-.33.86-.2.36.13 2.24 1.05 2.63 1.24.4.2.66.3.76.47.1.18.1 1.02-.24 1.96-.34.94-1.69 1.8-2.34 1.92-.6.11-1.36.16-2.2-.1-.5-.16-1.14-.37-1.96-.73-3.45-1.49-5.7-4.98-5.87-5.21-.17-.22-1.4-1.86-1.4-3.55 0-1.69.88-2.52 1.2-2.86Z"
-        fill="white"
-      />
-    </svg>
+    <span aria-hidden="true" className="relative inline-flex size-7 items-center justify-center">
+      <svg
+        className="absolute inset-0 size-7"
+        fill="none"
+        viewBox="0 0 32 32"
+      >
+        <path
+          d="M16 3.75a12.25 12.25 0 0 0-10.56 18.47L4 27.5l5.36-1.4A12.25 12.25 0 1 0 16 3.75Z"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2.25"
+        />
+      </svg>
+      <Phone className="relative size-3.5 rotate-[-16deg] stroke-[2.6]" />
+    </span>
   );
 }
 
