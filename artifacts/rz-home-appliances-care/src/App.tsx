@@ -466,12 +466,12 @@ function AboutSection() {
           </div>
 
           <a
-            aria-label="Book an appliance repair"
+            aria-label="Request an appliance repair"
             className="group mt-8 inline-flex min-h-14 items-center gap-4 rounded-2xl bg-[hsl(215_82%_38%)] px-6 text-[0.87rem] font-extrabold text-[hsl(210_40%_98%)] shadow-[0_18px_28px_-18px_hsl(215_82%_30%/0.9)] transition duration-200 hover:-translate-y-1 hover:bg-[hsl(215_82%_32%)] hover:shadow-[0_22px_30px_-17px_hsl(215_82%_30%/0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(204_67%_95%)] active:translate-y-0"
             data-testid="link-about-contact"
             href="#contact-us"
           >
-            Book a repair
+            Request a Repair
             <ArrowRight aria-hidden="true" className="size-5 transition-transform duration-200 group-hover:translate-x-1" />
           </a>
         </div>
