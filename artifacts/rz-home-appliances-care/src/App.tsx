@@ -4,7 +4,8 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
-import { ArrowRight, House, Menu, ShieldCheck, X } from 'lucide-react';
+import applianceCareImage from '@assets/ChatGPT_Image_Sep_14,_2026,_03_54_12_PM_1789381955049.png';
+import { ArrowRight, House, Menu, Phone, ShieldCheck, X } from 'lucide-react';
 import {
   Route,
   Switch,
@@ -193,6 +194,89 @@ function Home() {
   return (
     <div className="min-h-[100dvh] w-full overflow-x-hidden bg-[hsl(210_40%_98%)]">
       <HomeNavbar />
+      <main
+        aria-labelledby="hero-heading"
+        className="relative isolate overflow-hidden bg-[hsl(210_40%_98%)] bg-[linear-gradient(to_right,hsl(215_35%_82%_/_0.3)_1px,transparent_1px),linear-gradient(to_bottom,hsl(215_35%_82%_/_0.3)_1px,transparent_1px)] [background-size:3.25rem_3.25rem]"
+      >
+        <div className="mx-auto grid min-h-[calc(100dvh-4.75rem)] w-full max-w-[1440px] grid-cols-1 items-center gap-12 px-5 py-12 sm:px-8 sm:py-16 md:gap-14 md:py-20 lg:grid-cols-[0.82fr_1fr] lg:gap-16 lg:px-12 lg:py-14 xl:gap-24">
+          <section className="flex max-w-[39rem] flex-col justify-center lg:py-8">
+            <div
+              className="mb-8 inline-flex w-fit items-center gap-3 rounded-full border border-[hsl(215_36%_84%)] bg-[hsl(210_40%_98%_/_0.78)] px-4 py-2.5 shadow-[0_10px_24px_-20px_hsl(215_55%_34%/0.7)] backdrop-blur-sm sm:mb-10"
+              data-testid="text-local-appliance-experts"
+            >
+              <span
+                aria-hidden="true"
+                className="size-2 rounded-full bg-[hsl(199_82%_48%)] shadow-[0_0_0_4px_hsl(199_82%_62%/0.13)]"
+              />
+              <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.2em] text-[hsl(215_70%_37%)] sm:text-[0.72rem]">
+                LOCAL APPLIANCE EXPERTS
+              </span>
+            </div>
+
+            <p
+              className="mb-5 text-[0.91rem] font-extrabold tracking-[-0.025em] text-[hsl(215_82%_38%)] sm:mb-6 sm:text-[1.02rem]"
+              data-testid="text-brand-label"
+            >
+              RZ Home Appliances Care
+            </p>
+
+            <h1
+              className="max-w-[11ch] text-[clamp(3.65rem,8vw,7.9rem)] font-extrabold leading-[0.88] tracking-[-0.075em] text-[hsl(215_32%_14%)]"
+              data-testid="heading-hero"
+              id="hero-heading"
+            >
+              <span className="block">Life runs</span>
+              <span className="block">
+                <span className="text-[hsl(215_82%_43%)]">better</span> when
+              </span>
+              <span className="block">home works.</span>
+            </h1>
+
+            <p
+              className="mt-8 max-w-[34rem] text-[1.03rem] leading-[1.7] tracking-[-0.015em] text-[hsl(215_20%_40%)] sm:mt-10 sm:text-[1.1rem]"
+              data-testid="text-hero-description"
+            >
+              Fast, honest appliance repair for the moments you cannot put on hold. We get your washing machine, refrigerator, AC, and everyday essentials back on track.
+            </p>
+
+            <div className="mt-9 flex flex-col items-start gap-5 sm:mt-11 sm:flex-row sm:items-center sm:gap-7">
+              <a
+                className="group inline-flex min-h-14 items-center gap-4 rounded-2xl bg-[hsl(215_82%_38%)] px-6 text-[0.87rem] font-extrabold text-[hsl(210_40%_98%)] shadow-[0_18px_28px_-18px_hsl(215_82%_30%/0.9)] transition duration-200 hover:-translate-y-1 hover:bg-[hsl(215_82%_32%)] hover:shadow-[0_22px_30px_-17px_hsl(215_82%_30%/0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(210_40%_98%)] active:translate-y-0"
+                data-testid="link-request-repair"
+                href="#contact-us"
+              >
+                Request a repair
+                <ArrowRight aria-hidden="true" className="size-5 transition-transform duration-200 group-hover:translate-x-1" />
+              </a>
+
+              <a
+                className="group inline-flex min-h-11 items-center gap-3 rounded-xl px-1 py-2 text-[0.9rem] font-bold text-[hsl(215_32%_28%)] transition-colors duration-200 hover:text-[hsl(215_82%_38%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(210_40%_98%)]"
+                data-testid="link-call-rz-appliances"
+                href="tel:+918073848334"
+              >
+                <span className="flex size-9 items-center justify-center rounded-full border border-[hsl(199_82%_62%/0.55)] bg-[hsl(199_82%_90%/0.5)] text-[hsl(199_82%_43%)] transition-colors duration-200 group-hover:border-[hsl(199_82%_52%)] group-hover:bg-[hsl(199_82%_90%)]">
+                  <Phone aria-hidden="true" className="size-[1.05rem]" />
+                </span>
+                <span>Call +91 80738 48334</span>
+              </a>
+            </div>
+          </section>
+
+          <figure className="relative w-full lg:pl-1">
+            <div className="absolute -inset-4 -z-10 rounded-[2.5rem] bg-[hsl(199_82%_62%/0.12)] blur-2xl sm:-inset-6" />
+            <div className="overflow-hidden rounded-[1.8rem] border border-[hsl(210_35%_88%)] bg-[hsl(204_100%_99%)] shadow-[0_30px_55px_-32px_hsl(215_53%_23%/0.7)] sm:rounded-[2.25rem]">
+              <img
+                alt="RZ Home Appliances Care technician repairing a washing machine in a home appliance showroom"
+                className="block aspect-square w-full object-cover"
+                data-testid="img-appliance-technician"
+                height="1024"
+                src={applianceCareImage}
+                width="1024"
+              />
+            </div>
+          </figure>
+        </div>
+      </main>
     </div>
   );
 }
