@@ -8,7 +8,8 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test test/*.test.ts"
+    "test": "tsx --test test/*.test.ts",
+    "test:release": "REQUIRE_IPV6_LOOPBACK=1 pnpm run test"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",

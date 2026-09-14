@@ -21,6 +21,7 @@ delete process.env.EMAIL_FROM;
 
 const TEST_EMAIL_PREFIX = "auth-regression-";
 const TEST_PASSWORD = "ValidPass1";
+const requireIpv6Loopback = process.env.REQUIRE_IPV6_LOOPBACK === "1";
 
 let server: ReturnType<typeof app.listen>;
 let ipv6Server: ReturnType<typeof app.listen> | undefined;
@@ -395,6 +396,11 @@ test("rate limits trust forwarded IPs only from the configured proxy addresses",
 
 test("rate limits trust forwarded IPs from the IPv6 loopback proxy path", async (t) => {
   if (!ipv6BaseUrl) {
+    if (requireIpv6Loopback) {
+      assert.fail(
+        `Release validation requires IPv6 loopback sockets, but ${ipv6UnavailableReason ?? "IPv6 is unavailable"}.`,
+      );
+    }
     t.skip(ipv6UnavailableReason ?? "IPv6 loopback is unavailable");
     return;
   }
@@ -438,6 +444,11 @@ test("rate limits trust forwarded IPs from the IPv6 loopback proxy path", async 
 
 test("rejects a forged forwarded IP from an untrusted IPv6 source", async (t) => {
   if (!ipv6BaseUrl) {
+    if (requireIpv6Loopback) {
+      assert.fail(
+        `Release validation requires IPv6 loopback sockets, but ${ipv6UnavailableReason ?? "IPv6 is unavailable"}.`,
+      );
+    }
     t.skip(ipv6UnavailableReason ?? "IPv6 loopback is unavailable");
     return;
   }

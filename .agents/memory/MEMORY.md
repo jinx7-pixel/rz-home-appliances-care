@@ -1,1 +1,2 @@
 - [Customer authentication security](customer-auth-security.md) — opaque DB-backed sessions and hashed, single-use reset tokens are the established auth model.
+- [IPv6 release validation](ipv6-release-validation.md) — IPv6-dependent security tests remain skippable for local compatibility but must fail the release gate when loopback support is absent.
