@@ -1,4 +1,4 @@
-import { ReplitConnectors } from "@replit/connectors-sdk";
+import nodemailer, { type Transporter } from "nodemailer";
 
 type RepairRequestEmailData = {
   requestId: string;
@@ -13,7 +13,44 @@ type RepairRequestEmailData = {
   submittedAt: Date;
 };
 
-const connectors = new ReplitConnectors();
+let transporter: Transporter | null = null;
+
+function getSmtpTransporter(): Transporter {
+  if (transporter) return transporter;
+
+  const host = process.env.SMTP_HOST;
+  const port = Number(process.env.SMTP_PORT);
+  const secure = process.env.SMTP_SECURE === "true";
+  const requireTLS = process.env.SMTP_REQUIRE_TLS === "true";
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_APP_PASSWORD;
+
+  if (
+    !host ||
+    !Number.isInteger(port) ||
+    port <= 0 ||
+    !user ||
+    !pass ||
+    port !== 587 ||
+    secure ||
+    !requireTLS
+  ) {
+    throw new Error("Gmail SMTP delivery is not configured for STARTTLS");
+  }
+
+  transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    requireTLS,
+    auth: { user, pass: pass.replace(/\s/g, "") },
+    tls: {
+      minVersion: "TLSv1.2",
+    },
+  });
+
+  return transporter;
+}
 
 function escapeHtml(value: string): string {
   return value.replace(
@@ -36,14 +73,14 @@ async function sendEmail(payload: {
   html: string;
   text: string;
 }): Promise<void> {
-  const response = await connectors.proxy("resend", "/emails", {
-    method: "POST",
-    body: payload,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Resend rejected email delivery with status ${response.status}`);
+  const result = await getSmtpTransporter().sendMail(payload);
+  if ((result.rejected?.length ?? 0) > 0) {
+    throw new Error("Gmail SMTP rejected one or more recipients");
   }
+}
+
+export async function verifyRepairEmailTransport(): Promise<void> {
+  await getSmtpTransporter().verify();
 }
 
 export async function sendRepairRequestEmails(
