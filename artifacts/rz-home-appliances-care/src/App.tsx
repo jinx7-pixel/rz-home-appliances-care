@@ -221,7 +221,7 @@ function Home() {
             </p>
 
             <h1
-              className="max-w-[11ch] text-[clamp(3.65rem,8vw,7.9rem)] font-extrabold leading-[0.88] tracking-[-0.075em] text-[hsl(215_32%_14%)]"
+              className="max-w-[11ch] text-[clamp(3.65rem,8vw,7.9rem)] font-extrabold leading-[0.88] tracking-[-0.075em] text-[hsl(215_32%_14%)] lg:max-w-none lg:text-[clamp(4.5rem,6.6vw,6.7rem)]"
               data-testid="heading-hero"
               id="hero-heading"
             >
