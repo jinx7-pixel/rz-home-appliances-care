@@ -659,6 +659,251 @@ function AboutSection() {
   );
 }
 
+function ContactSection() {
+  const [formValues, setFormValues] = useState<RepairFormValues>({
+    name: '',
+    phone: '',
+    email: '',
+    service: '',
+    issue: '',
+  });
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const updateField = (field: keyof RepairFormValues, value: string) => {
+    setFormValues((current) => ({ ...current, [field]: value }));
+    setIsSubmitted(false);
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSubmitted(true);
+  };
+
+  return (
+    <section
+      aria-labelledby="contact-heading"
+      className="bg-[hsl(210_40%_98%)] px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28"
+      id="contact-us"
+    >
+      <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] lg:items-start lg:gap-20 xl:gap-28">
+        <div className="pt-1 lg:pt-8">
+          <p
+            className="mb-6 text-[0.68rem] font-extrabold uppercase tracking-[0.22em] text-[hsl(188_75%_43%)] sm:text-[0.72rem]"
+            data-testid="text-contact-eyebrow"
+          >
+            START HERE
+          </p>
+          <h2
+            className="max-w-[11ch] text-[clamp(3rem,6vw,5.65rem)] font-extrabold leading-[0.96] tracking-[-0.08em] text-[hsl(215_32%_14%)]"
+            data-testid="heading-contact"
+            id="contact-heading"
+          >
+            <span className="block">Let&apos;s get your home</span>
+            <span className="block">back on track.</span>
+          </h2>
+          <p
+            className="mt-9 max-w-[34rem] text-[1.08rem] leading-[1.72] text-[hsl(215_24%_35%)] sm:mt-11 sm:text-[1.16rem]"
+            data-testid="text-contact-description"
+          >
+            Tell us what is going on and an RZ Home Appliances Care specialist will be in touch shortly. We usually respond within one business hour.
+          </p>
+
+          <div className="mt-10 max-w-[37rem] rounded-[1.6rem] border border-[hsl(215_35%_82%/0.8)] bg-[hsl(204_67%_95%/0.62)] p-5 sm:mt-12 sm:p-7">
+            <div className="grid gap-4 text-[0.9rem] text-[hsl(215_32%_28%)]">
+              <div className="flex items-start gap-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[hsl(199_82%_90%)] text-[hsl(199_82%_38%)]">
+                  <House aria-hidden="true" className="size-4" />
+                </span>
+                <div>
+                  <p className="text-[0.64rem] font-extrabold uppercase tracking-[0.17em] text-[hsl(215_20%_50%)]">
+                    CONTACT PERSON
+                  </p>
+                  <p className="mt-1 font-bold">Siddiq Basha</p>
+                </div>
+              </div>
+              <a
+                aria-label="Email RZ Home Appliances Care"
+                className="flex items-start gap-3 rounded-xl transition-colors hover:text-[hsl(215_82%_38%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-4 focus-visible:ring-offset-[hsl(204_67%_95%)]"
+                data-testid="link-contact-email"
+                href="mailto:homeappliancesrestore@gmail.com"
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[hsl(199_82%_90%)] text-[hsl(199_82%_38%)]">
+                  <Mail aria-hidden="true" className="size-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[0.64rem] font-extrabold uppercase tracking-[0.17em] text-[hsl(215_20%_50%)]">
+                    EMAIL
+                  </p>
+                  <p className="mt-1 break-all font-bold">homeappliancesrestore@gmail.com</p>
+                </div>
+              </a>
+              <div className="flex items-start gap-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[hsl(199_82%_90%)] text-[hsl(199_82%_38%)]">
+                  <MapPin aria-hidden="true" className="size-4" />
+                </span>
+                <div>
+                  <p className="text-[0.64rem] font-extrabold uppercase tracking-[0.17em] text-[hsl(215_20%_50%)]">
+                    LOCATION
+                  </p>
+                  <p className="mt-1 font-bold">Bengaluru, Karnataka, India</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center gap-4 border-t border-[hsl(215_35%_82%/0.8)] pt-6">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[hsl(170_54%_90%)] text-[hsl(215_74%_42%)]">
+                <Phone aria-hidden="true" className="size-5" />
+              </span>
+              <div>
+                <p className="text-[0.66rem] font-extrabold uppercase tracking-[0.17em] text-[hsl(215_20%_50%)]">
+                  PREFER TO TALK?
+                </p>
+                <a
+                  className="mt-1 block text-[1.05rem] font-extrabold text-[hsl(215_74%_38%)] transition-colors hover:text-[hsl(215_82%_28%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-4 focus-visible:ring-offset-[hsl(204_67%_95%)]"
+                  data-testid="link-contact-phone"
+                  href="tel:+918073848334"
+                >
+                  +91 80738 48334
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <form
+          className="rounded-[1.8rem] border border-[hsl(215_35%_82%/0.85)] bg-[hsl(204_67%_95%/0.54)] p-5 shadow-[0_28px_60px_-42px_hsl(215_53%_23%/0.65)] sm:rounded-[2.1rem] sm:p-8 lg:p-9"
+          data-testid="form-repair-request"
+          onSubmit={handleSubmit}
+        >
+          <div className="flex items-start justify-between gap-4 border-b border-[hsl(215_35%_82%/0.85)] pb-6">
+            <div>
+              <h3 className="text-[1.7rem] font-extrabold tracking-[-0.055em] text-[hsl(215_32%_14%)] sm:text-[2rem]">
+                Request a repair
+              </h3>
+              <p className="mt-2 text-[0.92rem] text-[hsl(215_20%_45%)]">
+                A few details are all we need.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full bg-[hsl(170_54%_90%)] px-3 py-2 text-[0.61rem] font-extrabold uppercase tracking-[0.16em] text-[hsl(215_74%_38%)]">
+              FREE ESTIMATE
+            </span>
+          </div>
+
+          <div className="mt-7 grid gap-5 sm:grid-cols-2">
+            <div>
+              <label className="text-[0.88rem] font-extrabold text-[hsl(215_32%_28%)]" htmlFor="repair-name">
+                Your name
+              </label>
+              <input
+                autoComplete="name"
+                className="mt-2 min-h-14 w-full rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition placeholder:text-[hsl(215_20%_61%)] focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
+                id="repair-name"
+                name="name"
+                onChange={(event) => updateField('name', event.target.value)}
+                placeholder="Alex Morgan"
+                required
+                value={formValues.name}
+              />
+            </div>
+            <div>
+              <label className="text-[0.88rem] font-extrabold text-[hsl(215_32%_28%)]" htmlFor="repair-phone">
+                Phone number
+              </label>
+              <input
+                autoComplete="tel"
+                className="mt-2 min-h-14 w-full rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition placeholder:text-[hsl(215_20%_61%)] focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
+                id="repair-phone"
+                name="phone"
+                onChange={(event) => updateField('phone', event.target.value)}
+                placeholder="10-digit phone number"
+                required
+                type="tel"
+                value={formValues.phone}
+              />
+            </div>
+          </div>
+
+          <div className="mt-5">
+            <label className="text-[0.88rem] font-extrabold text-[hsl(215_32%_28%)]" htmlFor="repair-email">
+              Email address
+            </label>
+            <input
+              autoComplete="email"
+              className="mt-2 min-h-14 w-full rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition placeholder:text-[hsl(215_20%_61%)] focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
+              id="repair-email"
+              name="email"
+              onChange={(event) => updateField('email', event.target.value)}
+              placeholder="alex@example.com"
+              required
+              type="email"
+              value={formValues.email}
+            />
+          </div>
+
+          <div className="mt-5">
+            <label className="text-[0.88rem] font-extrabold text-[hsl(215_32%_28%)]" htmlFor="repair-service">
+              Select a service
+            </label>
+            <select
+              className="mt-2 min-h-14 w-full appearance-none rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
+              id="repair-service"
+              name="service"
+              onChange={(event) => updateField('service', event.target.value)}
+              required
+              value={formValues.service}
+            >
+              <option disabled value="">
+                Choose the appliance service
+              </option>
+              {repairServiceOptions.map((service) => (
+                <option key={service} value={service}>
+                  {service}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mt-5">
+            <label className="text-[0.88rem] font-extrabold text-[hsl(215_32%_28%)]" htmlFor="repair-issue">
+              What is happening?
+            </label>
+            <textarea
+              className="mt-2 min-h-36 w-full resize-y rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 py-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition placeholder:text-[hsl(215_20%_61%)] focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
+              id="repair-issue"
+              name="issue"
+              onChange={(event) => updateField('issue', event.target.value)}
+              placeholder="My washing machine is..."
+              required
+              value={formValues.issue}
+            />
+          </div>
+
+          <button
+            className="group mt-6 inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-[hsl(215_82%_43%)] px-5 text-[0.96rem] font-extrabold text-[hsl(210_40%_98%)] shadow-[0_18px_30px_-18px_hsl(215_82%_30%/0.9)] transition duration-200 hover:-translate-y-0.5 hover:bg-[hsl(215_82%_36%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-4 focus-visible:ring-offset-[hsl(204_67%_95%)] active:translate-y-0"
+            data-testid="button-submit-repair-request"
+            type="submit"
+          >
+            Send my repair request
+            <ArrowRight aria-hidden="true" className="size-5 transition-transform duration-200 group-hover:translate-x-1" />
+          </button>
+          <p className="mt-4 text-center text-[0.78rem] leading-6 text-[hsl(215_20%_48%)]">
+            By submitting, you agree to be contacted about your repair request.
+          </p>
+          {isSubmitted ? (
+            <p
+              aria-live="polite"
+              className="mt-4 rounded-xl bg-[hsl(170_54%_90%)] px-4 py-3 text-center text-[0.82rem] font-bold text-[hsl(215_74%_32%)]"
+              data-testid="text-repair-request-success"
+            >
+              Thanks — your repair request details are ready for review.
+            </p>
+          ) : null}
+        </form>
+      </div>
+    </section>
+  );
+}
+
 function Home() {
   return (
     <div className="min-h-[100dvh] w-full overflow-x-hidden bg-[hsl(210_40%_98%)]">
@@ -750,6 +995,7 @@ function Home() {
       <HowItWorksSection />
       <WhyRzSection />
       <AboutSection />
+      <ContactSection />
     </div>
   );
 }
