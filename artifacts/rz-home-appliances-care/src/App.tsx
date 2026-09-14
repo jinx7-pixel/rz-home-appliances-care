@@ -8,6 +8,7 @@ import applianceCareImage from '@assets/ChatGPT_Image_Sep_14,_2026,_03_54_12_PM_
 import siddiqBashaImage from '@assets/ChatGPT_Image_Sep_14,_2026,_04_32_51_PM_1789383963232.png';
 import {
   ArrowRight,
+  Check,
   House,
   Mail,
   MapPin,
@@ -122,6 +123,13 @@ const howItWorksSteps: HowItWorksStep[] = [
       'You get a clear quote before work starts, then a careful fix with no surprises.',
   },
 ];
+
+const whyRzPoints = [
+  'Clear, upfront quotes',
+  'Respectful in-home service',
+  'Quality replacement parts',
+  'A team that answers',
+] as const;
 
 function BrandMark() {
   return (
@@ -453,6 +461,65 @@ function HowItWorksSection() {
   );
 }
 
+function WhyRzSection() {
+  return (
+    <section
+      aria-labelledby="why-rz-heading"
+      className="bg-[hsl(204_40%_98%)] px-5 py-20 text-[hsl(215_32%_14%)] sm:px-8 sm:py-24 lg:px-12 lg:py-28"
+      id="why-rz-appliances-care"
+    >
+      <div className="mx-auto w-full max-w-[1440px]">
+        <div className="max-w-[53rem]">
+          <p
+            className="mb-6 text-[0.68rem] font-extrabold uppercase tracking-[0.22em] text-[hsl(188_75%_43%)] sm:text-[0.72rem]"
+            data-testid="text-why-rz-eyebrow"
+          >
+            WHY PEOPLE CALL RZ HOME APPLIANCES CARE
+          </p>
+          <h2
+            className="max-w-[11ch] text-[clamp(3rem,6vw,5.65rem)] font-extrabold leading-[0.96] tracking-[-0.08em] text-[hsl(215_32%_14%)]"
+            data-testid="heading-why-rz"
+            id="why-rz-heading"
+          >
+            <span className="block">Repair should feel</span>
+            <span className="block">reassuring.</span>
+          </h2>
+          <p
+            className="mt-9 max-w-[48rem] text-[1.08rem] leading-[1.72] tracking-[-0.015em] text-[hsl(215_24%_35%)] sm:mt-11 sm:text-[1.18rem]"
+            data-testid="text-why-rz-description"
+          >
+            We are a small, focused team that believes good service is mostly about paying attention. We show up prepared, explain what we find, and respect your home.
+          </p>
+          <p
+            className="mt-5 max-w-[47rem] text-[0.98rem] leading-[1.75] text-[hsl(215_20%_45%)] sm:text-[1.04rem]"
+            data-testid="text-why-rz-supporting"
+          >
+            From diagnosis to the final repair, we focus on clear communication, dependable workmanship, and practical solutions. Whether it&apos;s a washing machine, refrigerator, microwave, or LED TV, we aim to make every service visit simple and stress-free.
+          </p>
+        </div>
+
+        <ul
+          className="mt-10 grid max-w-[54rem] grid-cols-1 gap-x-12 gap-y-5 sm:mt-12 sm:grid-cols-2 sm:gap-y-6 lg:gap-x-20"
+          data-testid="list-why-rz-points"
+        >
+          {whyRzPoints.map((point, index) => (
+            <li
+              className="flex items-center gap-4 text-[1rem] font-bold text-[hsl(215_32%_28%)] sm:text-[1.08rem]"
+              data-testid={`item-why-rz-${index + 1}`}
+              key={point}
+            >
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[hsl(170_54%_90%)] text-[hsl(215_74%_42%)]">
+                <Check aria-hidden="true" className="size-[1.15rem] stroke-[2.4]" />
+              </span>
+              <span>{point}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
 function AboutSection() {
   return (
     <section
@@ -660,6 +727,7 @@ function Home() {
       </main>
       <ServicesSection />
       <HowItWorksSection />
+      <WhyRzSection />
       <AboutSection />
     </div>
   );
