@@ -24,6 +24,7 @@ const TEST_PASSWORD = "ValidPass1";
 let server: ReturnType<typeof app.listen>;
 let baseUrl: string;
 let clientIp = "198.51.100.1";
+let nextClientIpOctet = 1;
 
 type JsonResponse = {
   response: Response;
@@ -42,12 +43,13 @@ async function request(
   path: string,
   body?: Record<string, unknown>,
   cookie?: string,
+  requestClientIp = clientIp,
 ): Promise<JsonResponse> {
   const response = await fetch(`${baseUrl}${path}`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-forwarded-for": clientIp,
+      "x-forwarded-for": requestClientIp,
       ...(cookie ? { cookie } : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -128,7 +130,7 @@ before(async () => {
 
 beforeEach(async () => {
   await cleanupTestData();
-  clientIp = `198.51.100.${Math.floor(Math.random() * 200) + 1}`;
+  clientIp = `198.51.100.${nextClientIpOctet++}`;
 });
 
 after(async () => {
@@ -162,6 +164,34 @@ test("signup validates input and rejects duplicate emails", async () => {
   assert.equal(
     duplicate.body.error,
     "An account with this email already exists.",
+  );
+});
+
+test("signup rate limit allows five attempts and returns a generic 429 on the sixth", async () => {
+  const invalidSignup = {
+    fullName: "A",
+    email: "not-an-email",
+    password: "weak",
+    confirmPassword: "different",
+  };
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const response = await request("/api/auth/signup", invalidSignup);
+    assert.equal(response.response.status, 400);
+    assert.equal(response.body.error, "Enter a valid name, email, and password.");
+  }
+
+  const limited = await request("/api/auth/signup", {
+    ...invalidSignup,
+    email: "signup-limit@example.test",
+  });
+  assert.equal(limited.response.status, 429);
+  assert.deepEqual(limited.body, {
+    error: "Too many signup attempts. Please try again later.",
+  });
+  assert.doesNotMatch(
+    JSON.stringify(limited.body),
+    /signup-limit@example\.test|weak|different/i,
   );
 });
 
@@ -210,6 +240,29 @@ test("login sets a secure session, /me reads it, and logout invalidates it", asy
   assert.deepEqual(afterLogout.body, { authenticated: false, user: null });
 });
 
+test("login rate limit allows ten attempts and returns a generic 429 on the eleventh", async () => {
+  const loginAttempt = {
+    email: "login-limit@example.test",
+    password: "WrongPass1",
+  };
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const response = await request("/api/auth/login", loginAttempt);
+    assert.equal(response.response.status, 401);
+    assert.equal(response.body.error, "Invalid email or password.");
+  }
+
+  const limited = await request("/api/auth/login", loginAttempt);
+  assert.equal(limited.response.status, 429);
+  assert.deepEqual(limited.body, {
+    error: "Too many login attempts. Please try again later.",
+  });
+  assert.doesNotMatch(
+    JSON.stringify(limited.body),
+    /login-limit@example\.test|WrongPass1/i,
+  );
+});
+
 test("forgot password returns the same response for known and unknown emails", async () => {
   const email = testEmail("forgot");
   await createAccount(email);
@@ -225,6 +278,29 @@ test("forgot password returns the same response for known and unknown emails", a
   assert.equal(
     existing.body.message,
     "If an account exists for this email, a password reset link has been sent.",
+  );
+});
+
+test("forgot-password rate limit allows five attempts and returns a generic 429 on the sixth", async () => {
+  const forgotAttempt = { email: "forgot-limit@example.test" };
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const response = await request("/api/auth/forgot-password", forgotAttempt);
+    assert.equal(response.response.status, 202);
+    assert.equal(
+      response.body.message,
+      "If an account exists for this email, a password reset link has been sent.",
+    );
+  }
+
+  const limited = await request("/api/auth/forgot-password", forgotAttempt);
+  assert.equal(limited.response.status, 429);
+  assert.deepEqual(limited.body, {
+    error: "Too many reset attempts. Please try again later.",
+  });
+  assert.doesNotMatch(
+    JSON.stringify(limited.body),
+    /forgot-limit@example\.test|password|credentials/i,
   );
 });
 
@@ -290,6 +366,30 @@ test("reset password enforces expiry, is single-use, replaces the password, and 
     password: "NewValid2",
   });
   assert.equal(newPassword.response.status, 200);
+});
+
+test("reset-password rate limit allows eight attempts and returns a generic 429 on the ninth", async () => {
+  const resetAttempt = {
+    token: `invalid-${randomUUID()}`,
+    password: TEST_PASSWORD,
+    confirmPassword: TEST_PASSWORD,
+  };
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const response = await request("/api/auth/reset-password", resetAttempt);
+    assert.equal(response.response.status, 400);
+    assert.equal(response.body.error, "This reset link is invalid or has expired.");
+  }
+
+  const limited = await request("/api/auth/reset-password", resetAttempt);
+  assert.equal(limited.response.status, 429);
+  assert.deepEqual(limited.body, {
+    error: "Too many reset attempts. Please try again later.",
+  });
+  assert.doesNotMatch(
+    JSON.stringify(limited.body),
+    /invalid-|ValidPass1|credentials/i,
+  );
 });
 
 test("anonymous repair requests are accepted without an auth cookie", async () => {
