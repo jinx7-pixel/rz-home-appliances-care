@@ -161,3 +161,42 @@ export async function sendRepairRequestEmails(
     }),
   ]);
 }
+
+export async function sendPasswordResetEmail(data: {
+  email: string;
+  fullName: string;
+  resetLink: string;
+}): Promise<void> {
+  const from = process.env.EMAIL_FROM;
+
+  if (!from) {
+    throw new Error("Email delivery is not configured");
+  }
+
+  const greetingName = escapeHtml(data.fullName);
+  const resetLink = escapeHtml(data.resetLink);
+  const text = [
+    `Hello ${data.fullName},`,
+    "",
+    "We received a request to reset your RZ Home Appliances Care password.",
+    `Reset your password here: ${data.resetLink}`,
+    "",
+    "This link expires in 60 minutes and can be used only once.",
+    "If you did not request this, you can safely ignore this email.",
+  ].join("\n");
+
+  await sendEmail({
+    from,
+    to: data.email,
+    subject: "Reset your RZ Home Appliances Care password",
+    text,
+    html: `
+      <h2>Password reset request</h2>
+      <p>Hello ${greetingName},</p>
+      <p>We received a request to reset your RZ Home Appliances Care password.</p>
+      <p><a href="${resetLink}">Reset your password</a></p>
+      <p>This link expires in 60 minutes and can be used only once.</p>
+      <p>If you did not request this, you can safely ignore this email.</p>
+    `,
+  });
+}

@@ -7,6 +7,14 @@
  */
 
 export * from './apiError';
+export * from './authForgotPasswordInput';
+export * from './authLoginInput';
+export * from './authLoginResult';
+export * from './authMeResult';
+export * from './authMessageResult';
+export * from './authResetPasswordInput';
+export * from './authSignupInput';
+export * from './authUser';
 export * from './healthStatus';
 export * from './repairRequestInput';
 export * from './repairRequestInputApplianceType';

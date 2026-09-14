@@ -52,4 +52,120 @@ export const CreateRepairRequestResponse = zod.object({
   "success": zod.boolean(),
   "requestId": zod.string(),
   "message": zod.string()
-});
+})
+
+
+/**
+ * @summary Create a customer account
+ */
+export const authSignupBodyFullNameMin = 2;
+export const authSignupBodyFullNameMax = 100;
+
+export const authSignupBodyEmailMax = 254;
+
+export const authSignupBodyPasswordMin = 8;
+export const authSignupBodyPasswordMax = 128;
+
+export const authSignupBodyConfirmPasswordMin = 8;
+export const authSignupBodyConfirmPasswordMax = 128;
+
+
+
+export const AuthSignupBody = zod.object({
+  "fullName": zod.string().min(authSignupBodyFullNameMin).max(authSignupBodyFullNameMax),
+  "email": zod.string().email().max(authSignupBodyEmailMax),
+  "password": zod.string().min(authSignupBodyPasswordMin).max(authSignupBodyPasswordMax),
+  "confirmPassword": zod.string().min(authSignupBodyConfirmPasswordMin).max(authSignupBodyConfirmPasswordMax)
+})
+
+export const AuthSignupResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Sign in a customer
+ */
+export const authLoginBodyEmailMax = 254;
+
+export const authLoginBodyPasswordMax = 128;
+
+export const authLoginBodyRememberMeDefault = false;
+
+export const AuthLoginBody = zod.object({
+  "email": zod.string().email().max(authLoginBodyEmailMax),
+  "password": zod.string().min(1).max(authLoginBodyPasswordMax),
+  "rememberMe": zod.boolean().default(authLoginBodyRememberMeDefault)
+})
+
+export const AuthLoginResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string(),
+  "email": zod.string().email()
+})
+})
+
+
+/**
+ * @summary Sign out a customer
+ */
+export const AuthLogoutResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Request a password reset
+ */
+export const authForgotPasswordBodyEmailMax = 254;
+
+
+
+export const AuthForgotPasswordBody = zod.object({
+  "email": zod.string().email().max(authForgotPasswordBodyEmailMax)
+})
+
+export const AuthForgotPasswordResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Set a new password with a reset token
+ */
+export const authResetPasswordBodyTokenMin = 32;
+export const authResetPasswordBodyTokenMax = 256;
+
+export const authResetPasswordBodyPasswordMin = 8;
+export const authResetPasswordBodyPasswordMax = 128;
+
+export const authResetPasswordBodyConfirmPasswordMin = 8;
+export const authResetPasswordBodyConfirmPasswordMax = 128;
+
+
+
+export const AuthResetPasswordBody = zod.object({
+  "token": zod.string().min(authResetPasswordBodyTokenMin).max(authResetPasswordBodyTokenMax),
+  "password": zod.string().min(authResetPasswordBodyPasswordMin).max(authResetPasswordBodyPasswordMax),
+  "confirmPassword": zod.string().min(authResetPasswordBodyConfirmPasswordMin).max(authResetPasswordBodyConfirmPasswordMax)
+})
+
+export const AuthResetPasswordResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Get the current authenticated customer
+ */
+export const AuthMeResponse = zod.object({
+  "authenticated": zod.boolean(),
+  "user": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string(),
+  "email": zod.string().email()
+}),zod.null()])
+})
+
+

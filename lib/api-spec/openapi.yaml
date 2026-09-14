@@ -88,7 +88,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthMessage"
+                $ref: "#/components/schemas/AuthMessageResult"
         "400":
           description: Invalid signup details
           content:
@@ -124,7 +124,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthLoginResponse"
+                $ref: "#/components/schemas/AuthLoginResult"
         "400":
           description: Invalid login details
           content:
@@ -154,7 +154,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthMessage"
+                $ref: "#/components/schemas/AuthMessageResult"
   /auth/forgot-password:
     post:
       operationId: authForgotPassword
@@ -172,7 +172,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthMessage"
+                $ref: "#/components/schemas/AuthMessageResult"
         "400":
           description: Invalid email
           content:
@@ -202,7 +202,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthMessage"
+                $ref: "#/components/schemas/AuthMessageResult"
         "400":
           description: Invalid or expired reset request
           content:
@@ -226,7 +226,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthMeResponse"
+                $ref: "#/components/schemas/AuthMeResult"
 components:
   schemas:
     HealthStatus:
@@ -387,14 +387,14 @@ components:
           type: string
           minLength: 8
           maxLength: 128
-    AuthLoginResponse:
+    AuthLoginResult:
       type: object
       required:
         - user
       properties:
         user:
           $ref: "#/components/schemas/AuthUser"
-    AuthMeResponse:
+    AuthMeResult:
       type: object
       required:
         - authenticated
@@ -406,7 +406,7 @@ components:
           anyOf:
             - $ref: "#/components/schemas/AuthUser"
             - type: "null"
-    AuthMessage:
+    AuthMessageResult:
       type: object
       required:
         - message

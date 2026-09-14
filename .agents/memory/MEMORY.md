@@ -1,0 +1,1 @@
+- [Customer authentication security](customer-auth-security.md) — opaque DB-backed sessions and hashed, single-use reset tokens are the established auth model.

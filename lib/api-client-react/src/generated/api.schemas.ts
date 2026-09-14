@@ -58,3 +58,77 @@ export interface RepairRequestSubmission {
 export interface ApiError {
   error: string;
 }
+
+export interface AuthUser {
+  id: string;
+  fullName: string;
+  email: string;
+}
+
+export interface AuthSignupInput {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  fullName: string;
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  password: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  confirmPassword: string;
+}
+
+export interface AuthLoginInput {
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  password: string;
+  rememberMe?: boolean;
+}
+
+export interface AuthForgotPasswordInput {
+  /** @maxLength 254 */
+  email: string;
+}
+
+export interface AuthResetPasswordInput {
+  /**
+     * @minLength 32
+     * @maxLength 256
+     */
+  token: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  password: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  confirmPassword: string;
+}
+
+export interface AuthLoginResult {
+  user: AuthUser;
+}
+
+export interface AuthMeResult {
+  authenticated: boolean;
+  user: AuthUser | null;
+}
+
+export interface AuthMessageResult {
+  message: string;
+}
+

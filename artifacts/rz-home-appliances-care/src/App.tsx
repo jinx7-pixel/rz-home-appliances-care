@@ -12,6 +12,14 @@ import { MenuHoverLink } from '@/components/ui/menu-hover-effects';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
+import {
+  CustomerDashboardPlaceholder,
+  ForgotPasswordPage,
+  LogoutPage,
+  ResetPasswordPage,
+  SignInPage as AuthSignInPage,
+  SignUpPage,
+} from '@/pages/auth';
 import applianceCareImage from '@assets/ChatGPT_Image_Sep_14,_2026,_03_54_12_PM_1789381955049.png';
 import siddiqBashaImage from '@assets/ChatGPT_Image_Sep_14,_2026,_04_32_51_PM_1789383963232.png';
 import {
@@ -1743,9 +1751,12 @@ function Router() {
     // survives a page crash.
     <RoutedErrorBoundary>
       <Switch>
-        <Route path="/sign-in" component={SignInPage} />
-        <Route path="/forgot-password" component={() => <AuthInfoPage mode="forgot-password" />} />
-        <Route path="/sign-up" component={() => <AuthInfoPage mode="sign-up" />} />
+        <Route path="/sign-in" component={AuthSignInPage} />
+        <Route path="/forgot-password" component={ForgotPasswordPage} />
+        <Route path="/reset-password" component={ResetPasswordPage} />
+        <Route path="/sign-up" component={SignUpPage} />
+        <Route path="/logout" component={LogoutPage} />
+        <Route path="/customer-dashboard" component={CustomerDashboardPlaceholder} />
         <Route path="/" component={Home} />
         <Route component={NotFound} />
       </Switch>
