@@ -28,6 +28,7 @@ import type {
   AuthMessageResult,
   AuthResetPasswordInput,
   AuthSignupInput,
+  CustomerRepairRequest,
   HealthStatus,
   RepairRequestInput,
   RepairRequestSubmission
@@ -226,6 +227,83 @@ export const useCreateRepairRequest = <TError = ErrorType<ApiError>,
       > => {
       return useMutation(getCreateRepairRequestMutationOptions(options));
     }
+
+export const getGetCustomerRepairRequestsUrl = () => {
+
+
+
+
+  return `/api/customer/repair-requests`
+}
+
+/**
+ * @summary List the authenticated customer's repair requests
+ */
+export const getCustomerRepairRequests = async ( options?: Parameters<typeof customFetch>[1]): Promise<CustomerRepairRequest[]> => {
+
+  return customFetch<CustomerRepairRequest[]>(getGetCustomerRepairRequestsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCustomerRepairRequestsQueryKey = () => {
+    return [
+    `/api/customer/repair-requests`
+    ] as const;
+    }
+
+
+export const getGetCustomerRepairRequestsQueryOptions = <TData = Awaited<ReturnType<typeof getCustomerRepairRequests>>, TError = ErrorType<ApiError>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerRepairRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCustomerRepairRequestsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomerRepairRequests>>> = ({ signal }) => getCustomerRepairRequests({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCustomerRepairRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCustomerRepairRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof getCustomerRepairRequests>>>
+export type GetCustomerRepairRequestsQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary List the authenticated customer's repair requests
+ */
+
+export function useGetCustomerRepairRequests<TData = Awaited<ReturnType<typeof getCustomerRepairRequests>>, TError = ErrorType<ApiError>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerRepairRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCustomerRepairRequestsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getAuthSignupUrl = () => {
 

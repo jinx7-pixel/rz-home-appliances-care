@@ -503,7 +503,3 @@ export function LogoutPage() {
 
   return <main className="flex min-h-[100dvh] items-center justify-center bg-[hsl(210_40%_98%)] text-sm font-semibold text-[hsl(215_20%_45%)]">Signing out...</main>;
 }
-
-export function CustomerDashboardPlaceholder() {
-  return <main aria-label="Customer Dashboard" className="min-h-[100dvh] bg-[hsl(210_40%_98%)]" data-testid="customer-dashboard-placeholder" />;
-}

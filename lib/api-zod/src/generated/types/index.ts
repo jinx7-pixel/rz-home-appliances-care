@@ -15,6 +15,7 @@ export * from './authMessageResult';
 export * from './authResetPasswordInput';
 export * from './authSignupInput';
 export * from './authUser';
+export * from './customerRepairRequest';
 export * from './healthStatus';
 export * from './repairRequestInput';
 export * from './repairRequestInputApplianceType';

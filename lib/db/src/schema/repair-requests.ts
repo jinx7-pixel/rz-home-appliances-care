@@ -1,5 +1,6 @@
 import {
   date,
+  index,
   pgTable,
   text,
   timestamp,
@@ -9,6 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { customersTable } from "./customers";
 
 export const repairRequestsTable = pgTable(
   "repair_requests",
@@ -21,6 +23,9 @@ export const repairRequestsTable = pgTable(
     applianceType: varchar("appliance_type", { length: 64 }).notNull(),
     problemDescription: text("problem_description").notNull(),
     address: text("address").notNull(),
+    customerId: uuid("customer_id").references(() => customersTable.id, {
+      onDelete: "set null",
+    }),
     preferredDate: date("preferred_date", { mode: "string" }),
     preferredTime: varchar("preferred_time", { length: 100 }),
     status: varchar("status", { length: 24 }).notNull().default("pending"),
@@ -37,6 +42,7 @@ export const repairRequestsTable = pgTable(
   },
   (table) => [
     uniqueIndex("repair_requests_request_id_unique").on(table.requestId),
+    index("repair_requests_customer_id_idx").on(table.customerId),
   ],
 );
 

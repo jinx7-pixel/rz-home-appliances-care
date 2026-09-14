@@ -55,6 +55,18 @@ export interface RepairRequestSubmission {
   message: string;
 }
 
+export interface CustomerRepairRequest {
+  requestId: string;
+  applianceType: string;
+  problemDescription: string;
+  /** @nullable */
+  preferredDate: string | null;
+  /** @nullable */
+  preferredTime: string | null;
+  status: string;
+  createdAt: string;
+}
+
 export interface ApiError {
   error: string;
 }

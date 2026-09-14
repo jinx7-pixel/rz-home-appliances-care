@@ -3,6 +3,7 @@ import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { CreateRepairRequestBody, CreateRepairRequestResponse } from "@workspace/api-zod";
 import { db, repairRequestsTable } from "@workspace/db";
+import { getAuthenticatedCustomer } from "../lib/auth-session";
 import { sendRepairRequestEmails } from "../lib/repair-request-email";
 
 const router: IRouter = Router();
@@ -57,6 +58,7 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
   const input = parsed.data;
   const requestId = createPublicRequestId();
   const submittedAt = new Date();
+  const authenticatedCustomer = await getAuthenticatedCustomer(req);
   const preferredDate = input.preferredDate
     ? input.preferredDate.toISOString().slice(0, 10)
     : null;
@@ -71,6 +73,7 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
       applianceType: input.applianceType,
       problemDescription: input.problemDescription.trim(),
       address: input.address.trim(),
+      customerId: authenticatedCustomer?.id ?? null,
       preferredDate,
       preferredTime,
       status: "pending",

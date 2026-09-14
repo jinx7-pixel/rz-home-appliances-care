@@ -71,6 +71,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+  /customer/repair-requests:
+    get:
+      operationId: getCustomerRepairRequests
+      tags: [customer]
+      summary: List the authenticated customer's repair requests
+      responses:
+        "200":
+          description: Repair requests belonging to the authenticated customer
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomerRepairRequest"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /auth/signup:
     post:
       operationId: authSignup
@@ -292,6 +312,33 @@ components:
           type: string
         message:
           type: string
+    CustomerRepairRequest:
+      type: object
+      required:
+        - requestId
+        - applianceType
+        - problemDescription
+        - preferredDate
+        - preferredTime
+        - status
+        - createdAt
+      properties:
+        requestId:
+          type: string
+        applianceType:
+          type: string
+        problemDescription:
+          type: string
+        preferredDate:
+          type: ["string", "null"]
+          format: date
+        preferredTime:
+          type: ["string", "null"]
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
     ApiError:
       type: object
       required:

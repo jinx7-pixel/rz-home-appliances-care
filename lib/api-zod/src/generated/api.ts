@@ -56,6 +56,21 @@ export const CreateRepairRequestResponse = zod.object({
 
 
 /**
+ * @summary List the authenticated customer's repair requests
+ */
+export const GetCustomerRepairRequestsResponseItem = zod.object({
+  "requestId": zod.string(),
+  "applianceType": zod.string(),
+  "problemDescription": zod.string(),
+  "preferredDate": zod.coerce.date().nullable(),
+  "preferredTime": zod.string().nullable(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const GetCustomerRepairRequestsResponse = zod.array(GetCustomerRepairRequestsResponseItem)
+
+
+/**
  * @summary Create a customer account
  */
 export const authSignupBodyFullNameMin = 2;

@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -16,9 +16,15 @@ import {
 } from "@workspace/api-zod";
 import { sendPasswordResetEmail } from "../lib/repair-request-email";
 import { logger } from "../lib/logger";
+import {
+  clearSessionCookie,
+  getAuthenticatedCustomer,
+  getSessionToken,
+  hashSessionToken,
+  SESSION_COOKIE,
+} from "../lib/auth-session";
 
 const router = Router();
-const SESSION_COOKIE = "rz_session";
 const PASSWORD_RESET_MESSAGE =
   "If an account exists for this email, a password reset link has been sent.";
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
@@ -78,28 +84,6 @@ function isStrongPassword(value: string): boolean {
   );
 }
 
-function hashOpaqueToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
-
-function getSessionToken(request: Request): string | null {
-  const cookieHeader = request.headers.cookie;
-  if (!cookieHeader) return null;
-
-  const sessionCookie = cookieHeader
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${SESSION_COOKIE}=`));
-
-  if (!sessionCookie) return null;
-
-  try {
-    return decodeURIComponent(sessionCookie.slice(SESSION_COOKIE.length + 1));
-  } catch {
-    return null;
-  }
-}
-
 function getSafeUser(customer: {
   id: string;
   fullName: string;
@@ -123,15 +107,6 @@ function setSessionCookie(
     sameSite: "lax",
     path: "/",
     maxAge,
-  });
-}
-
-function clearSessionCookie(response: Response): void {
-  response.clearCookie(SESSION_COOKIE, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
   });
 }
 
@@ -187,7 +162,7 @@ async function createSession(
 
   await db.insert(authSessionsTable).values({
     customerId,
-    sessionHash: hashOpaqueToken(token),
+    sessionHash: hashSessionToken(token),
     expiresAt,
   });
 
@@ -319,7 +294,7 @@ router.post("/logout", async (request, response) => {
   if (token) {
     await db
       .delete(authSessionsTable)
-      .where(eq(authSessionsTable.sessionHash, hashOpaqueToken(token)));
+      .where(eq(authSessionsTable.sessionHash, hashSessionToken(token)));
   }
 
   clearSessionCookie(response);
@@ -351,7 +326,7 @@ router.post("/forgot-password", async (request, response) => {
 
   if (customer) {
     const rawToken = randomBytes(32).toString("hex");
-    const tokenHash = hashOpaqueToken(rawToken);
+    const tokenHash = hashSessionToken(rawToken);
     const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
 
     await db
@@ -414,7 +389,7 @@ router.post("/reset-password", async (request, response) => {
     parsed.data.password,
     PASSWORD_HASH_ROUNDS,
   );
-  const tokenHash = hashOpaqueToken(parsed.data.token);
+  const tokenHash = hashSessionToken(parsed.data.token);
 
   try {
     await db.transaction(async (transaction) => {
@@ -458,44 +433,14 @@ router.post("/reset-password", async (request, response) => {
 });
 
 router.get("/me", async (request, response) => {
-  const token = getSessionToken(request);
-  if (!token) {
-    return response.json({ authenticated: false, user: null });
-  }
-
-  const [session] = await db
-    .select({
-      sessionId: authSessionsTable.id,
-      customerId: customersTable.id,
-      fullName: customersTable.fullName,
-      email: customersTable.email,
-      expiresAt: authSessionsTable.expiresAt,
-    })
-    .from(authSessionsTable)
-    .innerJoin(
-      customersTable,
-      eq(authSessionsTable.customerId, customersTable.id),
-    )
-    .where(eq(authSessionsTable.sessionHash, hashOpaqueToken(token)))
-    .limit(1);
-
-  if (!session || session.expiresAt.getTime() <= Date.now()) {
-    if (session) {
-      await db
-        .delete(authSessionsTable)
-        .where(eq(authSessionsTable.id, session.sessionId));
-    }
-    clearSessionCookie(response);
+  const customer = await getAuthenticatedCustomer(request, response);
+  if (!customer) {
     return response.json({ authenticated: false, user: null });
   }
 
   return response.json({
     authenticated: true,
-    user: getSafeUser({
-      id: session.customerId,
-      fullName: session.fullName,
-      email: session.email,
-    }),
+    user: getSafeUser(customer),
   });
 });
 
