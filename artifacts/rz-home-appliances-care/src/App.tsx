@@ -17,6 +17,7 @@ import {
   Check,
   House,
   Mail,
+  MessageCircle,
   MapPin,
   Menu,
   Microwave,
@@ -1103,6 +1104,25 @@ function SiteFooter() {
   );
 }
 
+function WhatsAppFloatButton() {
+  return (
+    <a
+      aria-label="Chat with us on WhatsApp"
+      className="group fixed bottom-5 right-5 z-[60] inline-flex size-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_16px_30px_-14px_rgba(37,211,102,0.95)] transition duration-200 hover:-translate-y-1 hover:bg-[#1ebe5d] hover:shadow-[0_20px_34px_-14px_rgba(37,211,102,0.95)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-4 focus-visible:ring-offset-[hsl(210_40%_98%)] active:translate-y-0 sm:bottom-6 sm:right-6 sm:size-auto sm:min-h-14 sm:gap-2.5 sm:rounded-2xl sm:px-5"
+      data-testid="floating-whatsapp-button"
+      href="https://wa.me/918073848334"
+      rel="noreferrer"
+      target="_blank"
+    >
+      <MessageCircle aria-hidden="true" className="size-6 stroke-[2.2]" />
+      <span className="hidden text-[0.82rem] font-extrabold sm:inline">Chat on WhatsApp</span>
+      <span className="pointer-events-none absolute bottom-full right-0 mb-3 hidden whitespace-nowrap rounded-lg bg-[hsl(215_32%_14%)] px-3 py-2 text-[0.72rem] font-bold text-white shadow-lg group-hover:block group-focus-visible:block">
+        Chat with us on WhatsApp
+      </span>
+    </a>
+  );
+}
+
 function Home() {
   return (
     <div className="min-h-[100dvh] w-full scroll-smooth bg-[hsl(210_40%_98%)]" id="top">
@@ -1197,6 +1217,7 @@ function Home() {
       <ContactSection />
       <LocationSection />
       <SiteFooter />
+      <WhatsAppFloatButton />
     </div>
   );
 }
