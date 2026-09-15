@@ -24,7 +24,8 @@ Customer-facing appliance repair website with a public guest repair-request form
 - The public repair-request endpoint does not require customer authentication.
 - Guest submissions are saved with `customer_id = NULL`; the server owns the Request ID and status values.
 - The form saves to the database before returning success and displays the generated Request ID to the customer.
-- Account, booking, review, and admin preview routes remain separate from the public guest repair-request flow.
+- The admin login and dashboard use the server's HTTP-only admin session cookie; the dashboard reads guest requests through the protected admin API.
+- Account, booking, and review pages remain separate frontend-only previews for now.
 
 ## Product
 
@@ -33,6 +34,8 @@ RZ Home Appliances Care provides appliance repair services in Bengaluru. The sit
 ## Pointers
 
 - Website and repair form: `artifacts/rz-home-appliances-care/src/App.tsx`
+- Admin login and dashboard: `artifacts/rz-home-appliances-care/src/pages/static-pages.tsx`
 - API route: `artifacts/api-server/src/routes/repair-requests.ts`
+- Admin API routes: `artifacts/api-server/src/routes/admin-auth.ts` and `artifacts/api-server/src/routes/admin-repair-requests.ts`
 - Database schema: `lib/db/src/schema/repair-requests.ts`
 - API contract: `lib/api-spec/openapi.yaml`

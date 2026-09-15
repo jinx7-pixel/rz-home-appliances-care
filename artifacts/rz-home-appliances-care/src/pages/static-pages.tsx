@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -8,6 +8,7 @@ import {
   LockKeyhole,
   Mail,
   MessageSquareQuote,
+  RefreshCw,
   ShieldCheck,
   Star,
   Wrench,
@@ -200,25 +201,227 @@ export function ReviewPage() {
 }
 
 export function AdminPage() {
+  const [location, setLocation] = useLocation();
+  const isLoginPage = location === '/admin/login';
+  const [username, setUsername] = useState('admin');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(!isLoginPage);
+  const [adminName, setAdminName] = useState('');
+  const [requests, setRequests] = useState<AdminRepairRequest[]>([]);
+  const [requestError, setRequestError] = useState('');
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+
+  useEffect(() => {
+    if (isLoginPage) {
+      setIsCheckingSession(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsCheckingSession(true);
+
+    const loadDashboard = async () => {
+      try {
+        const sessionResponse = await fetch('/api/admin/auth/me', {
+          credentials: 'include',
+        });
+        const session = await sessionResponse.json();
+        if (!session.authenticated) {
+          setLocation('/admin/login');
+          return;
+        }
+
+        if (cancelled) return;
+        setAdminName(session.admin?.displayName || session.admin?.username || 'Administrator');
+        setIsLoadingRequests(true);
+        const requestsResponse = await fetch(
+          '/api/admin/repair-requests?customerType=guest&sort=newest',
+          { credentials: 'include' },
+        );
+        const requestsBody = await requestsResponse.json();
+        if (!requestsResponse.ok) {
+          throw new Error(requestsBody.error || 'Could not load repair requests.');
+        }
+        if (!cancelled) {
+          setRequests(requestsBody);
+          setRequestError('');
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setRequestError(error instanceof Error ? error.message : 'Could not load repair requests.');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsCheckingSession(false);
+          setIsLoadingRequests(false);
+        }
+      }
+    };
+
+    void loadDashboard();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoginPage, setLocation]);
+
+  const login = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoginError('');
+    setIsLoggingIn(true);
+    try {
+      const response = await fetch('/api/admin/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.error || 'Invalid admin credentials.');
+      }
+      setLocation('/admin/dashboard');
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : 'Invalid admin credentials.');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const refreshRequests = async () => {
+    setRequestError('');
+    setIsLoadingRequests(true);
+    try {
+      const response = await fetch(
+        '/api/admin/repair-requests?customerType=guest&sort=newest',
+        { credentials: 'include' },
+      );
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.error || 'Could not load repair requests.');
+      }
+      setRequests(body);
+    } catch (error) {
+      setRequestError(error instanceof Error ? error.message : 'Could not load repair requests.');
+    } finally {
+      setIsLoadingRequests(false);
+    }
+  };
+
+  const logout = async () => {
+    await fetch('/api/admin/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+    });
+    setLocation('/admin/login');
+  };
+
+  if (isLoginPage) {
+    return (
+      <PageShell>
+        <section className="mx-auto max-w-[560px] py-14 sm:py-20">
+          <p className="text-[0.68rem] font-extrabold uppercase tracking-[0.22em] text-[hsl(188_75%_43%)]">PRIVATE OPERATIONS</p>
+          <h1 className="mt-4 text-[clamp(2.7rem,7vw,5rem)] font-extrabold leading-[0.94] tracking-[-0.08em]">Admin sign in.</h1>
+          <p className="mt-5 text-[0.98rem] leading-[1.7] text-[hsl(215_20%_45%)]">Sign in to view guest repair requests submitted from the public website.</p>
+          <form className="mt-9 grid gap-5 rounded-[1.8rem] border border-[hsl(215_35%_82%)] bg-white p-6 shadow-[0_24px_58px_-42px_hsl(215_53%_23%/0.62)] sm:p-8" onSubmit={login}>
+            <label className="grid gap-2 text-[0.84rem] font-extrabold text-[hsl(215_32%_28%)]">
+              Username
+              <input autoComplete="username" className="min-h-13 rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.92rem] font-medium outline-none focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]" onChange={(event) => setUsername(event.target.value)} value={username} />
+            </label>
+            <label className="grid gap-2 text-[0.84rem] font-extrabold text-[hsl(215_32%_28%)]">
+              Password
+              <input autoComplete="current-password" className="min-h-13 rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.92rem] font-medium outline-none focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]" onChange={(event) => setPassword(event.target.value)} type="password" value={password} />
+            </label>
+            {loginError ? <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[0.82rem] font-semibold leading-[1.6] text-red-900" role="alert">{loginError}</p> : null}
+            <button className="inline-flex min-h-13 items-center justify-center gap-3 rounded-2xl bg-[hsl(215_82%_38%)] px-5 text-[0.84rem] font-extrabold text-white hover:bg-[hsl(215_82%_32%)] disabled:cursor-not-allowed disabled:opacity-60" disabled={isLoggingIn} type="submit">
+              {isLoggingIn ? 'Signing in…' : 'Sign in to dashboard'}
+              <ArrowRight className="size-4" />
+            </button>
+          </form>
+        </section>
+      </PageShell>
+    );
+  }
+
+  if (isCheckingSession) {
+    return (
+      <PageShell>
+        <section className="py-20 text-center">
+          <p className="font-extrabold text-[hsl(215_74%_28%)]">Checking administrator session…</p>
+        </section>
+      </PageShell>
+    );
+  }
+
   return (
     <PageShell>
       <section className="py-14 sm:py-20">
-        <p className="text-[0.68rem] font-extrabold uppercase tracking-[0.22em] text-[hsl(188_75%_43%)]">PRIVATE OPERATIONS</p>
-        <h1 className="mt-4 max-w-[12ch] text-[clamp(2.7rem,6vw,5.2rem)] font-extrabold leading-[0.94] tracking-[-0.08em]">The operations desk.</h1>
-        <p className="mt-5 max-w-[40rem] text-[1rem] leading-[1.7] text-[hsl(215_20%_45%)]">The former server-backed customer and admin workflows are intentionally disabled after converting this project to a frontend-only website.</p>
-        <FrontendOnlyNotice />
-        <div className="mt-10 grid gap-4 sm:grid-cols-3">
-          {[
-            ['Repair requests', Wrench, 'Handled by phone or WhatsApp'],
-            ['Bookings', CalendarDays, 'Arrange a visit directly'],
-            ['Reviews', MessageSquareQuote, 'Displayed as static sample stories'],
-          ].map(([label, Icon, detail]) => {
-            const ServiceIcon = Icon as typeof Wrench;
-            return <article className="rounded-[1.5rem] border border-[hsl(215_35%_84%)] bg-white p-5" key={label as string}><ServiceIcon className="size-5 text-[hsl(199_82%_43%)]" /><h2 className="mt-5 text-[1rem] font-extrabold">{label as string}</h2><p className="mt-2 text-[0.78rem] leading-6 text-[hsl(215_20%_48%)]">{detail as string}</p></article>;
-          })}
+        <div className="flex flex-wrap items-end justify-between gap-5">
+          <div>
+            <p className="text-[0.68rem] font-extrabold uppercase tracking-[0.22em] text-[hsl(188_75%_43%)]">PRIVATE OPERATIONS</p>
+            <h1 className="mt-4 max-w-[12ch] text-[clamp(2.7rem,6vw,5.2rem)] font-extrabold leading-[0.94] tracking-[-0.08em]">Repair requests.</h1>
+            <p className="mt-5 max-w-[40rem] text-[1rem] leading-[1.7] text-[hsl(215_20%_45%)]">Welcome, {adminName}. Guest requests from the public contact form appear here.</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[hsl(215_35%_82%)] bg-white px-4 text-[0.78rem] font-extrabold text-[hsl(215_74%_28%)] hover:bg-[hsl(199_82%_94%)] disabled:opacity-60" disabled={isLoadingRequests} onClick={() => void refreshRequests()} type="button">
+              <RefreshCw className={`size-4 ${isLoadingRequests ? 'animate-spin' : ''}`} /> Refresh
+            </button>
+            <button className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[hsl(215_82%_38%)] px-4 text-[0.78rem] font-extrabold text-white hover:bg-[hsl(215_82%_32%)]" onClick={() => void logout()} type="button">
+              Sign out
+            </button>
+          </div>
         </div>
-        <a className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-xl bg-[hsl(215_82%_38%)] px-5 text-[0.82rem] font-extrabold text-white hover:bg-[hsl(215_82%_32%)]" href={appPath('/')}>Return to website <ArrowRight className="size-4" /></a>
+        <div className="mt-10 grid gap-4 sm:grid-cols-3">
+          <article className="rounded-[1.5rem] border border-[hsl(215_35%_84%)] bg-white p-5"><p className="text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-[hsl(215_20%_48%)]">Guest requests</p><p className="mt-3 text-3xl font-extrabold text-[hsl(215_74%_28%)]">{requests.length}</p></article>
+          <article className="rounded-[1.5rem] border border-[hsl(215_35%_84%)] bg-white p-5"><p className="text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-[hsl(215_20%_48%)]">Pending</p><p className="mt-3 text-3xl font-extrabold text-[hsl(215_74%_28%)]">{requests.filter((request) => request.status === 'pending').length}</p></article>
+          <article className="rounded-[1.5rem] border border-[hsl(215_35%_84%)] bg-white p-5"><p className="text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-[hsl(215_20%_48%)]">Latest request</p><p className="mt-3 truncate text-lg font-extrabold text-[hsl(215_74%_28%)]">{requests[0]?.requestId || '—'}</p></article>
+        </div>
+        {requestError ? <p className="mt-8 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[0.82rem] font-semibold leading-[1.6] text-red-900" role="alert">{requestError}</p> : null}
+        <div className="mt-10 grid gap-5">
+          {requests.length === 0 && !isLoadingRequests ? (
+            <div className="rounded-[1.7rem] border border-dashed border-[hsl(215_35%_78%)] bg-white p-10 text-center">
+              <Wrench className="mx-auto size-8 text-[hsl(199_82%_43%)]" />
+              <h2 className="mt-4 text-lg font-extrabold">No guest requests yet</h2>
+              <p className="mt-2 text-sm leading-6 text-[hsl(215_20%_48%)]">New public repair requests will appear here after submission.</p>
+            </div>
+          ) : null}
+          {requests.map((request) => (
+            <article className="rounded-[1.7rem] border border-[hsl(215_35%_84%)] bg-white p-6 shadow-[0_18px_48px_-38px_hsl(215_53%_23%/0.5)] sm:p-7" key={request.requestId}>
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[hsl(215_35%_91%)] pb-5">
+                <div>
+                  <p className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-[hsl(188_75%_43%)]">Request ID</p>
+                  <h2 className="mt-2 text-xl font-extrabold text-[hsl(215_74%_28%)]">{request.requestId}</h2>
+                </div>
+                <span className="rounded-full bg-[hsl(199_82%_94%)] px-3 py-1.5 text-[0.7rem] font-extrabold uppercase tracking-[0.08em] text-[hsl(215_74%_28%)]">{request.status.replace('_', ' ')}</span>
+              </div>
+              <div className="mt-5 grid gap-5 text-[0.84rem] sm:grid-cols-2 lg:grid-cols-4">
+                <div><p className="font-extrabold text-[hsl(215_20%_48%)]">Customer</p><p className="mt-1 font-semibold">{request.customerName}</p></div>
+                <div><p className="font-extrabold text-[hsl(215_20%_48%)]">Phone</p><a className="mt-1 block font-semibold text-[hsl(215_74%_28%)] hover:underline" href={`tel:${request.phone}`}>{request.phone}</a></div>
+                <div><p className="font-extrabold text-[hsl(215_20%_48%)]">Email</p><a className="mt-1 block break-words font-semibold text-[hsl(215_74%_28%)] hover:underline" href={`mailto:${request.email}`}>{request.email}</a></div>
+                <div><p className="font-extrabold text-[hsl(215_20%_48%)]">Appliance</p><p className="mt-1 font-semibold">{request.applianceType}</p></div>
+              </div>
+              <div className="mt-5 grid gap-5 text-[0.84rem] sm:grid-cols-2">
+                <div><p className="font-extrabold text-[hsl(215_20%_48%)]">Problem</p><p className="mt-1 leading-6">{request.problemDescription}</p></div>
+                <div><p className="font-extrabold text-[hsl(215_20%_48%)]">Address</p><p className="mt-1 leading-6">{request.address}</p></div>
+              </div>
+              <p className="mt-5 text-[0.72rem] font-semibold text-[hsl(215_20%_52%)]">Submitted {new Date(request.createdAt).toLocaleString('en-IN')}</p>
+            </article>
+          ))}
+        </div>
       </section>
     </PageShell>
   );
 }
+
+type AdminRepairRequest = {
+  requestId: string;
+  customerName: string;
+  email: string;
+  phone: string;
+  applianceType: string;
+  problemDescription: string;
+  address: string;
+  status: 'pending' | 'contacted' | 'in_progress' | 'completed' | 'cancelled';
+  createdAt: string;
+};
