@@ -3,6 +3,8 @@ import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { CreateRepairRequestBody, CreateRepairRequestResponse } from "@workspace/api-zod";
 import { db, repairRequestsTable } from "@workspace/db";
+import { getAuthenticatedCustomer } from "../lib/auth-session";
+import { sendRepairRequestEmails } from "../lib/repair-request-email";
 
 const router: IRouter = Router();
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
@@ -58,41 +60,85 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
   const submittedAt = new Date();
   const customerName = input.customerName.trim();
   const email = input.email.trim().toLowerCase();
+  const authenticatedCustomer = await getAuthenticatedCustomer(req, res);
   const preferredDate = input.preferredDate
     ? input.preferredDate.toISOString().slice(0, 10)
     : null;
   const preferredTime = input.preferredTime?.trim() || null;
 
+  let savedRequest: typeof repairRequestsTable.$inferSelect | undefined;
   try {
-    const [savedRequest] = await db
+    [savedRequest] = await db
       .insert(repairRequestsTable)
       .values({
-      requestId,
-      customerName,
-      phone: input.phone,
-      email,
-      applianceType: input.applianceType,
-      problemDescription: input.problemDescription.trim(),
-      address: input.address.trim(),
-       customerId: null,
-      preferredDate,
-      preferredTime,
-      status: "pending",
-       emailStatus: "not_configured",
-      createdAt: submittedAt,
-      updatedAt: submittedAt,
+        requestId,
+        customerName,
+        phone: input.phone,
+        email,
+        applianceType: input.applianceType,
+        problemDescription: input.problemDescription.trim(),
+        address: input.address.trim(),
+        customerId: authenticatedCustomer?.id ?? null,
+        preferredDate,
+        preferredTime,
+        status: "pending",
+        emailStatus: "pending",
+        createdAt: submittedAt,
+        updatedAt: submittedAt,
       })
       .returning();
 
-    if (!savedRequest) {
-      throw new Error("Repair request insert returned no saved row");
-    }
+    if (!savedRequest) throw new Error("Repair request insert returned no saved row");
 
     req.log.info({ requestId }, "Saved guest repair request");
   } catch (error) {
     req.log.error({ err: error, requestId }, "Failed to save repair request");
     res.status(500).json({
       error: "We could not save your repair request. Please try again.",
+    });
+    return;
+  }
+
+  try {
+    await sendRepairRequestEmails({
+      requestId: savedRequest.requestId,
+      customerName: savedRequest.customerName,
+      phone: savedRequest.phone,
+      email: savedRequest.email,
+      applianceType: savedRequest.applianceType,
+      problemDescription: savedRequest.problemDescription,
+      address: savedRequest.address,
+      preferredDate: savedRequest.preferredDate,
+      preferredTime: savedRequest.preferredTime,
+      submittedAt: savedRequest.createdAt,
+      customerType: authenticatedCustomer
+        ? "Registered Customer"
+        : "Guest",
+      notificationType: "repair-request",
+    });
+
+    await db
+      .update(repairRequestsTable)
+      .set({ emailStatus: "sent", updatedAt: new Date() })
+      .where(eq(repairRequestsTable.requestId, savedRequest.requestId));
+  } catch (error) {
+    req.log.error(
+      { err: error, requestId: savedRequest.requestId },
+      "Failed to send repair request emails",
+    );
+    await db
+      .update(repairRequestsTable)
+      .set({ emailStatus: "failed", updatedAt: new Date() })
+      .where(eq(repairRequestsTable.requestId, savedRequest.requestId))
+      .catch((updateError) => {
+        req.log.error(
+          { err: updateError, requestId: savedRequest.requestId },
+          "Failed to record repair request email failure",
+        );
+      });
+    res.status(502).json({
+      error:
+        "Your repair request was saved, but we could not send the confirmation email. Please call us at +91 80738 48334.",
     });
     return;
   }
