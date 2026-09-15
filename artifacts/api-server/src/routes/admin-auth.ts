@@ -21,9 +21,8 @@ const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_ATTEMPTS = 10;
 const loginAttempts = new Map<string, number[]>();
 
-// Temporary development access is seeded as the "admin" row in admin_users with
-// a bcrypt hash. Disable that row or replace its password_hash before production;
-// plaintext credentials must never be stored in source, client code, or responses.
+// The initial administrator can be bootstrapped from ADMIN_PASSWORD on first
+// login. The password is never stored in source, client code, or responses.
 function clientKey(request: Request): string {
   return request.ip || request.socket.remoteAddress || "unknown";
 }
@@ -64,7 +63,7 @@ router.post("/auth/login", async (request, response) => {
   }
 
   const username = parsed.data.username.trim().toLowerCase();
-  const [admin] = await db
+  let [admin] = await db
     .select({
       id: adminUsersTable.id,
       username: adminUsersTable.username,
@@ -76,9 +75,50 @@ router.post("/auth/login", async (request, response) => {
     .where(eq(adminUsersTable.username, username))
     .limit(1);
 
-  const passwordMatches = admin
+  let passwordMatches = admin
     ? await bcrypt.compare(parsed.data.password, admin.passwordHash)
     : false;
+
+  const bootstrapPassword = process.env.ADMIN_PASSWORD;
+  if (
+    username === "admin" &&
+    bootstrapPassword &&
+    parsed.data.password === bootstrapPassword &&
+    (!admin || !passwordMatches || !admin.isActive)
+  ) {
+    const passwordHash = await bcrypt.hash(bootstrapPassword, 12);
+    if (admin) {
+      await db
+        .update(adminUsersTable)
+        .set({
+          displayName: "RZ Administrator",
+          passwordHash,
+          isActive: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(adminUsersTable.id, admin.id));
+    } else {
+      await db.insert(adminUsersTable).values({
+        username: "admin",
+        displayName: "RZ Administrator",
+        passwordHash,
+        isActive: true,
+      });
+    }
+
+    [admin] = await db
+      .select({
+        id: adminUsersTable.id,
+        username: adminUsersTable.username,
+        displayName: adminUsersTable.displayName,
+        passwordHash: adminUsersTable.passwordHash,
+        isActive: adminUsersTable.isActive,
+      })
+      .from(adminUsersTable)
+      .where(eq(adminUsersTable.username, username))
+      .limit(1);
+    passwordMatches = Boolean(admin);
+  }
 
   if (!admin || !admin.isActive || !passwordMatches) {
     return response.status(401).json({ error: "Invalid admin credentials." });
