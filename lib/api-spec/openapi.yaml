@@ -15,7 +15,7 @@ tags:
   - name: auth
     description: Customer authentication
   - name: admin
-    description: Administrator authentication and repair request management
+    description: Administrator authentication, repair request, and booking management
 paths:
   /healthz:
     get:
@@ -510,6 +510,140 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+  /admin/bookings:
+    get:
+      operationId: getAdminBookings
+      tags: [admin]
+      summary: List all customer bookings
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 200
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/AdminBookingStatus"
+        - name: customerType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [guest, registered]
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [newest, oldest]
+            default: newest
+      responses:
+        "200":
+          description: All customer bookings visible to administrators
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminBooking"
+        "401":
+          description: Administrator authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Administrator access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /admin/bookings/{bookingId}:
+    get:
+      operationId: getAdminBooking
+      tags: [admin]
+      summary: View a complete customer booking
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Complete booking details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminBooking"
+        "401":
+          description: Administrator authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Administrator access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    patch:
+      operationId: updateAdminBooking
+      tags: [admin]
+      summary: Update a booking status or internal notes
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminBookingUpdate"
+      responses:
+        "200":
+          description: Booking updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminBooking"
+        "400":
+          description: Invalid update data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Administrator authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Administrator access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 components:
   schemas:
     HealthStatus:
@@ -930,6 +1064,90 @@ components:
       properties:
         status:
           $ref: "#/components/schemas/AdminRequestStatus"
+        adminNotes:
+          type: ["string", "null"]
+          maxLength: 5000
+        cancellationReason:
+          type: ["string", "null"]
+          maxLength: 2000
+    AdminBookingStatus:
+      type: string
+      enum:
+        - pending
+        - contacted
+        - confirmed
+        - in_progress
+        - completed
+        - cancelled
+    AdminBooking:
+      type: object
+      required:
+        - bookingId
+        - customerName
+        - email
+        - phone
+        - customerId
+        - customerType
+        - applianceType
+        - problemDescription
+        - preferredDate
+        - preferredTime
+        - address
+        - additionalNotes
+        - status
+        - adminNotes
+        - cancellationReason
+        - emailStatus
+        - createdAt
+        - updatedAt
+      properties:
+        bookingId:
+          type: string
+        customerName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        customerId:
+          type: ["string", "null"]
+          format: uuid
+        customerType:
+          type: string
+          enum: [guest, registered]
+        applianceType:
+          type: string
+        problemDescription:
+          type: string
+        preferredDate:
+          type: string
+          format: date
+        preferredTime:
+          type: string
+        address:
+          type: string
+        additionalNotes:
+          type: ["string", "null"]
+        status:
+          $ref: "#/components/schemas/AdminBookingStatus"
+        adminNotes:
+          type: ["string", "null"]
+        cancellationReason:
+          type: ["string", "null"]
+        emailStatus:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    AdminBookingUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          $ref: "#/components/schemas/AdminBookingStatus"
         adminNotes:
           type: ["string", "null"]
           maxLength: 5000

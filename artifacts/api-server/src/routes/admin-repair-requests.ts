@@ -56,7 +56,7 @@ function serializeRepairRequest(request: typeof repairRequestsTable.$inferSelect
   });
 }
 
-async function requireAdmin(
+export async function requireAdmin(
   request: Request,
   response: Response,
 ) {

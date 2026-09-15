@@ -30,6 +30,8 @@ export const bookingsTable = pgTable(
     address: text("address").notNull(),
     additionalNotes: text("additional_notes"),
     status: varchar("status", { length: 24 }).notNull().default("pending"),
+    adminNotes: text("admin_notes"),
+    cancellationReason: text("cancellation_reason"),
     emailStatus: varchar("email_status", { length: 24 })
       .notNull()
       .default("pending"),

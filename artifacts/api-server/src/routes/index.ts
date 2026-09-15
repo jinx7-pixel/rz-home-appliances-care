@@ -6,6 +6,7 @@ import customerRouter from "./customer";
 import bookingsRouter from "./bookings";
 import adminAuthRouter from "./admin-auth";
 import adminRepairRequestsRouter from "./admin-repair-requests";
+import adminBookingsRouter from "./admin-bookings";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use("/customer", customerRouter);
 router.use("/customer", bookingsRouter);
 router.use("/admin", adminAuthRouter);
 router.use("/admin", adminRepairRequestsRouter);
+router.use("/admin", adminBookingsRouter);
 
 export default router;

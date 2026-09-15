@@ -20,6 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminBooking,
+  AdminBookingUpdate,
   AdminLoginInput,
   AdminLoginResult,
   AdminMeResult,
@@ -37,6 +39,7 @@ import type {
   CustomerBookingInput,
   CustomerBookingSubmission,
   CustomerRepairRequest,
+  GetAdminBookingsParams,
   GetAdminRepairRequestsParams,
   HealthStatus,
   RepairRequestInput,
@@ -1469,5 +1472,255 @@ export const useUpdateAdminRepairRequest = <TError = ErrorType<ApiError>,
         TContext
       > => {
       return useMutation(getUpdateAdminRepairRequestMutationOptions(options));
+    }
+
+export const getGetAdminBookingsUrl = (params?: GetAdminBookingsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/bookings?${stringifiedParams}` : `/api/admin/bookings`
+}
+
+/**
+ * @summary List all customer bookings
+ */
+export const getAdminBookings = async (params?: GetAdminBookingsParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminBooking[]> => {
+
+  return customFetch<AdminBooking[]>(getGetAdminBookingsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminBookingsQueryKey = (params?: GetAdminBookingsParams,) => {
+    return [
+    `/api/admin/bookings`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminBookingsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminBookings>>, TError = ErrorType<ApiError>>(params?: GetAdminBookingsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminBookings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminBookingsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminBookings>>> = ({ signal }) => getAdminBookings(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminBookings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminBookingsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminBookings>>>
+export type GetAdminBookingsQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary List all customer bookings
+ */
+
+export function useGetAdminBookings<TData = Awaited<ReturnType<typeof getAdminBookings>>, TError = ErrorType<ApiError>>(
+ params?: GetAdminBookingsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminBookings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminBookingsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminBookingUrl = (bookingId: string,) => {
+
+
+
+
+  return `/api/admin/bookings/${bookingId}`
+}
+
+/**
+ * @summary View a complete customer booking
+ */
+export const getAdminBooking = async (bookingId: string, options?: Parameters<typeof customFetch>[1]): Promise<AdminBooking> => {
+
+  return customFetch<AdminBooking>(getGetAdminBookingUrl(bookingId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminBookingQueryKey = (bookingId: string,) => {
+    return [
+    `/api/admin/bookings/${bookingId}`
+    ] as const;
+    }
+
+
+export const getGetAdminBookingQueryOptions = <TData = Awaited<ReturnType<typeof getAdminBooking>>, TError = ErrorType<ApiError>>(bookingId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminBooking>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminBookingQueryKey(bookingId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminBooking>>> = ({ signal }) => getAdminBooking(bookingId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: bookingId !== null && bookingId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminBooking>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminBookingQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminBooking>>>
+export type GetAdminBookingQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary View a complete customer booking
+ */
+
+export function useGetAdminBooking<TData = Awaited<ReturnType<typeof getAdminBooking>>, TError = ErrorType<ApiError>>(
+ bookingId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminBooking>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminBookingQueryOptions(bookingId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAdminBookingUrl = (bookingId: string,) => {
+
+
+
+
+  return `/api/admin/bookings/${bookingId}`
+}
+
+/**
+ * @summary Update a booking status or internal notes
+ */
+export const updateAdminBooking = async (bookingId: string,
+    adminBookingUpdate: AdminBookingUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AdminBooking> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminBooking>(getUpdateAdminBookingUrl(bookingId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminBookingUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminBookingMutationKey = () => ['updateAdminBooking'] as const;
+
+export const getUpdateAdminBookingMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminBooking>>, TError,UpdateAdminBookingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminBooking>>, TError,UpdateAdminBookingMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminBookingMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminBooking>>, UpdateAdminBookingMutationVariables> = (props) => {
+          const {bookingId,data} = props ?? {};
+
+          return  updateAdminBooking(bookingId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminBookingMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminBooking>>>
+    export type UpdateAdminBookingMutationBody = BodyType<AdminBookingUpdate>
+    export type UpdateAdminBookingMutationError = ErrorType<ApiError>
+    export type UpdateAdminBookingMutationVariables = {bookingId: string;data: BodyType<AdminBookingUpdate>}
+
+    /**
+ * @summary Update a booking status or internal notes
+ */
+export const useUpdateAdminBooking = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminBooking>>, TError,UpdateAdminBookingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminBooking>>,
+        TError,
+        UpdateAdminBookingMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminBookingMutationOptions(options));
     }
 

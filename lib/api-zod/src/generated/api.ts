@@ -382,3 +382,110 @@ export const UpdateAdminRepairRequestResponse = zod.object({
 })
 
 
+/**
+ * @summary List all customer bookings
+ */
+export const getAdminBookingsQuerySearchMax = 200;
+
+export const getAdminBookingsQuerySortDefault = `newest`;
+
+export const GetAdminBookingsQueryParams = zod.object({
+  "search": zod.coerce.string().max(getAdminBookingsQuerySearchMax).optional(),
+  "status": zod.enum(['pending', 'contacted', 'confirmed', 'in_progress', 'completed', 'cancelled']).optional(),
+  "customerType": zod.enum(['guest', 'registered']).optional(),
+  "sort": zod.enum(['newest', 'oldest']).default(getAdminBookingsQuerySortDefault)
+})
+
+export const GetAdminBookingsResponseItem = zod.object({
+  "bookingId": zod.string(),
+  "customerName": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "customerId": zod.string().uuid().nullable(),
+  "customerType": zod.enum(['guest', 'registered']),
+  "applianceType": zod.string(),
+  "problemDescription": zod.string(),
+  "preferredDate": zod.coerce.date(),
+  "preferredTime": zod.string(),
+  "address": zod.string(),
+  "additionalNotes": zod.string().nullable(),
+  "status": zod.enum(['pending', 'contacted', 'confirmed', 'in_progress', 'completed', 'cancelled']),
+  "adminNotes": zod.string().nullable(),
+  "cancellationReason": zod.string().nullable(),
+  "emailStatus": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const GetAdminBookingsResponse = zod.array(GetAdminBookingsResponseItem)
+
+
+/**
+ * @summary View a complete customer booking
+ */
+export const GetAdminBookingParams = zod.object({
+  "bookingId": zod.coerce.string()
+})
+
+export const GetAdminBookingResponse = zod.object({
+  "bookingId": zod.string(),
+  "customerName": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "customerId": zod.string().uuid().nullable(),
+  "customerType": zod.enum(['guest', 'registered']),
+  "applianceType": zod.string(),
+  "problemDescription": zod.string(),
+  "preferredDate": zod.coerce.date(),
+  "preferredTime": zod.string(),
+  "address": zod.string(),
+  "additionalNotes": zod.string().nullable(),
+  "status": zod.enum(['pending', 'contacted', 'confirmed', 'in_progress', 'completed', 'cancelled']),
+  "adminNotes": zod.string().nullable(),
+  "cancellationReason": zod.string().nullable(),
+  "emailStatus": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a booking status or internal notes
+ */
+export const UpdateAdminBookingParams = zod.object({
+  "bookingId": zod.coerce.string()
+})
+
+export const updateAdminBookingBodyAdminNotesMax = 5000;
+
+export const updateAdminBookingBodyCancellationReasonMax = 2000;
+
+
+
+export const UpdateAdminBookingBody = zod.object({
+  "status": zod.enum(['pending', 'contacted', 'confirmed', 'in_progress', 'completed', 'cancelled']).optional(),
+  "adminNotes": zod.string().max(updateAdminBookingBodyAdminNotesMax).nullish(),
+  "cancellationReason": zod.string().max(updateAdminBookingBodyCancellationReasonMax).nullish()
+})
+
+export const UpdateAdminBookingResponse = zod.object({
+  "bookingId": zod.string(),
+  "customerName": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "customerId": zod.string().uuid().nullable(),
+  "customerType": zod.enum(['guest', 'registered']),
+  "applianceType": zod.string(),
+  "problemDescription": zod.string(),
+  "preferredDate": zod.coerce.date(),
+  "preferredTime": zod.string(),
+  "address": zod.string(),
+  "additionalNotes": zod.string().nullable(),
+  "status": zod.enum(['pending', 'contacted', 'confirmed', 'in_progress', 'completed', 'cancelled']),
+  "adminNotes": zod.string().nullable(),
+  "cancellationReason": zod.string().nullable(),
+  "emailStatus": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+

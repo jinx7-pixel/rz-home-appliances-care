@@ -14,7 +14,7 @@ import {
   getGetAdminRepairRequestsQueryKey,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, Check, ChevronDown, Clock3, FileText, Filter, House, LogOut, Mail, MapPin, Menu, Phone, Search, ShieldCheck, UserRound, Users, X, type LucideIcon } from 'lucide-react';
+import { ArrowRight, CalendarDays, Check, ChevronDown, Clock3, FileText, Filter, House, LogOut, Mail, MapPin, Menu, Phone, Search, ShieldCheck, UserRound, Users, X, type LucideIcon } from 'lucide-react';
 import { useLocation } from 'wouter';
 
 const statusOptions: Array<{ value: AdminRequestStatusValue; label: string }> = [
@@ -255,10 +255,11 @@ export function AdminDashboardPage() {
           <div className="flex items-center gap-2">
             <span className="hidden items-center gap-2 rounded-full bg-[hsl(174_54%_90%)] px-3 py-2 text-[0.68rem] font-extrabold text-[hsl(166_52%_30%)] sm:inline-flex"><span className="size-1.5 rounded-full bg-[hsl(166_52%_42%)]" /> Live workspace</span>
             <button aria-label="Open dashboard menu" className="inline-flex size-11 items-center justify-center rounded-xl border border-[hsl(215_35%_82%)] bg-[hsl(204_100%_99%)] text-[hsl(215_74%_28%)] lg:hidden" data-testid="button-open-admin-menu" onClick={() => setIsMobileMenuOpen((open) => !open)} type="button">{isMobileMenuOpen ? <X aria-hidden="true" className="size-5" /> : <Menu aria-hidden="true" className="size-5" />}</button>
-            <button className="hidden min-h-11 items-center gap-2 rounded-xl border border-[hsl(215_35%_82%)] bg-[hsl(204_100%_99%)] px-4 text-[0.76rem] font-extrabold text-[hsl(215_74%_28%)] transition hover:border-[hsl(199_82%_52%)] hover:bg-[hsl(199_82%_97%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] disabled:opacity-60 lg:inline-flex" data-testid="button-admin-sign-out" disabled={logout.isPending} onClick={signOut} type="button"><LogOut aria-hidden="true" className="size-4" /> {logout.isPending ? 'Signing out' : 'Sign out'}</button>
+             <a className="hidden min-h-11 items-center gap-2 rounded-xl border border-[hsl(215_35%_82%)] bg-[hsl(204_100%_99%)] px-4 text-[0.76rem] font-extrabold text-[hsl(215_74%_28%)] transition hover:border-[hsl(199_82%_52%)] hover:bg-[hsl(199_82%_97%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] lg:inline-flex" data-testid="link-admin-bookings" href={appPath('/admin/bookings')}><CalendarDays aria-hidden="true" className="size-4" /> Bookings</a>
+             <button className="hidden min-h-11 items-center gap-2 rounded-xl border border-[hsl(215_35%_82%)] bg-[hsl(204_100%_99%)] px-4 text-[0.76rem] font-extrabold text-[hsl(215_74%_28%)] transition hover:border-[hsl(199_82%_52%)] hover:bg-[hsl(199_82%_97%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] disabled:opacity-60 lg:inline-flex" data-testid="button-admin-sign-out" disabled={logout.isPending} onClick={signOut} type="button"><LogOut aria-hidden="true" className="size-4" /> {logout.isPending ? 'Signing out' : 'Sign out'}</button>
           </div>
         </div>
-        {isMobileMenuOpen ? <div className="border-t border-[hsl(215_35%_88%)] px-5 py-3 lg:hidden"><button className="inline-flex min-h-11 items-center gap-2 rounded-xl px-1 text-[0.78rem] font-extrabold text-[hsl(215_74%_28%)]" data-testid="button-mobile-admin-sign-out" disabled={logout.isPending} onClick={signOut} type="button"><LogOut aria-hidden="true" className="size-4" /> Sign out</button></div> : null}
+         {isMobileMenuOpen ? <div className="flex items-center gap-4 border-t border-[hsl(215_35%_88%)] px-5 py-3 lg:hidden"><a className="inline-flex min-h-11 items-center gap-2 rounded-xl px-1 text-[0.78rem] font-extrabold text-[hsl(215_74%_28%)]" data-testid="link-mobile-admin-bookings" href={appPath('/admin/bookings')}><CalendarDays aria-hidden="true" className="size-4" /> Bookings</a><button className="inline-flex min-h-11 items-center gap-2 rounded-xl px-1 text-[0.78rem] font-extrabold text-[hsl(215_74%_28%)]" data-testid="button-mobile-admin-sign-out" disabled={logout.isPending} onClick={signOut} type="button"><LogOut aria-hidden="true" className="size-4" /> Sign out</button></div> : null}
       </header>
 
       <div className="mx-auto grid max-w-[1440px] gap-8 px-5 py-8 sm:px-8 sm:py-10 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-12 lg:px-12 lg:py-12">

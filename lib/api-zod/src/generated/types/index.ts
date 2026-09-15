@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './adminBooking';
+export * from './adminBookingCustomerType';
+export * from './adminBookingStatus';
+export * from './adminBookingUpdate';
 export * from './adminLoginInput';
 export * from './adminLoginResult';
 export * from './adminMeResult';
@@ -28,6 +32,9 @@ export * from './customerBookingInput';
 export * from './customerBookingInputApplianceType';
 export * from './customerBookingSubmission';
 export * from './customerRepairRequest';
+export * from './getAdminBookingsCustomerType';
+export * from './getAdminBookingsParams';
+export * from './getAdminBookingsSort';
 export * from './getAdminRepairRequestsCustomerType';
 export * from './getAdminRepairRequestsParams';
 export * from './getAdminRepairRequestsSort';

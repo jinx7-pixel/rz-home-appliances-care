@@ -338,6 +338,100 @@ export async function sendRepairStatusEmail(
   });
 }
 
+type BookingStatusEmailData = {
+  bookingId: string;
+  customerName: string;
+  email: string;
+  applianceType: string;
+  preferredDate: string;
+  preferredTime: string;
+  address: string;
+  status: "confirmed" | "in_progress" | "completed" | "cancelled";
+  cancellationReason?: string | null;
+};
+
+export async function sendBookingStatusEmail(
+  data: BookingStatusEmailData,
+): Promise<void> {
+  const from = process.env.EMAIL_FROM;
+  const customerEmail = data.email.trim().toLowerCase();
+  const supportEmail =
+    process.env.OWNER_EMAIL?.trim().toLowerCase() ||
+    process.env.BUSINESS_EMAIL?.trim().toLowerCase();
+
+  if (!from || !isValidEmail(customerEmail)) {
+    throw new Error(
+      "Email delivery is not configured or the customer email is invalid",
+    );
+  }
+
+  const contactText = [
+    "For support, contact RZ Home Appliances Care at +91 80738 48334.",
+    ...(supportEmail ? [`Support email: ${supportEmail}`] : []),
+  ].join("\n");
+  const contactHtml = `For support, contact RZ Home Appliances Care at +91 80738 48334.${supportEmail ? `<br>Support email: ${escapeHtml(supportEmail)}` : ""}`;
+  const scheduleText = [
+    `Appointment date: ${data.preferredDate}`,
+    `Appointment time: ${data.preferredTime}`,
+  ].join("\n");
+  const scheduleHtml = `<strong>Appointment date:</strong> ${escapeHtml(data.preferredDate)}<br><strong>Appointment time:</strong> ${escapeHtml(data.preferredTime)}`;
+
+  const content = {
+    confirmed: {
+      subject: `Your Repair Booking Has Been Confirmed – ${data.bookingId}`,
+      heading: "Your repair booking has been confirmed",
+      text: `Your repair booking ${data.bookingId} has been confirmed. Our team will attend during the appointment window below.`,
+      html: "Your repair booking has been confirmed. Our team will attend during the appointment window below.",
+    },
+    in_progress: {
+      subject: `Your Repair Booking Is Now In Progress – ${data.bookingId}`,
+      heading: "Your repair booking is now in progress",
+      text: `Our team has started working on your repair booking ${data.bookingId}.`,
+      html: `Our team has started working on your repair booking ${data.bookingId}.`,
+    },
+    completed: {
+      subject: `Your Repair Booking Has Been Completed – ${data.bookingId}`,
+      heading: "Your repair booking has been completed",
+      text: `The repair work for booking ${data.bookingId} has been completed. Thank you for choosing RZ Home Appliances Care.`,
+      html: `The repair work for booking ${data.bookingId} has been completed. Thank you for choosing RZ Home Appliances Care.`,
+    },
+    cancelled: {
+      subject: `Update About Your Repair Booking – ${data.bookingId}`,
+      heading: "Update about your repair booking",
+      text: `Your repair booking ${data.bookingId} has been cancelled.${data.cancellationReason ? `\n\nReason: ${data.cancellationReason}` : ""}`,
+      html: `Your repair booking has been cancelled.${data.cancellationReason ? `<br><br><strong>Reason:</strong> ${escapeHtml(data.cancellationReason)}` : ""}`,
+    },
+  }[data.status];
+
+  await sendEmail({
+    from,
+    to: customerEmail,
+    subject: content.subject,
+    text: [
+      `Hi ${data.customerName},`,
+      "",
+      content.text,
+      "",
+      `Booking ID: ${data.bookingId}`,
+      `Appliance/service type: ${data.applianceType}`,
+      scheduleText,
+      `Service address: ${data.address}`,
+      contactText,
+      "",
+      "Thank you,",
+      "RZ Home Appliances Care",
+    ].join("\n"),
+    html: `
+      <h2>${content.heading}</h2>
+      <p>Hi ${escapeHtml(data.customerName)},</p>
+      <p>${content.html}</p>
+      <p><strong>Booking ID:</strong> ${escapeHtml(data.bookingId)}<br><strong>Appliance/service type:</strong> ${escapeHtml(data.applianceType)}<br>${scheduleHtml}<br><strong>Service address:</strong> ${escapeHtml(data.address)}</p>
+      <p>${contactHtml}</p>
+      <p>Thank you,<br>RZ Home Appliances Care</p>
+    `,
+  });
+}
+
 export async function sendPasswordResetEmail(data: {
   email: string;
   fullName: string;

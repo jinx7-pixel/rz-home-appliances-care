@@ -286,6 +286,65 @@ export interface AdminRepairRequestUpdate {
   cancellationReason?: string | null;
 }
 
+export type AdminBookingStatus = typeof AdminBookingStatus[keyof typeof AdminBookingStatus];
+
+
+export const AdminBookingStatus = {
+  pending: 'pending',
+  contacted: 'contacted',
+  confirmed: 'confirmed',
+  in_progress: 'in_progress',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+
+export type AdminBookingCustomerType = typeof AdminBookingCustomerType[keyof typeof AdminBookingCustomerType];
+
+
+export const AdminBookingCustomerType = {
+  guest: 'guest',
+  registered: 'registered',
+} as const;
+
+export interface AdminBooking {
+  bookingId: string;
+  customerName: string;
+  email: string;
+  phone: string;
+  /** @nullable */
+  customerId: string | null;
+  customerType: AdminBookingCustomerType;
+  applianceType: string;
+  problemDescription: string;
+  preferredDate: string;
+  preferredTime: string;
+  address: string;
+  /** @nullable */
+  additionalNotes: string | null;
+  status: AdminBookingStatus;
+  /** @nullable */
+  adminNotes: string | null;
+  /** @nullable */
+  cancellationReason: string | null;
+  emailStatus: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminBookingUpdate {
+  status?: AdminBookingStatus;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  adminNotes?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  cancellationReason?: string | null;
+}
+
 export type GetAdminRepairRequestsParams = {
 /**
  * @maxLength 200
@@ -308,6 +367,32 @@ export type GetAdminRepairRequestsSort = typeof GetAdminRepairRequestsSort[keyof
 
 
 export const GetAdminRepairRequestsSort = {
+  newest: 'newest',
+  oldest: 'oldest',
+} as const;
+
+export type GetAdminBookingsParams = {
+/**
+ * @maxLength 200
+ */
+search?: string;
+status?: AdminBookingStatus;
+customerType?: GetAdminBookingsCustomerType;
+sort?: GetAdminBookingsSort;
+};
+
+export type GetAdminBookingsCustomerType = typeof GetAdminBookingsCustomerType[keyof typeof GetAdminBookingsCustomerType];
+
+
+export const GetAdminBookingsCustomerType = {
+  guest: 'guest',
+  registered: 'registered',
+} as const;
+
+export type GetAdminBookingsSort = typeof GetAdminBookingsSort[keyof typeof GetAdminBookingsSort];
+
+
+export const GetAdminBookingsSort = {
   newest: 'newest',
   oldest: 'oldest',
 } as const;
