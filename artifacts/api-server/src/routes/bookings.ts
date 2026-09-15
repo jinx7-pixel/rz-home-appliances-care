@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import {
   CreateCustomerBookingBody,
   CreateCustomerBookingResponse,
@@ -107,20 +107,72 @@ router.post("/bookings", async (request, response): Promise<void> => {
   const submittedAt = new Date();
   const preferredDate = toDateString(input.preferredDate);
   const preferredTime = input.preferredTime.trim();
+  const problemDescription = input.problemDescription.trim();
+  const address = input.address.trim();
   const additionalNotes = input.additionalNotes?.trim() || null;
+
+  // Keep an accidental resubmission from creating another booking and sending
+  // another pair of emails while the original request is still recent.
+  try {
+    const noteMatch =
+      additionalNotes === null
+        ? isNull(bookingsTable.additionalNotes)
+        : eq(bookingsTable.additionalNotes, additionalNotes);
+    const [recentDuplicate] = await db
+      .select({
+        bookingId: bookingsTable.bookingId,
+        emailStatus: bookingsTable.emailStatus,
+      })
+      .from(bookingsTable)
+      .where(
+        and(
+          eq(bookingsTable.customerId, customer.id),
+          eq(bookingsTable.phone, input.phone),
+          eq(bookingsTable.applianceType, input.applianceType),
+          eq(bookingsTable.problemDescription, problemDescription),
+          eq(bookingsTable.preferredDate, preferredDate),
+          eq(bookingsTable.preferredTime, preferredTime),
+          eq(bookingsTable.address, address),
+          noteMatch,
+          gt(
+            bookingsTable.createdAt,
+            new Date(submittedAt.getTime() - 10 * 60 * 1000),
+          ),
+        ),
+      )
+      .orderBy(desc(bookingsTable.createdAt))
+      .limit(1);
+
+    if (recentDuplicate && recentDuplicate.emailStatus !== "failed") {
+      response.status(200).json(
+        CreateCustomerBookingResponse.parse({
+          success: true,
+          bookingId: recentDuplicate.bookingId,
+          message:
+            "This booking request was already received. We will contact you soon.",
+        }),
+      );
+      return;
+    }
+  } catch (error) {
+    request.log.warn(
+      { err: error, customerId: customer.id },
+      "Could not check for a duplicate booking; continuing with submission",
+    );
+  }
 
   try {
     await db.insert(bookingsTable).values({
       bookingId,
       customerId: customer.id,
       customerName: customer.fullName,
-      email: customer.email,
+      email: customer.email.trim().toLowerCase(),
       phone: input.phone,
       applianceType: input.applianceType,
-      problemDescription: input.problemDescription.trim(),
+      problemDescription,
       preferredDate,
       preferredTime,
-      address: input.address.trim(),
+      address,
       additionalNotes,
       status: "pending",
       emailStatus: "pending",
@@ -140,14 +192,16 @@ router.post("/bookings", async (request, response): Promise<void> => {
       requestId: bookingId,
       customerName: customer.fullName,
       phone: input.phone,
-      email: customer.email,
+      email: customer.email.trim().toLowerCase(),
       applianceType: input.applianceType,
-      problemDescription: input.problemDescription.trim(),
-      address: input.address.trim(),
+      problemDescription,
+      address,
       preferredDate,
       preferredTime,
       additionalNotes,
       submittedAt,
+      customerType: "Registered",
+      notificationType: "booking",
     });
 
     await db

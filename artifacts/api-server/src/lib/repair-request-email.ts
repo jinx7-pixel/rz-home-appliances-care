@@ -12,6 +12,8 @@ type RepairRequestEmailData = {
   preferredTime: string | null;
   additionalNotes?: string | null;
   submittedAt: Date;
+  customerType?: "Guest" | "Registered";
+  notificationType?: "repair-request" | "booking";
 };
 
 let transporter: Transporter | null = null;
@@ -67,6 +69,10 @@ function escapeHtml(value: string): string {
   );
 }
 
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 async function sendEmail(payload: {
   from: string;
   to: string;
@@ -74,6 +80,10 @@ async function sendEmail(payload: {
   html: string;
   text: string;
 }): Promise<void> {
+  if (!isValidEmail(payload.to)) {
+    throw new Error("Email delivery recipient is invalid");
+  }
+
   const result = await getSmtpTransporter().sendMail(payload);
   if ((result.rejected?.length ?? 0) > 0) {
     throw new Error("Gmail SMTP rejected one or more recipients");
@@ -87,11 +97,16 @@ export async function verifyRepairEmailTransport(): Promise<void> {
 export async function sendRepairRequestEmails(
   data: RepairRequestEmailData,
 ): Promise<void> {
-  const businessEmail = process.env.BUSINESS_EMAIL;
+  const businessEmail =
+    process.env.OWNER_EMAIL?.trim().toLowerCase() ||
+    process.env.BUSINESS_EMAIL?.trim().toLowerCase();
   const from = process.env.EMAIL_FROM;
 
   if (!businessEmail || !from) {
     throw new Error("Email delivery is not configured");
+  }
+  if (!isValidEmail(businessEmail) || !isValidEmail(data.email)) {
+    throw new Error("Email delivery recipient is invalid");
   }
 
   const preferredSchedule = [
@@ -103,66 +118,146 @@ export async function sendRepairRequestEmails(
     timeStyle: "short",
     timeZone: "Asia/Kolkata",
   });
+  const additionalNotes = data.additionalNotes?.trim() || "None provided";
+  const customerType = data.customerType ?? "Guest";
+  const isBooking = data.notificationType === "booking";
 
-  const businessText = [
-    `New repair request: ${data.requestId}`,
-    `Customer: ${data.customerName}`,
-    `Phone: ${data.phone}`,
-    `Email: ${data.email}`,
-    `Appliance: ${data.applianceType}`,
-    `Problem: ${data.problemDescription}`,
-    `Address: ${data.address}`,
-    `Preferred schedule: ${preferredSchedule}`,
-    ...(data.additionalNotes
-      ? [`Additional notes: ${data.additionalNotes}`]
-      : []),
-    `Submitted: ${submittedAt}`,
-  ].join("\n");
+  const businessText = isBooking
+    ? [
+        "New repair booking requires review.",
+        `Booking/request ID: ${data.requestId}`,
+        `Customer name: ${data.customerName}`,
+        `Customer email: ${data.email}`,
+        `Customer phone: ${data.phone}`,
+        `Customer type: ${customerType}`,
+        `Appliance/service type: ${data.applianceType}`,
+        `Problem description: ${data.problemDescription}`,
+        `Preferred appointment date: ${data.preferredDate ?? "Not specified"}`,
+        `Preferred appointment time: ${data.preferredTime ?? "Not specified"}`,
+        `Full service address: ${data.address}`,
+        `Additional notes: ${additionalNotes}`,
+        `Booking submitted: ${submittedAt}`,
+      ].join("\n")
+    : [
+        `New repair request: ${data.requestId}`,
+        `Customer: ${data.customerName}`,
+        `Phone: ${data.phone}`,
+        `Email: ${data.email}`,
+        `Customer type: ${customerType}`,
+        `Appliance: ${data.applianceType}`,
+        `Problem: ${data.problemDescription}`,
+        `Address: ${data.address}`,
+        `Preferred schedule: ${preferredSchedule}`,
+        `Additional notes: ${additionalNotes}`,
+        `Submitted: ${submittedAt}`,
+      ].join("\n");
 
-  const customerText = [
-    `Hello ${data.customerName},`,
-    "",
-    `We received your ${data.applianceType} request.`,
-    `Request ID: ${data.requestId}`,
-    "The RZ Home Appliances Care team will contact you shortly.",
-    "This is a request acknowledgement, not a confirmed appointment.",
-    "",
-    "Phone: +91 80738 48334",
-    `Email: ${businessEmail}`,
-  ].join("\n");
+  const customerText = isBooking
+    ? [
+        `Hi ${data.customerName},`,
+        "",
+        "Thank you for submitting your repair booking request. We have received your request successfully.",
+        "",
+        `Booking/request ID: ${data.requestId}`,
+        `Appliance or service type: ${data.applianceType}`,
+        `Problem description: ${data.problemDescription}`,
+        `Preferred appointment date: ${data.preferredDate ?? "Not specified"}`,
+        `Preferred appointment time: ${data.preferredTime ?? "Not specified"}`,
+        `Service address: ${data.address}`,
+        `Additional notes: ${additionalNotes}`,
+        "Current status: Pending",
+        "",
+        "Our team will review your details and contact you soon to confirm the appointment.",
+        "",
+        "Thank you,",
+        "RZ Home Appliances Care",
+      ].join("\n")
+    : [
+        `Hello ${data.customerName},`,
+        "",
+        `We received your ${data.applianceType} request.`,
+        `Request ID: ${data.requestId}`,
+        "The RZ Home Appliances Care team will contact you shortly.",
+        "This is a request acknowledgement, not a confirmed appointment.",
+        "",
+        "Phone: +91 80738 48334",
+        `Email: ${businessEmail}`,
+      ].join("\n");
 
-  await Promise.all([
-    sendEmail({
-      from,
-      to: businessEmail,
-      subject: `New Repair Request - ${data.requestId}`,
-      text: businessText,
-      html: `
+  const businessHtml = isBooking
+    ? `
+        <h2>New Repair Booking Received – ${escapeHtml(data.requestId)}</h2>
+        <p><strong>This new booking requires review.</strong></p>
+        <p><strong>Booking/request ID:</strong> ${escapeHtml(data.requestId)}</p>
+        <p><strong>Customer name:</strong> ${escapeHtml(data.customerName)}</p>
+        <p><strong>Customer email:</strong> ${escapeHtml(data.email)}</p>
+        <p><strong>Customer phone:</strong> ${escapeHtml(data.phone)}</p>
+        <p><strong>Customer type:</strong> ${escapeHtml(customerType)}</p>
+        <p><strong>Appliance/service type:</strong> ${escapeHtml(data.applianceType)}</p>
+        <p><strong>Problem description:</strong><br>${escapeHtml(data.problemDescription).replace(/\n/g, "<br>")}</p>
+        <p><strong>Preferred appointment date:</strong> ${escapeHtml(data.preferredDate ?? "Not specified")}</p>
+        <p><strong>Preferred appointment time:</strong> ${escapeHtml(data.preferredTime ?? "Not specified")}</p>
+        <p><strong>Full service address:</strong><br>${escapeHtml(data.address).replace(/\n/g, "<br>")}</p>
+        <p><strong>Additional notes:</strong><br>${escapeHtml(additionalNotes).replace(/\n/g, "<br>")}</p>
+        <p><strong>Booking submitted:</strong> ${escapeHtml(submittedAt)}</p>
+      `
+    : `
         <h2>New Repair Request - ${escapeHtml(data.requestId)}</h2>
         <p><strong>Customer:</strong> ${escapeHtml(data.customerName)}</p>
         <p><strong>Phone:</strong> ${escapeHtml(data.phone)}</p>
         <p><strong>Email:</strong> ${escapeHtml(data.email)}</p>
+        <p><strong>Customer type:</strong> ${escapeHtml(customerType)}</p>
         <p><strong>Appliance:</strong> ${escapeHtml(data.applianceType)}</p>
         <p><strong>Problem:</strong><br>${escapeHtml(data.problemDescription).replace(/\n/g, "<br>")}</p>
         <p><strong>Address:</strong><br>${escapeHtml(data.address).replace(/\n/g, "<br>")}</p>
         <p><strong>Preferred schedule:</strong> ${escapeHtml(preferredSchedule)}</p>
-        ${data.additionalNotes ? `<p><strong>Additional notes:</strong><br>${escapeHtml(data.additionalNotes).replace(/\n/g, "<br>")}</p>` : ""}
+        <p><strong>Additional notes:</strong><br>${escapeHtml(additionalNotes).replace(/\n/g, "<br>")}</p>
         <p><strong>Submitted:</strong> ${escapeHtml(submittedAt)}</p>
-      `,
-    }),
-    sendEmail({
-      from,
-      to: data.email,
-      subject: `Repair Request Received - ${data.requestId}`,
-      text: customerText,
-      html: `
+      `;
+
+  const customerHtml = isBooking
+    ? `
+        <h2>Repair Booking Received – Confirmation</h2>
+        <p>Hi ${escapeHtml(data.customerName)},</p>
+        <p>Thank you for submitting your repair booking request. We have received your request successfully.</p>
+        <p><strong>Booking/request ID:</strong> ${escapeHtml(data.requestId)}</p>
+        <p><strong>Appliance or service type:</strong> ${escapeHtml(data.applianceType)}</p>
+        <p><strong>Problem description:</strong><br>${escapeHtml(data.problemDescription).replace(/\n/g, "<br>")}</p>
+        <p><strong>Preferred appointment date:</strong> ${escapeHtml(data.preferredDate ?? "Not specified")}</p>
+        <p><strong>Preferred appointment time:</strong> ${escapeHtml(data.preferredTime ?? "Not specified")}</p>
+        <p><strong>Service address:</strong><br>${escapeHtml(data.address).replace(/\n/g, "<br>")}</p>
+        <p><strong>Additional notes:</strong><br>${escapeHtml(additionalNotes).replace(/\n/g, "<br>")}</p>
+        <p><strong>Current status:</strong> Pending</p>
+        <p>Our team will review your details and contact you soon to confirm the appointment.</p>
+        <p>Thank you,<br>RZ Home Appliances Care</p>
+      `
+    : `
         <h2>We received your repair request</h2>
         <p>Hello ${escapeHtml(data.customerName)},</p>
         <p>Your request for <strong>${escapeHtml(data.applianceType)}</strong> has been received.</p>
         <p><strong>Request ID:</strong> ${escapeHtml(data.requestId)}</p>
         <p>Our team will contact you shortly. This acknowledgement does not confirm an appointment.</p>
         <p>Phone: +91 80738 48334<br>Email: ${escapeHtml(businessEmail)}</p>
-      `,
+      `;
+
+  await Promise.all([
+    sendEmail({
+      from,
+      to: businessEmail,
+      subject: isBooking
+        ? `New Repair Booking Received – ${data.requestId}`
+        : `New Repair Request - ${data.requestId}`,
+      text: businessText,
+      html: businessHtml,
+    }),
+    sendEmail({
+      from,
+      to: data.email,
+      subject: isBooking
+        ? "Repair Booking Received – Confirmation"
+        : `Repair Request Received - ${data.requestId}`,
+      text: customerText,
+      html: customerHtml,
     }),
   ]);
 }
