@@ -25,3 +25,4 @@ export * from "./password-reset-tokens";
 export * from "./admin-users";
 export * from "./admin-sessions";
 export * from "./reviews";
+export * from "./site-settings";

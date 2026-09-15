@@ -213,6 +213,8 @@ export function AdminPage() {
   const [requestError, setRequestError] = useState('');
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [updatingRequestId, setUpdatingRequestId] = useState('');
+  const [websiteEnabled, setWebsiteEnabled] = useState(true);
+  const [isUpdatingWebsite, setIsUpdatingWebsite] = useState(false);
 
   useEffect(() => {
     if (isLoginPage) {
@@ -237,6 +239,15 @@ export function AdminPage() {
 
         if (cancelled) return;
         setAdminName(session.admin?.displayName || session.admin?.username || 'Administrator');
+        const siteStatusResponse = await fetch('/api/admin/site-status', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        const siteStatus = await siteStatusResponse.json();
+        if (!siteStatusResponse.ok) {
+          throw new Error(siteStatus.error || 'Could not load website status.');
+        }
+        setWebsiteEnabled(siteStatus.enabled === true);
         setIsLoadingRequests(true);
         const requestsResponse = await fetch(
           '/api/admin/repair-requests?customerType=guest&sort=newest',
@@ -345,6 +356,28 @@ export function AdminPage() {
     }
   };
 
+  const updateWebsiteStatus = async (enabled: boolean) => {
+    setIsUpdatingWebsite(true);
+    setRequestError('');
+    try {
+      const response = await fetch('/api/admin/site-status', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.error || 'Could not update website status.');
+      }
+      setWebsiteEnabled(body.enabled === true);
+    } catch (error) {
+      setRequestError(error instanceof Error ? error.message : 'Could not update website status.');
+    } finally {
+      setIsUpdatingWebsite(false);
+    }
+  };
+
   const logout = async () => {
     await fetch('/api/admin/auth/logout', {
       method: 'POST',
@@ -413,6 +446,27 @@ export function AdminPage() {
           <article className="rounded-[1.5rem] border border-[hsl(215_35%_84%)] bg-white p-5"><p className="text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-[hsl(215_20%_48%)]">Pending</p><p className="mt-3 text-3xl font-extrabold text-[hsl(215_74%_28%)]">{requests.filter((request) => request.status === 'pending').length}</p></article>
           <article className="rounded-[1.5rem] border border-[hsl(215_35%_84%)] bg-white p-5"><p className="text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-[hsl(215_20%_48%)]">Latest request</p><p className="mt-3 truncate text-lg font-extrabold text-[hsl(215_74%_28%)]">{requests[0]?.requestId || '—'}</p></article>
         </div>
+        <section className={`mt-6 rounded-[1.5rem] border p-5 ${websiteEnabled ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'}`}>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className={`text-[0.7rem] font-extrabold uppercase tracking-[0.12em] ${websiteEnabled ? 'text-emerald-700' : 'text-red-700'}`}>Public website</p>
+              <p className={`mt-2 text-lg font-extrabold ${websiteEnabled ? 'text-emerald-900' : 'text-red-900'}`}>
+                {websiteEnabled ? 'Website is ON' : 'Website is OFF'}
+              </p>
+              <p className={`mt-1 text-sm leading-6 ${websiteEnabled ? 'text-emerald-800' : 'text-red-800'}`}>
+                {websiteEnabled ? 'Customers can open the website and submit repair requests.' : 'Customers see an unavailable message. Admin access remains available.'}
+              </p>
+            </div>
+            <button
+              className={`inline-flex min-h-11 items-center rounded-xl px-4 text-[0.78rem] font-extrabold text-white disabled:cursor-wait disabled:opacity-60 ${websiteEnabled ? 'bg-red-700 hover:bg-red-800' : 'bg-emerald-700 hover:bg-emerald-800'}`}
+              disabled={isUpdatingWebsite}
+              onClick={() => void updateWebsiteStatus(!websiteEnabled)}
+              type="button"
+            >
+              {isUpdatingWebsite ? 'Updating…' : websiteEnabled ? 'Turn website off' : 'Turn website on'}
+            </button>
+          </div>
+        </section>
         {requestError ? <p className="mt-8 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[0.82rem] font-semibold leading-[1.6] text-red-900" role="alert">{requestError}</p> : null}
         <div className="mt-10 grid gap-5">
           {requests.length === 0 && !isLoadingRequests ? (

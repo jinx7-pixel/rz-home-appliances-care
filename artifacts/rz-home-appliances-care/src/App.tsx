@@ -1817,6 +1817,70 @@ function Router() {
   );
 }
 
+function WebsiteAvailabilityGate({ children }: { children: ReactNode }) {
+  const [location] = useLocation();
+  const isAdminRoute = location === '/admin' || location.startsWith('/admin/');
+  const [isChecking, setIsChecking] = useState(!isAdminRoute);
+  const [websiteEnabled, setWebsiteEnabled] = useState(true);
+
+  useEffect(() => {
+    if (isAdminRoute) {
+      setIsChecking(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsChecking(true);
+    fetch('/api/site-status', { cache: 'no-store' })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) {
+          throw new Error(body.error || 'Website availability could not be checked.');
+        }
+        if (!cancelled) setWebsiteEnabled(body.enabled === true);
+      })
+      .catch(() => {
+        if (!cancelled) setWebsiteEnabled(false);
+      })
+      .finally(() => {
+        if (!cancelled) setIsChecking(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdminRoute]);
+
+  if (isAdminRoute) return <>{children}</>;
+
+  if (isChecking) {
+    return (
+      <main className="flex min-h-[100dvh] items-center justify-center bg-[hsl(210_40%_98%)] px-6 text-center">
+        <p className="font-extrabold text-[hsl(215_74%_28%)]">Checking website availability…</p>
+      </main>
+    );
+  }
+
+  if (!websiteEnabled) {
+    return (
+      <main className="flex min-h-[100dvh] items-center justify-center bg-[hsl(210_40%_98%)] px-6 py-12 text-center">
+        <section className="max-w-[560px] rounded-[2rem] border border-red-200 bg-white p-8 shadow-[0_24px_60px_-42px_hsl(215_53%_23%/0.55)] sm:p-12">
+          <p className="text-[0.7rem] font-extrabold uppercase tracking-[0.22em] text-red-700">Temporarily unavailable</p>
+          <h1 className="mt-4 text-4xl font-extrabold tracking-[-0.06em] text-[hsl(215_32%_14%)] sm:text-5xl">Website is currently offline.</h1>
+          <p className="mt-5 text-[0.98rem] leading-7 text-[hsl(215_20%_45%)]">
+            We are carrying out maintenance. Please try again later.
+          </p>
+          <p className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-800" role="alert">
+            Error: WEBSITE_OFFLINE
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
@@ -1826,7 +1890,9 @@ function App() {
   return (
     <TooltipProvider>
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-        <Router />
+        <WebsiteAvailabilityGate>
+          <Router />
+        </WebsiteAvailabilityGate>
       </WouterRouter>
       <Toaster />
     </TooltipProvider>
