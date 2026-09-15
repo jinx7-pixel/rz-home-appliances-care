@@ -822,6 +822,7 @@ function ContactSection() {
   const [formErrors, setFormErrors] = useState<RepairFormErrors>({});
   const [successMessage, setSuccessMessage] = useState('');
   const [submitError, setSubmitError] = useState('');
+  const lastAuthenticatedEmailRef = useRef<string | null>(null);
   const authMeQuery = useAuthMe({
     query: {
       queryKey: ['auth-me'],
@@ -835,18 +836,39 @@ function ContactSection() {
   const authenticatedEmail = authenticatedUser?.email;
 
   useEffect(() => {
-    if (!authenticatedName || !authenticatedEmail) return;
-    setFormValues((current) => ({
-      ...current,
-      name: authenticatedName,
-      email: authenticatedEmail,
-    }));
-    setFormErrors((current) => ({
-      ...current,
-      name: undefined,
-      email: undefined,
-    }));
-  }, [authenticatedEmail, authenticatedName]);
+    if (authenticatedName && authenticatedEmail) {
+      lastAuthenticatedEmailRef.current = authenticatedEmail;
+      setFormValues((current) => ({
+        ...current,
+        name: authenticatedName,
+        email: authenticatedEmail,
+      }));
+      setFormErrors((current) => ({
+        ...current,
+        name: undefined,
+        email: undefined,
+      }));
+      return;
+    }
+
+    if (!authMeQuery.isPending && lastAuthenticatedEmailRef.current) {
+      lastAuthenticatedEmailRef.current = null;
+      setFormValues((current) => ({
+        ...current,
+        name: '',
+        email: '',
+      }));
+      setFormErrors((current) => ({
+        ...current,
+        name: undefined,
+        email: undefined,
+      }));
+    }
+  }, [
+    authMeQuery.isPending,
+    authenticatedEmail,
+    authenticatedName,
+  ]);
 
   const updateField = (field: keyof RepairFormValues, value: string) => {
     setFormValues((current) => ({ ...current, [field]: value }));
@@ -1079,14 +1101,15 @@ function ContactSection() {
 
           <div className="mt-5">
             <label className="text-[0.88rem] font-extrabold text-[hsl(215_32%_28%)]" htmlFor="repair-email">
-              Email address
+              {authenticatedUser ? 'Account email' : 'Email address'}
             </label>
             <input
               aria-describedby={formErrors.email ? 'repair-email-error' : undefined}
               aria-invalid={Boolean(formErrors.email)}
               autoComplete="email"
-              className="mt-2 min-h-14 w-full rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition placeholder:text-[hsl(215_20%_61%)] focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
+              className="mt-2 min-h-14 w-full rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition placeholder:text-[hsl(215_20%_61%)] focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)] read-only:cursor-not-allowed read-only:bg-[hsl(215_20%_96%)] read-only:text-[hsl(215_20%_40%)]"
               id="repair-email"
+              aria-readonly={authenticatedUser ? true : undefined}
               maxLength={254}
               name="email"
               onChange={(event) => updateField('email', event.target.value)}
