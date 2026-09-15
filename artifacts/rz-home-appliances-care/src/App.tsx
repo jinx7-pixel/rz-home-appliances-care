@@ -187,6 +187,10 @@ type RepairFormValues = {
 type RepairFormErrors = Partial<Record<keyof RepairFormValues, string>>;
 
 function getRepairRequestErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
   if (typeof error === 'object' && error !== null && 'data' in error) {
     const data = (error as { data?: unknown }).data;
     if (
@@ -817,6 +821,7 @@ function ContactSection() {
   const [formErrors, setFormErrors] = useState<RepairFormErrors>({});
   const [successMessage, setSuccessMessage] = useState('');
   const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const updateField = (field: keyof RepairFormValues, value: string) => {
     setFormValues((current) => ({ ...current, [field]: value }));
@@ -825,7 +830,7 @@ function ContactSection() {
     setSubmitError('');
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const errors: RepairFormErrors = {};
@@ -851,17 +856,44 @@ function ContactSection() {
     setSubmitError('');
     if (Object.keys(errors).length > 0) return;
 
-    setSuccessMessage(
-      'Your request is ready to send. This frontend-only preview does not store submissions or send email yet—please call us or use WhatsApp to complete your request.',
-    );
-    setFormValues({
-      name: '',
-      phone: '',
-      email: '',
-      service: '',
-      issue: '',
-      address: '',
-    });
+    setIsSubmitting(true);
+    try {
+      const response = await fetch('/api/repair-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: formValues.name.trim(),
+          phone: formValues.phone,
+          email: formValues.email.trim(),
+          applianceType: formValues.service,
+          problemDescription: formValues.issue.trim(),
+          address: formValues.address.trim(),
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { requestId?: string; message?: string; error?: string }
+        | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.error ?? 'We could not save your repair request. Please try again.');
+      }
+
+      setSuccessMessage(
+        `${payload?.message ?? 'Your repair request was submitted successfully.'} Request ID: ${payload?.requestId ?? 'unavailable'}.`,
+      );
+      setFormValues({
+        name: '',
+        phone: '',
+        email: '',
+        service: '',
+        issue: '',
+        address: '',
+      });
+    } catch (error) {
+      setSubmitError(getRepairRequestErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -1134,9 +1166,10 @@ function ContactSection() {
           <button
             className="group mt-6 inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-[hsl(215_82%_43%)] px-5 text-[0.96rem] font-extrabold text-[hsl(210_40%_98%)] shadow-[0_18px_30px_-18px_hsl(215_82%_30%/0.9)] transition duration-200 hover:-translate-y-0.5 hover:bg-[hsl(215_82%_36%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-4 focus-visible:ring-offset-[hsl(204_67%_95%)] active:translate-y-0"
             data-testid="button-submit-repair-request"
+             disabled={isSubmitting}
             type="submit"
           >
-            Send my repair request
+             {isSubmitting ? 'Saving your request...' : 'Send my repair request'}
             <ArrowRight aria-hidden="true" className="size-5 transition-transform duration-200 group-hover:translate-x-1" />
           </button>
           <p className="mt-4 text-center text-[0.78rem] leading-6 text-[hsl(215_20%_48%)]">
