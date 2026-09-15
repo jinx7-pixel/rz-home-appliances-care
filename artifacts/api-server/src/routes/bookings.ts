@@ -161,24 +161,32 @@ router.post("/bookings", async (request, response): Promise<void> => {
     );
   }
 
+  let savedBooking: typeof bookingsTable.$inferSelect | undefined;
   try {
-    await db.insert(bookingsTable).values({
-      bookingId,
-      customerId: customer.id,
-      customerName: customer.fullName,
-      email: customer.email.trim().toLowerCase(),
-      phone: input.phone,
-      applianceType: input.applianceType,
-      problemDescription,
-      preferredDate,
-      preferredTime,
-      address,
-      additionalNotes,
-      status: "pending",
-      emailStatus: "pending",
-      createdAt: submittedAt,
-      updatedAt: submittedAt,
-    });
+    [savedBooking] = await db
+      .insert(bookingsTable)
+      .values({
+        bookingId,
+        customerId: customer.id,
+        customerName: customer.fullName,
+        email: customer.email.trim().toLowerCase(),
+        phone: input.phone,
+        applianceType: input.applianceType,
+        problemDescription,
+        preferredDate,
+        preferredTime,
+        address,
+        additionalNotes,
+        status: "pending",
+        emailStatus: "pending",
+        createdAt: submittedAt,
+        updatedAt: submittedAt,
+      })
+      .returning();
+
+    if (!savedBooking) {
+      throw new Error("Booking insert returned no saved row");
+    }
   } catch (error) {
     request.log.error({ err: error, bookingId }, "Failed to save customer booking");
     response.status(500).json({
@@ -189,17 +197,17 @@ router.post("/bookings", async (request, response): Promise<void> => {
 
   try {
     await sendRepairRequestEmails({
-      requestId: bookingId,
-      customerName: customer.fullName,
-      phone: input.phone,
-      email: customer.email.trim().toLowerCase(),
-      applianceType: input.applianceType,
-      problemDescription,
-      address,
-      preferredDate,
-      preferredTime,
-      additionalNotes,
-      submittedAt,
+      requestId: savedBooking.bookingId,
+      customerName: savedBooking.customerName,
+      phone: savedBooking.phone,
+      email: savedBooking.email,
+      applianceType: savedBooking.applianceType,
+      problemDescription: savedBooking.problemDescription,
+      address: savedBooking.address,
+      preferredDate: savedBooking.preferredDate,
+      preferredTime: savedBooking.preferredTime,
+      additionalNotes: savedBooking.additionalNotes,
+      submittedAt: savedBooking.createdAt,
       customerType: "Registered Customer",
       notificationType: "booking",
     });

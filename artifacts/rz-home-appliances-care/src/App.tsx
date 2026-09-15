@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   getGetCustomerRepairRequestsQueryKey,
   getGetPublicReviewsQueryKey,
+  useAuthMe,
   useCreateRepairRequest,
   useGetPublicReviews,
 } from '@workspace/api-client-react';
@@ -821,7 +822,31 @@ function ContactSection() {
   const [formErrors, setFormErrors] = useState<RepairFormErrors>({});
   const [successMessage, setSuccessMessage] = useState('');
   const [submitError, setSubmitError] = useState('');
+  const authMeQuery = useAuthMe({
+    query: {
+      queryKey: ['auth-me'],
+      retry: false,
+    },
+  });
   const createRepairRequestMutation = useCreateRepairRequest();
+  const authenticatedUser =
+    authMeQuery.data?.authenticated === true ? authMeQuery.data.user : null;
+  const authenticatedName = authenticatedUser?.fullName;
+  const authenticatedEmail = authenticatedUser?.email;
+
+  useEffect(() => {
+    if (!authenticatedName || !authenticatedEmail) return;
+    setFormValues((current) => ({
+      ...current,
+      name: authenticatedName,
+      email: authenticatedEmail,
+    }));
+    setFormErrors((current) => ({
+      ...current,
+      name: undefined,
+      email: undefined,
+    }));
+  }, [authenticatedEmail, authenticatedName]);
 
   const updateField = (field: keyof RepairFormValues, value: string) => {
     setFormValues((current) => ({ ...current, [field]: value }));
@@ -876,9 +901,9 @@ function ContactSection() {
         queryKey: getGetCustomerRepairRequestsQueryKey(),
       });
       setFormValues({
-        name: '',
+        name: authenticatedUser?.fullName ?? '',
         phone: '',
-        email: '',
+        email: authenticatedUser?.email ?? '',
         service: '',
         issue: '',
         address: '',
@@ -1014,6 +1039,7 @@ function ContactSection() {
                 name="name"
                 onChange={(event) => updateField('name', event.target.value)}
                 placeholder="Alex Morgan"
+                readOnly={Boolean(authenticatedUser)}
                 required
                 value={formValues.name}
               />
@@ -1065,10 +1091,16 @@ function ContactSection() {
               name="email"
               onChange={(event) => updateField('email', event.target.value)}
               placeholder="alex@example.com"
+              readOnly={Boolean(authenticatedUser)}
               required
               type="email"
               value={formValues.email}
             />
+            {authenticatedUser ? (
+              <p className="mt-2 text-[0.76rem] font-semibold text-[hsl(215_20%_48%)]">
+                Confirmations are sent to your signed-in account email.
+              </p>
+            ) : null}
             {formErrors.email ? (
               <p className="mt-2 text-[0.78rem] font-semibold text-red-600" id="repair-email-error">
                 {formErrors.email}

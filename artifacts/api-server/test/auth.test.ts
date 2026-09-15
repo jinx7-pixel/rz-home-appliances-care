@@ -9,6 +9,7 @@ import type { AddressInfo } from "node:net";
 import app from "../src/app.ts";
 import {
   adminUsersTable,
+  bookingsTable,
   customersTable,
   db,
   passwordResetTokensTable,
@@ -28,7 +29,7 @@ process.env.SMTP_APP_PASSWORD = "test-password";
 process.env.SMTP_REQUIRE_TLS = "true";
 process.env.SMTP_SECURE = "false";
 delete process.env.BUSINESS_EMAIL;
-delete process.env.OWNER_EMAIL;
+process.env.OWNER_EMAIL = "owner@example.test";
 
 const TEST_EMAIL_PREFIX = "auth-regression-";
 const TEST_ADMIN_PREFIX = "repair-status-admin-";
@@ -48,6 +49,7 @@ let nextClientIpOctet = 1;
 type CapturedEmail = {
   from: string;
   to: string;
+  replyTo?: string;
   subject: string;
   text: string;
   html: string;
@@ -258,6 +260,16 @@ async function repairRequestForId(requestId: string) {
     .limit(1);
   assert.ok(repairRequest, `expected repair request ${requestId}`);
   return repairRequest;
+}
+
+async function bookingForId(bookingId: string) {
+  const [booking] = await db
+    .select()
+    .from(bookingsTable)
+    .where(eq(bookingsTable.bookingId, bookingId))
+    .limit(1);
+  assert.ok(booking, `expected booking ${bookingId}`);
+  return booking;
 }
 
 async function cleanupTestData(): Promise<void> {
@@ -795,6 +807,7 @@ test("admin repair status emails contain the exact customer update for each noti
       "Service type: Washing Machine",
       `Request ID: ${requestId}`,
       "For support, contact RZ Home Appliances Care at +91 80738 48334.",
+      "Support email: owner@example.test",
       "",
       "Thank you,",
       "RZ Home Appliances Care",
@@ -817,6 +830,7 @@ test("admin repair status emails contain the exact customer update for each noti
       "Service type: Washing Machine",
       `Request ID: ${requestId}`,
       "For support, contact RZ Home Appliances Care at +91 80738 48334.",
+      "Support email: owner@example.test",
       "",
       "Thank you,",
       "RZ Home Appliances Care",
@@ -840,6 +854,7 @@ test("admin repair status emails contain the exact customer update for each noti
       "Service type: Washing Machine",
       `Request ID: ${requestId}`,
       "For support, contact RZ Home Appliances Care at +91 80738 48334.",
+      "Support email: owner@example.test",
       "",
       "Thank you,",
       "RZ Home Appliances Care",
@@ -847,6 +862,11 @@ test("admin repair status emails contain the exact customer update for each noti
   );
   assert.match(cancelledEmail.html, /Your repair request has been cancelled/);
   assert.match(cancelledEmail.html, /<strong>Reason:<\/strong> Customer is unavailable/);
+  const savedRequest = await repairRequestForId(requestId);
+  for (const message of sentEmails) {
+    assert.equal(message.to, savedRequest.email);
+    assert.equal(message.replyTo, "owner@example.test");
+  }
 });
 
 test("admin repair status remains updated when the customer email fails", async () => {
@@ -900,13 +920,19 @@ test("repeated and concurrent attempts for one repair transition send only one c
 
 test("anonymous repair requests are accepted without an auth cookie", async () => {
   const email = testEmail("repair");
-  const submission = await request("/api/repair-requests", {
-    customerName: "Anonymous Customer",
-    phone: "9876543210",
-    email,
-    applianceType: "Washing Machine Repair",
-    problemDescription: "The appliance does not start.",
-    address: "123 Test Street",
+  delete process.env.OWNER_EMAIL;
+  const submission = await request(
+    "/api/repair-requests",
+    {
+      customerName: "Anonymous Customer",
+      phone: "9876543210",
+      email,
+      applianceType: "Washing Machine Repair",
+      problemDescription: "The appliance does not start.",
+      address: "123 Test Street",
+    },
+  ).finally(() => {
+    process.env.OWNER_EMAIL = "owner@example.test";
   });
 
   assert.equal(submission.response.status, 502);
@@ -924,6 +950,39 @@ test("anonymous repair requests are accepted without an auth cookie", async () =
   assert.equal(savedRequest.emailStatus, "failed");
 });
 
+test("guest repair emails go only to the owner and current form email", async () => {
+  const currentEmail = testEmail("guest-current");
+  const previousEmail = testEmail("guest-previous");
+  const submission = await request("/api/repair-requests", {
+    customerName: "Current Guest",
+    phone: "9876543210",
+    email: currentEmail.toUpperCase(),
+    applianceType: "Refrigerator Repair",
+    problemDescription: "The refrigerator is no longer cooling.",
+    address: "123 Current Guest Street",
+  });
+
+  assert.equal(submission.response.status, 201);
+  const savedRequest = await repairRequestForId(
+    String(submission.body.requestId),
+  );
+  assert.equal(savedRequest.customerId, null);
+  assert.equal(savedRequest.email, currentEmail);
+  assert.equal(sentEmails.length, 2);
+
+  const ownerMessage = sentEmails.find(
+    (message) => message.to === "owner@example.test",
+  );
+  const customerMessage = sentEmails.find(
+    (message) => message.to === currentEmail,
+  );
+  assert.ok(ownerMessage);
+  assert.ok(customerMessage);
+  assert.equal(ownerMessage.replyTo, currentEmail);
+  assert.equal(customerMessage.replyTo, "owner@example.test");
+  assert.ok(sentEmails.every((message) => message.to !== previousEmail));
+});
+
 test("authenticated contact submissions attach to the session customer and dashboard", async () => {
   const email = testEmail("contact-authenticated");
   const otherEmail = testEmail("contact-other-customer");
@@ -938,20 +997,18 @@ test("authenticated contact submissions attach to the session customer and dashb
   assert.equal(login.response.status, 200);
   const cookie = sessionCookie(login.response);
 
-  process.env.BUSINESS_EMAIL = "owner@example.test";
-  try {
-    const submission = await request(
-      "/api/repair-requests",
-      {
-        customerName: "Untrusted Form Name",
-        phone: "9876543210",
-        email: otherEmail,
-        applianceType: "Washing Machine Repair",
-        problemDescription: "The appliance does not start.",
-        address: "123 Test Street",
-      },
-      cookie,
-    );
+  const submission = await request(
+    "/api/repair-requests",
+    {
+      customerName: "Untrusted Form Name",
+      phone: "9876543210",
+      email: otherEmail,
+      applianceType: "Washing Machine Repair",
+      problemDescription: "The appliance does not start.",
+      address: "123 Test Street",
+    },
+    cookie,
+  );
     assert.equal(submission.response.status, 201);
 
     const savedRequest = await repairRequestForId(
@@ -967,6 +1024,11 @@ test("authenticated contact submissions attach to the session customer and dashb
         message.text.includes("Customer type: Registered Customer"),
       ),
     );
+    assert.deepEqual(
+      new Set(sentEmails.map((message) => message.to)),
+      new Set(["owner@example.test", email]),
+    );
+    assert.ok(sentEmails.every((message) => message.to !== otherEmail));
 
     const ownRequests = await get("/api/customer/repair-requests", cookie);
     assert.equal(ownRequests.response.status, 200);
@@ -990,9 +1052,58 @@ test("authenticated contact submissions attach to the session customer and dashb
     );
     assert.equal(otherRequests.response.status, 200);
     assert.equal((otherRequests.body as unknown[]).length, 0);
-  } finally {
-    delete process.env.BUSINESS_EMAIL;
-  }
+});
+
+test("booking creation and status emails use the exact booking customer", async () => {
+  const email = testEmail("booking-current");
+  const previousEmail = testEmail("booking-previous");
+  await createAccount(email);
+
+  const login = await request("/api/auth/login", {
+    email,
+    password: TEST_PASSWORD,
+    rememberMe: true,
+  });
+  assert.equal(login.response.status, 200);
+  const customerCookie = sessionCookie(login.response);
+
+  const submission = await request(
+    "/api/customer/bookings",
+    {
+      phone: "9876543210",
+      applianceType: "LED TV Repair",
+      problemDescription: "The television powers on but shows no picture.",
+      preferredDate: "2026-10-20",
+      preferredTime: "10:00 AM - 12:00 PM",
+      address: "123 Booking Test Street",
+      additionalNotes: "Please call before arrival.",
+    },
+    customerCookie,
+  );
+  assert.equal(submission.response.status, 201);
+
+  const booking = await bookingForId(String(submission.body.bookingId));
+  const customer = await customerForEmail(email);
+  assert.equal(booking.customerId, customer.id);
+  assert.equal(booking.email, email);
+  assert.deepEqual(
+    new Set(sentEmails.map((message) => message.to)),
+    new Set(["owner@example.test", email]),
+  );
+  assert.ok(sentEmails.every((message) => message.to !== previousEmail));
+
+  sentEmails.length = 0;
+  const adminCookie = await createAdminSession();
+  const updated = await patch(
+    `/api/admin/bookings/${booking.bookingId}`,
+    { status: "confirmed" },
+    adminCookie,
+  );
+  assert.equal(updated.response.status, 200);
+  assert.equal(sentEmails.length, 1);
+  assert.equal(sentEmails[0].to, booking.email);
+  assert.equal(sentEmails[0].replyTo, "owner@example.test");
+  assert.ok(sentEmails[0].to !== previousEmail);
 });
 
 test("public reviews expose only approved reviews and review APIs enforce authentication", async () => {

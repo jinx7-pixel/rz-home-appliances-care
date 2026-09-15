@@ -88,11 +88,7 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
       createdAt: submittedAt,
       updatedAt: submittedAt,
       })
-      .returning({
-        customerId: repairRequestsTable.customerId,
-        customerName: repairRequestsTable.customerName,
-        email: repairRequestsTable.email,
-      });
+      .returning();
 
     if (!savedRequest) {
       throw new Error("Repair request insert returned no saved row");
@@ -104,16 +100,16 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
 
     try {
       await sendRepairRequestEmails({
-        requestId,
+        requestId: savedRequest.requestId,
         customerName: savedRequest.customerName,
-        phone: input.phone,
+        phone: savedRequest.phone,
         email: savedRequest.email,
-        applianceType: input.applianceType,
-        problemDescription: input.problemDescription.trim(),
-        address: input.address.trim(),
-        preferredDate,
-        preferredTime,
-        submittedAt,
+        applianceType: savedRequest.applianceType,
+        problemDescription: savedRequest.problemDescription,
+        address: savedRequest.address,
+        preferredDate: savedRequest.preferredDate,
+        preferredTime: savedRequest.preferredTime,
+        submittedAt: savedRequest.createdAt,
         customerType: savedCustomerType,
       });
 

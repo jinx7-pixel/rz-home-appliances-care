@@ -73,15 +73,43 @@ function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function getConfiguredSender(): string {
+  const sender = process.env.EMAIL_FROM?.trim();
+  if (!sender) {
+    throw new Error("Email sender is not configured");
+  }
+  return sender;
+}
+
+function getOwnerEmail(): string {
+  const ownerEmail = process.env.OWNER_EMAIL?.trim().toLowerCase();
+  if (!ownerEmail || !isValidEmail(ownerEmail)) {
+    throw new Error("Owner email recipient is not configured");
+  }
+  return ownerEmail;
+}
+
+function getCustomerEmail(value: string): string {
+  const customerEmail = value.trim().toLowerCase();
+  if (!isValidEmail(customerEmail)) {
+    throw new Error("Customer email recipient is invalid");
+  }
+  return customerEmail;
+}
+
 async function sendEmail(payload: {
   from: string;
   to: string;
+  replyTo?: string;
   subject: string;
   html: string;
   text: string;
 }): Promise<void> {
   if (!isValidEmail(payload.to)) {
     throw new Error("Email delivery recipient is invalid");
+  }
+  if (payload.replyTo && !isValidEmail(payload.replyTo)) {
+    throw new Error("Email reply-to address is invalid");
   }
 
   const result = await getSmtpTransporter().sendMail(payload);
@@ -97,17 +125,9 @@ export async function verifyRepairEmailTransport(): Promise<void> {
 export async function sendRepairRequestEmails(
   data: RepairRequestEmailData,
 ): Promise<void> {
-  const businessEmail =
-    process.env.OWNER_EMAIL?.trim().toLowerCase() ||
-    process.env.BUSINESS_EMAIL?.trim().toLowerCase();
-  const from = process.env.EMAIL_FROM;
-
-  if (!businessEmail || !from) {
-    throw new Error("Email delivery is not configured");
-  }
-  if (!isValidEmail(businessEmail) || !isValidEmail(data.email)) {
-    throw new Error("Email delivery recipient is invalid");
-  }
+  const ownerEmail = getOwnerEmail();
+  const customerEmail = getCustomerEmail(data.email);
+  const from = getConfiguredSender();
 
   const preferredSchedule = [
     data.preferredDate ?? "No preferred date",
@@ -127,7 +147,7 @@ export async function sendRepairRequestEmails(
         "New repair booking requires review.",
         `Booking/request ID: ${data.requestId}`,
         `Customer name: ${data.customerName}`,
-        `Customer email: ${data.email}`,
+        `Customer email: ${customerEmail}`,
         `Customer phone: ${data.phone}`,
         `Customer type: ${customerType}`,
         `Appliance/service type: ${data.applianceType}`,
@@ -142,7 +162,7 @@ export async function sendRepairRequestEmails(
         `New repair request: ${data.requestId}`,
         `Customer: ${data.customerName}`,
         `Phone: ${data.phone}`,
-        `Email: ${data.email}`,
+        `Email: ${customerEmail}`,
         `Customer type: ${customerType}`,
         `Appliance: ${data.applianceType}`,
         `Problem: ${data.problemDescription}`,
@@ -181,7 +201,7 @@ export async function sendRepairRequestEmails(
         "This is a request acknowledgement, not a confirmed appointment.",
         "",
         "Phone: +91 80738 48334",
-        `Email: ${businessEmail}`,
+        `Email: ${ownerEmail}`,
       ].join("\n");
 
   const businessHtml = isBooking
@@ -190,7 +210,7 @@ export async function sendRepairRequestEmails(
         <p><strong>This new booking requires review.</strong></p>
         <p><strong>Booking/request ID:</strong> ${escapeHtml(data.requestId)}</p>
         <p><strong>Customer name:</strong> ${escapeHtml(data.customerName)}</p>
-        <p><strong>Customer email:</strong> ${escapeHtml(data.email)}</p>
+        <p><strong>Customer email:</strong> ${escapeHtml(customerEmail)}</p>
         <p><strong>Customer phone:</strong> ${escapeHtml(data.phone)}</p>
         <p><strong>Customer type:</strong> ${escapeHtml(customerType)}</p>
         <p><strong>Appliance/service type:</strong> ${escapeHtml(data.applianceType)}</p>
@@ -205,7 +225,7 @@ export async function sendRepairRequestEmails(
         <h2>New Repair Request - ${escapeHtml(data.requestId)}</h2>
         <p><strong>Customer:</strong> ${escapeHtml(data.customerName)}</p>
         <p><strong>Phone:</strong> ${escapeHtml(data.phone)}</p>
-        <p><strong>Email:</strong> ${escapeHtml(data.email)}</p>
+        <p><strong>Email:</strong> ${escapeHtml(customerEmail)}</p>
         <p><strong>Customer type:</strong> ${escapeHtml(customerType)}</p>
         <p><strong>Appliance:</strong> ${escapeHtml(data.applianceType)}</p>
         <p><strong>Problem:</strong><br>${escapeHtml(data.problemDescription).replace(/\n/g, "<br>")}</p>
@@ -237,13 +257,14 @@ export async function sendRepairRequestEmails(
         <p>Your request for <strong>${escapeHtml(data.applianceType)}</strong> has been received.</p>
         <p><strong>Request ID:</strong> ${escapeHtml(data.requestId)}</p>
         <p>Our team will contact you shortly. This acknowledgement does not confirm an appointment.</p>
-        <p>Phone: +91 80738 48334<br>Email: ${escapeHtml(businessEmail)}</p>
+        <p>Phone: +91 80738 48334<br>Email: ${escapeHtml(ownerEmail)}</p>
       `;
 
   await Promise.all([
     sendEmail({
       from,
-      to: businessEmail,
+      to: ownerEmail,
+      replyTo: customerEmail,
       subject: isBooking
         ? `New Repair Booking Received – ${data.requestId}`
         : `New Repair Request - ${data.requestId}`,
@@ -252,7 +273,8 @@ export async function sendRepairRequestEmails(
     }),
     sendEmail({
       from,
-      to: data.email,
+      to: customerEmail,
+      replyTo: ownerEmail,
       subject: isBooking
         ? "Repair Booking Received – Confirmation"
         : `Repair Request Received - ${data.requestId}`,
@@ -305,15 +327,9 @@ export function buildReviewLink(
 export async function sendRepairStatusEmail(
   data: RepairStatusEmailData,
 ): Promise<void> {
-  const from = process.env.EMAIL_FROM;
-  const customerEmail = data.email.trim().toLowerCase();
-  const supportEmail =
-    process.env.OWNER_EMAIL?.trim().toLowerCase() ||
-    process.env.BUSINESS_EMAIL?.trim().toLowerCase();
-
-  if (!from || !isValidEmail(customerEmail)) {
-    throw new Error("Email delivery is not configured or the customer email is invalid");
-  }
+  const from = getConfiguredSender();
+  const customerEmail = getCustomerEmail(data.email);
+  const supportEmail = getOwnerEmail();
 
   const statusContent = {
     in_progress: {
@@ -353,6 +369,7 @@ export async function sendRepairStatusEmail(
   await sendEmail({
     from,
     to: customerEmail,
+    replyTo: supportEmail,
     subject: statusContent.subject,
     text: [
       `Hi ${data.customerName},`,
@@ -394,17 +411,9 @@ type BookingStatusEmailData = {
 export async function sendBookingStatusEmail(
   data: BookingStatusEmailData,
 ): Promise<void> {
-  const from = process.env.EMAIL_FROM;
-  const customerEmail = data.email.trim().toLowerCase();
-  const supportEmail =
-    process.env.OWNER_EMAIL?.trim().toLowerCase() ||
-    process.env.BUSINESS_EMAIL?.trim().toLowerCase();
-
-  if (!from || !isValidEmail(customerEmail)) {
-    throw new Error(
-      "Email delivery is not configured or the customer email is invalid",
-    );
-  }
+  const from = getConfiguredSender();
+  const customerEmail = getCustomerEmail(data.email);
+  const supportEmail = getOwnerEmail();
 
   const contactText = [
     "For support, contact RZ Home Appliances Care at +91 80738 48334.",
@@ -455,6 +464,7 @@ export async function sendBookingStatusEmail(
   await sendEmail({
     from,
     to: customerEmail,
+    replyTo: supportEmail,
     subject: content.subject,
     text: [
       `Hi ${data.customerName},`,
@@ -487,11 +497,9 @@ export async function sendPasswordResetEmail(data: {
   fullName: string;
   resetLink: string;
 }): Promise<void> {
-  const from = process.env.EMAIL_FROM;
-
-  if (!from) {
-    throw new Error("Email delivery is not configured");
-  }
+  const from = getConfiguredSender();
+  const customerEmail = getCustomerEmail(data.email);
+  const ownerEmail = getOwnerEmail();
 
   const greetingName = escapeHtml(data.fullName);
   const resetLink = escapeHtml(data.resetLink);
@@ -507,7 +515,8 @@ export async function sendPasswordResetEmail(data: {
 
   await sendEmail({
     from,
-    to: data.email,
+    to: customerEmail,
+    replyTo: ownerEmail,
     subject: "Reset your RZ Home Appliances Care password",
     text,
     html: `
