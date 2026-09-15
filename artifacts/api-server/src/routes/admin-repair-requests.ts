@@ -29,6 +29,11 @@ import {
 
 const router = Router();
 
+router.use((_request, response, next) => {
+  response.set("Cache-Control", "no-store");
+  next();
+});
+
 function escapeLikePattern(value: string): string {
   return value.replace(/[\\%_]/g, "\\$&");
 }

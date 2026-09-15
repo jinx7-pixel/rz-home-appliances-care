@@ -21,6 +21,11 @@ const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_ATTEMPTS = 10;
 const loginAttempts = new Map<string, number[]>();
 
+router.use((_request, response, next) => {
+  response.set("Cache-Control", "no-store");
+  next();
+});
+
 // The initial administrator can be bootstrapped from ADMIN_PASSWORD on first
 // login. The password is never stored in source, client code, or responses.
 function clientKey(request: Request): string {
