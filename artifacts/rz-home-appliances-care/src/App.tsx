@@ -1012,7 +1012,7 @@ function ContactSection() {
                     .{' '}
                     <a
                       className="font-extrabold text-[hsl(215_74%_38%)] underline underline-offset-2 hover:text-[hsl(215_82%_28%)]"
-                      href="/logout"
+                      href={appPath('/logout')}
                     >
                       Sign out to submit as a guest.
                     </a>
