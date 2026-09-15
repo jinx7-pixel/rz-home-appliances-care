@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   getGetCustomerRepairRequestsQueryKey,
   getGetPublicReviewsQueryKey,
+  useAuthMe,
   useCreateRepairRequest,
   useGetPublicReviews,
 } from '@workspace/api-client-react';
@@ -241,6 +242,17 @@ function BrandMark() {
 function HomeNavbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const authMeQuery = useAuthMe({
+    query: {
+      queryKey: ['auth-me'],
+      retry: false,
+    },
+  });
+  const isAuthenticated = authMeQuery.data?.authenticated === true;
+  const authLinkLabel = isAuthenticated ? 'Sign Out' : 'Sign In';
+  const authLinkHref = isAuthenticated
+    ? appPath('/logout')
+    : appPath('/sign-in');
 
   useEffect(() => {
     if (!isMenuOpen) {
@@ -307,12 +319,12 @@ function HomeNavbar() {
               return (
                 <a
                   className="ml-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-[hsl(214_30%_82%)] bg-[hsl(204_100%_99%/0.7)] px-4 text-[0.79rem] font-bold tracking-[0.01em] text-[hsl(215_74%_28%)] transition duration-200 hover:-translate-y-0.5 hover:border-[hsl(215_65%_62%)] hover:bg-[hsl(199_82%_94%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(210_40%_98%)] active:translate-y-0"
-                  data-testid="link-sign-in"
-                  href={link.href}
+                  data-testid={`link-${isAuthenticated ? 'sign-out' : 'sign-in'}`}
+                  href={authLinkHref}
                   key={link.label}
                   onClick={closeMenu}
                 >
-                  {link.label}
+                  {authLinkLabel}
                 </a>
               );
             }
@@ -383,13 +395,13 @@ function HomeNavbar() {
               return (
                 <a
                   className="mt-2 flex min-h-12 items-center justify-between rounded-xl border border-[hsl(214_30%_82%)] px-4 text-[0.9rem] font-semibold text-[hsl(215_74%_28%)] transition duration-200 hover:border-[hsl(215_65%_62%)] hover:bg-[hsl(199_82%_94%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(204_100%_99%)]"
-                  data-testid={`mobile-link-${index + 1}`}
-                  href={link.href}
+                  data-testid={`mobile-link-${isAuthenticated ? 'sign-out' : 'sign-in'}`}
+                  href={authLinkHref}
                   key={link.label}
                   onClick={closeMenu}
                   tabIndex={isMenuOpen ? 0 : -1}
                 >
-                  <span>{link.label}</span>
+                  <span>{authLinkLabel}</span>
                   <ArrowRight aria-hidden="true" className="size-4" />
                 </a>
               );
