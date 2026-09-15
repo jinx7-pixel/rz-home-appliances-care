@@ -7,6 +7,11 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// API responses are dynamic and several authenticated dashboard reads must
+// always include their JSON body. Avoid conditional 304 responses being
+// mistaken for an empty API payload by browser fetch callers.
+app.set("etag", false);
+
 const TRUSTED_PROXY_PEERS = ["127.0.0.1/32", "::1/128"] as const;
 const EXPECTED_PROXY_ADDRESSES = ["127.0.0.1", "::1"] as const;
 const PRODUCTION_PROXY_PEERS_ENV = "PRODUCTION_PROXY_PEERS";

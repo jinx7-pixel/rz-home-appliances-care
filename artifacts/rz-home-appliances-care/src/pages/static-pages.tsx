@@ -226,6 +226,7 @@ export function AdminPage() {
       try {
         const sessionResponse = await fetch('/api/admin/auth/me', {
           credentials: 'include',
+          cache: 'no-store',
         });
         const session = await sessionResponse.json();
         if (!session.authenticated) {
@@ -238,7 +239,7 @@ export function AdminPage() {
         setIsLoadingRequests(true);
         const requestsResponse = await fetch(
           '/api/admin/repair-requests?customerType=guest&sort=newest',
-          { credentials: 'include' },
+          { credentials: 'include', cache: 'no-store' },
         );
         const requestsBody = await requestsResponse.json();
         if (!requestsResponse.ok) {
@@ -295,7 +296,7 @@ export function AdminPage() {
     try {
       const response = await fetch(
         '/api/admin/repair-requests?customerType=guest&sort=newest',
-        { credentials: 'include' },
+        { credentials: 'include', cache: 'no-store' },
       );
       const body = await response.json();
       if (!response.ok) {
