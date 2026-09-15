@@ -9,7 +9,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   getGetCustomerRepairRequestsQueryKey,
   getGetPublicReviewsQueryKey,
-  useAuthMe,
   useCreateRepairRequest,
   useGetPublicReviews,
 } from '@workspace/api-client-react';
@@ -822,53 +821,7 @@ function ContactSection() {
   const [formErrors, setFormErrors] = useState<RepairFormErrors>({});
   const [successMessage, setSuccessMessage] = useState('');
   const [submitError, setSubmitError] = useState('');
-  const lastAuthenticatedEmailRef = useRef<string | null>(null);
-  const authMeQuery = useAuthMe({
-    query: {
-      queryKey: ['auth-me'],
-      retry: false,
-    },
-  });
   const createRepairRequestMutation = useCreateRepairRequest();
-  const authenticatedUser =
-    authMeQuery.data?.authenticated === true ? authMeQuery.data.user : null;
-  const authenticatedName = authenticatedUser?.fullName;
-  const authenticatedEmail = authenticatedUser?.email;
-
-  useEffect(() => {
-    if (authenticatedName && authenticatedEmail) {
-      lastAuthenticatedEmailRef.current = authenticatedEmail;
-      setFormValues((current) => ({
-        ...current,
-        name: authenticatedName,
-        email: authenticatedEmail,
-      }));
-      setFormErrors((current) => ({
-        ...current,
-        name: undefined,
-        email: undefined,
-      }));
-      return;
-    }
-
-    if (!authMeQuery.isPending && lastAuthenticatedEmailRef.current) {
-      lastAuthenticatedEmailRef.current = null;
-      setFormValues((current) => ({
-        ...current,
-        name: '',
-        email: '',
-      }));
-      setFormErrors((current) => ({
-        ...current,
-        name: undefined,
-        email: undefined,
-      }));
-    }
-  }, [
-    authMeQuery.isPending,
-    authenticatedEmail,
-    authenticatedName,
-  ]);
 
   const updateField = (field: keyof RepairFormValues, value: string) => {
     setFormValues((current) => ({ ...current, [field]: value }));
@@ -923,9 +876,9 @@ function ContactSection() {
         queryKey: getGetCustomerRepairRequestsQueryKey(),
       });
       setFormValues({
-        name: authenticatedUser?.fullName ?? '',
+        name: '',
         phone: '',
-        email: authenticatedUser?.email ?? '',
+        email: '',
         service: '',
         issue: '',
         address: '',
@@ -1100,7 +1053,7 @@ function ContactSection() {
 
           <div className="mt-5">
             <label className="text-[0.88rem] font-extrabold text-[hsl(215_32%_28%)]" htmlFor="repair-email">
-              {authenticatedUser ? 'Account email' : 'Email address'}
+              Email address
             </label>
             <input
               aria-describedby={formErrors.email ? 'repair-email-error' : undefined}
@@ -1116,11 +1069,6 @@ function ContactSection() {
               type="email"
               value={formValues.email}
             />
-            {authenticatedUser ? (
-              <p className="mt-2 text-[0.76rem] font-semibold text-[hsl(215_20%_48%)]">
-                Confirmations are sent to your signed-in account email.
-              </p>
-            ) : null}
             {formErrors.email ? (
               <p className="mt-2 text-[0.78rem] font-semibold text-red-600" id="repair-email-error">
                 {formErrors.email}

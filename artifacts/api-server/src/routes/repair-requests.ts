@@ -59,11 +59,8 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
   const requestId = createPublicRequestId();
   const submittedAt = new Date();
   const authenticatedCustomer = await getAuthenticatedCustomer(req);
-  const customerName =
-    authenticatedCustomer?.fullName.trim() ?? input.customerName.trim();
-  const email =
-    authenticatedCustomer?.email.trim().toLowerCase() ??
-    input.email.trim().toLowerCase();
+  const customerName = input.customerName.trim();
+  const email = input.email.trim().toLowerCase();
   const preferredDate = input.preferredDate
     ? input.preferredDate.toISOString().slice(0, 10)
     : null;

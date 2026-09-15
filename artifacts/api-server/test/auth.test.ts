@@ -983,7 +983,7 @@ test("guest repair emails go only to the owner and current form email", async ()
   assert.ok(sentEmails.every((message) => message.to !== previousEmail));
 });
 
-test("authenticated contact submissions attach to the session customer and dashboard", async () => {
+test("authenticated contact submissions keep form contact details and attach to the session customer", async () => {
   const email = testEmail("contact-authenticated");
   const otherEmail = testEmail("contact-other-customer");
   await createAccount(email);
@@ -1016,8 +1016,8 @@ test("authenticated contact submissions attach to the session customer and dashb
     );
     const customer = await customerForEmail(email);
     assert.equal(savedRequest.customerId, customer.id);
-    assert.equal(savedRequest.customerName, "Regression Customer");
-    assert.equal(savedRequest.email, email);
+    assert.equal(savedRequest.customerName, "Untrusted Form Name");
+    assert.equal(savedRequest.email, otherEmail);
     assert.equal(savedRequest.emailStatus, "sent");
     assert.ok(
       sentEmails.some((message) =>
@@ -1026,9 +1026,9 @@ test("authenticated contact submissions attach to the session customer and dashb
     );
     assert.deepEqual(
       new Set(sentEmails.map((message) => message.to)),
-      new Set(["owner@example.test", email]),
+      new Set(["owner@example.test", otherEmail]),
     );
-    assert.ok(sentEmails.every((message) => message.to !== otherEmail));
+    assert.ok(sentEmails.every((message) => message.to !== email));
 
     const ownRequests = await get("/api/customer/repair-requests", cookie);
     assert.equal(ownRequests.response.status, 200);
