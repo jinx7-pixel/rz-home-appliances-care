@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { useAuthLogout, useGetCustomerRepairRequests } from '@workspace/api-client-react';
+import {
+  useAuthLogout,
+  useAuthMe,
+  useGetCustomerRepairRequests,
+} from '@workspace/api-client-react';
 import { CalendarDays, Clock3, House, LoaderCircle, LogOut, X } from 'lucide-react';
 
 function appPath(path: string): string {
@@ -56,6 +60,12 @@ function formatSubmittedAt(value: string): string {
 }
 
 export function CustomerDashboardPage() {
+  const authMeQuery = useAuthMe({
+    query: {
+      queryKey: ['auth-me'],
+      retry: false,
+    },
+  });
   const requestsQuery = useGetCustomerRepairRequests({
     query: {
       queryKey: ['customer-repair-requests'],
@@ -67,9 +77,18 @@ export function CustomerDashboardPage() {
   const cancelSignOutButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (getErrorStatus(requestsQuery.error) !== 401) return;
+    if (
+      getErrorStatus(requestsQuery.error) !== 401 &&
+      !(authMeQuery.isSuccess && !authMeQuery.data.authenticated)
+    ) {
+      return;
+    }
     window.location.replace(appPath('/sign-in'));
-  }, [requestsQuery.error]);
+  }, [
+    authMeQuery.data,
+    authMeQuery.isSuccess,
+    requestsQuery.error,
+  ]);
 
   useEffect(() => {
     if (!isSignOutDialogOpen) return;
@@ -131,8 +150,16 @@ export function CustomerDashboardPage() {
         </header>
 
         <section aria-labelledby="customer-dashboard-heading" className="pt-10 sm:pt-14">
+          <p className="text-[clamp(1.55rem,3vw,2.35rem)] font-extrabold leading-[1.08] tracking-[-0.055em] text-[hsl(215_74%_28%)]">
+            {authMeQuery.data?.user?.fullName?.trim()
+              ? `Good to see you, ${authMeQuery.data.user.fullName.trim()}! 👋`
+              : 'Good to see you! 👋'}
+          </p>
+          <p className="mt-2 text-[0.95rem] leading-[1.65] text-[hsl(215_20%_45%)]">
+            Here’s an overview of your repair requests.
+          </p>
           <h1
-            className="text-[clamp(2.7rem,6vw,5rem)] font-extrabold leading-[0.96] tracking-[-0.075em] text-[hsl(215_32%_14%)]"
+            className="mt-9 text-[clamp(2.7rem,6vw,5rem)] font-extrabold leading-[0.96] tracking-[-0.075em] text-[hsl(215_32%_14%)]"
             data-testid="heading-customer-dashboard"
             id="customer-dashboard-heading"
           >
