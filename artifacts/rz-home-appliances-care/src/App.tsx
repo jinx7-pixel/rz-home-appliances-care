@@ -1061,7 +1061,6 @@ function ContactSection() {
                 name="name"
                 onChange={(event) => updateField('name', event.target.value)}
                 placeholder="Alex Morgan"
-                readOnly={Boolean(authenticatedUser)}
                 required
                 value={formValues.name}
               />
@@ -1107,14 +1106,12 @@ function ContactSection() {
               aria-describedby={formErrors.email ? 'repair-email-error' : undefined}
               aria-invalid={Boolean(formErrors.email)}
               autoComplete="email"
-              className="mt-2 min-h-14 w-full rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition placeholder:text-[hsl(215_20%_61%)] focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)] read-only:cursor-not-allowed read-only:bg-[hsl(215_20%_96%)] read-only:text-[hsl(215_20%_40%)]"
+              className="mt-2 min-h-14 w-full rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition placeholder:text-[hsl(215_20%_61%)] focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]"
               id="repair-email"
-              aria-readonly={authenticatedUser ? true : undefined}
               maxLength={254}
               name="email"
               onChange={(event) => updateField('email', event.target.value)}
               placeholder="alex@example.com"
-              readOnly={Boolean(authenticatedUser)}
               required
               type="email"
               value={formValues.email}
