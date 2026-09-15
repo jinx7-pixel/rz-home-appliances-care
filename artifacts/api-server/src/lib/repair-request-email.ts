@@ -262,6 +262,82 @@ export async function sendRepairRequestEmails(
   ]);
 }
 
+type RepairStatusEmailData = {
+  requestId: string;
+  customerName: string;
+  email: string;
+  applianceType: string;
+  status: "in_progress" | "completed" | "cancelled";
+  cancellationReason?: string | null;
+};
+
+export async function sendRepairStatusEmail(
+  data: RepairStatusEmailData,
+): Promise<void> {
+  const from = process.env.EMAIL_FROM;
+  const customerEmail = data.email.trim().toLowerCase();
+  const supportEmail =
+    process.env.OWNER_EMAIL?.trim().toLowerCase() ||
+    process.env.BUSINESS_EMAIL?.trim().toLowerCase();
+
+  if (!from || !isValidEmail(customerEmail)) {
+    throw new Error("Email delivery is not configured");
+  }
+
+  const statusContent = {
+    in_progress: {
+      subject: `Your Repair Request Is Now In Progress – ${data.requestId}`,
+      heading: "Your repair request is now in progress",
+      text: `Your repair request ${data.requestId} is now in progress. Our team is currently working on your repair request.\n\nWe will keep you updated if any additional information is required.`,
+      html: "Your repair request is now in progress. Our team is currently working on your repair request.<br><br>We will keep you updated if any additional information is required.",
+    },
+    completed: {
+      subject: `Your Repair Request Has Been Completed – ${data.requestId}`,
+      heading: "Your repair request has been completed",
+      text: `Your repair request ${data.requestId} has been completed. Thank you for choosing RZ Home Appliances Care.`,
+      html: "Your repair request has been completed. Thank you for choosing RZ Home Appliances Care.",
+    },
+    cancelled: {
+      subject: `Update About Your Repair Request – ${data.requestId}`,
+      heading: "Update about your repair request",
+      text: `Your repair request ${data.requestId} has been cancelled.${data.cancellationReason ? `\n\nReason: ${data.cancellationReason}` : ""}`,
+      html: `Your repair request has been cancelled.${data.cancellationReason ? `<br><br><strong>Reason:</strong> ${escapeHtml(data.cancellationReason)}` : ""}`,
+    },
+  }[data.status];
+
+  const supportText = [
+    "For support, contact RZ Home Appliances Care at +91 80738 48334.",
+    ...(supportEmail ? [`Support email: ${supportEmail}`] : []),
+  ].join("\n");
+  const supportHtml = `For support, contact RZ Home Appliances Care at +91 80738 48334.${supportEmail ? `<br>Support email: ${escapeHtml(supportEmail)}` : ""}`;
+
+  await sendEmail({
+    from,
+    to: customerEmail,
+    subject: statusContent.subject,
+    text: [
+      `Hi ${data.customerName},`,
+      "",
+      statusContent.text,
+      "",
+      `Service type: ${data.applianceType}`,
+      `Request ID: ${data.requestId}`,
+      supportText,
+      "",
+      "Thank you,",
+      "RZ Home Appliances Care",
+    ].join("\n"),
+    html: `
+      <h2>${statusContent.heading}</h2>
+      <p>Hi ${escapeHtml(data.customerName)},</p>
+      <p>${statusContent.html}</p>
+      <p><strong>Service type:</strong> ${escapeHtml(data.applianceType)}<br><strong>Request ID:</strong> ${escapeHtml(data.requestId)}</p>
+      <p>${supportHtml}</p>
+      <p>Thank you,<br>RZ Home Appliances Care</p>
+    `,
+  });
+}
+
 export async function sendPasswordResetEmail(data: {
   email: string;
   fullName: string;

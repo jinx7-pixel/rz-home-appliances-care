@@ -17,10 +17,12 @@ import {
   ilike,
   isNotNull,
   isNull,
+  ne,
   or,
   type SQL,
 } from "drizzle-orm";
 import { getAuthenticatedAdmin } from "../lib/admin-auth";
+import { sendRepairStatusEmail } from "../lib/repair-request-email";
 
 const router = Router();
 
@@ -154,14 +156,74 @@ router.patch("/repair-requests/:requestId", async (request, response) => {
     values.adminNotes = parsed.data.adminNotes?.trim() || null;
   }
 
+  const [existingRequest] = await db
+    .select()
+    .from(repairRequestsTable)
+    .where(eq(repairRequestsTable.requestId, request.params.requestId))
+    .limit(1);
+
+  if (!existingRequest) {
+    return response.status(404).json({ error: "Repair request not found." });
+  }
+
+  const requestedStatus = parsed.data.status;
+  const statusChanged =
+    requestedStatus !== undefined &&
+    normalizeStatus(existingRequest.status) !== requestedStatus;
+
   const [updatedRequest] = await db
     .update(repairRequestsTable)
     .set(values)
-    .where(eq(repairRequestsTable.requestId, request.params.requestId))
+    .where(
+      statusChanged
+        ? and(
+            eq(repairRequestsTable.requestId, request.params.requestId),
+            ne(repairRequestsTable.status, requestedStatus!),
+          )
+        : eq(repairRequestsTable.requestId, request.params.requestId),
+    )
     .returning();
 
   if (!updatedRequest) {
-    return response.status(404).json({ error: "Repair request not found." });
+    const [currentRequest] = await db
+      .select()
+      .from(repairRequestsTable)
+      .where(eq(repairRequestsTable.requestId, request.params.requestId))
+      .limit(1);
+
+    if (!currentRequest) {
+      return response.status(404).json({ error: "Repair request not found." });
+    }
+
+    return response.json(serializeRepairRequest(currentRequest));
+  }
+
+  if (
+    statusChanged &&
+    (requestedStatus === "in_progress" ||
+      requestedStatus === "completed" ||
+      requestedStatus === "cancelled")
+  ) {
+    try {
+      await sendRepairStatusEmail({
+        requestId: updatedRequest.requestId,
+        customerName: updatedRequest.customerName,
+        email: updatedRequest.email,
+        applianceType: updatedRequest.applianceType,
+        status: requestedStatus,
+        cancellationReason:
+          requestedStatus === "cancelled" ? updatedRequest.adminNotes : null,
+      });
+    } catch (error) {
+      request.log.error(
+        {
+          err: error,
+          requestId: updatedRequest.requestId,
+          status: requestedStatus,
+        },
+        "Failed to send repair status-change email",
+      );
+    }
   }
 
   return response.json(serializeRepairRequest(updatedRequest));
