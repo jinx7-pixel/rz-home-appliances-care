@@ -1,3 +1,4 @@
 - [Customer authentication security](customer-auth-security.md) — opaque DB-backed sessions and hashed, single-use reset tokens are the established auth model.
 - [IPv6 release validation](ipv6-release-validation.md) — IPv6-dependent security tests remain skippable for local compatibility but must fail the release gate when loopback support is absent.
 - [Frontend build environment](frontend-build-environment.md) — the Vite app build requires explicit PORT and BASE_PATH values matching its workflow.
+- [Wouter query parameters](wouter-query-params.md) — use the browser search string or Wouter's search hook; useLocation returns the pathname without query parameters.

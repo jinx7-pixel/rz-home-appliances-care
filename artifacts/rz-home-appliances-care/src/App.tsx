@@ -1828,6 +1828,7 @@ function Router() {
         <Route path="/sign-up" component={SignUpPage} />
         <Route path="/logout" component={LogoutPage} />
         <Route path="/customer-dashboard" component={CustomerDashboardPage} />
+        <Route path="/customer/review/:sourceType/:sourceId" component={CustomerReviewPage} />
         <Route path="/customer/review" component={CustomerReviewPage} />
         <Route path="/reviews" component={PublicReviewsPage} />
         <Route path="/book-repair" component={BookRepairPage} />

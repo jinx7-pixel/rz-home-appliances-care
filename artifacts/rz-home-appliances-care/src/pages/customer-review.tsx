@@ -35,6 +35,34 @@ function errorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+function readReviewIdentifiers(location: string): {
+  requestId?: string;
+  bookingId?: string;
+} {
+  const browserSearch =
+    typeof window !== 'undefined' ? window.location.search : '';
+  const locationSearch = location.split('?')[1] ?? '';
+  const search = browserSearch || (locationSearch ? `?${locationSearch}` : '');
+  const params = new URLSearchParams(search);
+  let requestId = params.get('requestId') ?? undefined;
+  let bookingId = params.get('bookingId') ?? undefined;
+
+  const pathname =
+    typeof window !== 'undefined'
+      ? window.location.pathname
+      : location.split('?')[0];
+  const routeMatch = pathname.match(
+    /\/customer\/review\/(request|booking)\/([^/?#]+)/,
+  );
+  if (!requestId && !bookingId && routeMatch) {
+    const sourceId = decodeURIComponent(routeMatch[2]);
+    if (routeMatch[1] === 'request') requestId = sourceId;
+    if (routeMatch[1] === 'booking') bookingId = sourceId;
+  }
+
+  return { requestId, bookingId };
+}
+
 function BrandMark() {
   return (
     <span aria-hidden="true" className="relative flex size-10 shrink-0 items-center justify-center rounded-[0.9rem] bg-[hsl(215_82%_38%)] text-white">
@@ -48,9 +76,10 @@ function BrandMark() {
 
 export function CustomerReviewPage() {
   const [location, setLocation] = useLocation();
-  const params = useMemo(() => new URLSearchParams(location.split('?')[1] ?? ''), [location]);
-  const requestId = params.get('requestId') ?? undefined;
-  const bookingId = params.get('bookingId') ?? undefined;
+  const { requestId, bookingId } = useMemo(
+    () => readReviewIdentifiers(location),
+    [location],
+  );
   const targetParams = useMemo(() => ({ ...(requestId ? { requestId } : {}), ...(bookingId ? { bookingId } : {}) }), [bookingId, requestId]);
   const auth = useAuthMe({ query: { queryKey: getAuthMeQueryKey(), retry: false } });
   const eligible = useGetCustomerReviewEligible({ query: { queryKey: getGetCustomerReviewEligibleQueryKey(), enabled: auth.data?.authenticated === true, retry: false } });
