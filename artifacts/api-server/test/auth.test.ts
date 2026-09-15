@@ -14,6 +14,7 @@ import {
   passwordResetTokensTable,
   pool,
   repairRequestsTable,
+  reviewsTable,
 } from "@workspace/db";
 
 process.env.NODE_ENV = "production";
@@ -923,11 +924,88 @@ test("anonymous repair requests are accepted without an auth cookie", async () =
   assert.equal(savedRequest.emailStatus, "failed");
 });
 
-test("public reviews stay empty until approved and review APIs enforce authentication", async () => {
+test("authenticated contact submissions attach to the session customer and dashboard", async () => {
+  const email = testEmail("contact-authenticated");
+  const otherEmail = testEmail("contact-other-customer");
+  await createAccount(email);
+  await createAccount(otherEmail);
+
+  const login = await request("/api/auth/login", {
+    email,
+    password: TEST_PASSWORD,
+    rememberMe: true,
+  });
+  assert.equal(login.response.status, 200);
+  const cookie = sessionCookie(login.response);
+
+  process.env.BUSINESS_EMAIL = "owner@example.test";
+  try {
+    const submission = await request(
+      "/api/repair-requests",
+      {
+        customerName: "Regression Customer",
+        phone: "9876543210",
+        email,
+        applianceType: "Washing Machine Repair",
+        problemDescription: "The appliance does not start.",
+        address: "123 Test Street",
+      },
+      cookie,
+    );
+    assert.equal(submission.response.status, 201);
+
+    const savedRequest = await repairRequestForId(
+      String(submission.body.requestId),
+    );
+    const customer = await customerForEmail(email);
+    assert.equal(savedRequest.customerId, customer.id);
+    assert.equal(savedRequest.emailStatus, "sent");
+    assert.ok(
+      sentEmails.some((message) =>
+        message.text.includes("Customer type: Registered Customer"),
+      ),
+    );
+
+    const ownRequests = await get("/api/customer/repair-requests", cookie);
+    assert.equal(ownRequests.response.status, 200);
+    assert.ok(
+      (ownRequests.body as unknown[]).some(
+        (item) =>
+          (item as { requestId?: string }).requestId ===
+          submission.body.requestId,
+      ),
+    );
+
+    const otherLogin = await request("/api/auth/login", {
+      email: otherEmail,
+      password: TEST_PASSWORD,
+      rememberMe: true,
+    });
+    assert.equal(otherLogin.response.status, 200);
+    const otherRequests = await get(
+      "/api/customer/repair-requests",
+      sessionCookie(otherLogin.response),
+    );
+    assert.equal(otherRequests.response.status, 200);
+    assert.equal((otherRequests.body as unknown[]).length, 0);
+  } finally {
+    delete process.env.BUSINESS_EMAIL;
+  }
+});
+
+test("public reviews expose only approved reviews and review APIs enforce authentication", async () => {
   const publicReviews = await get("/api/reviews?limit=100");
   assert.equal(publicReviews.response.status, 200);
   assert.ok(Array.isArray(publicReviews.body));
-  assert.equal((publicReviews.body as unknown[]).length, 0);
+  const approvedReviews = await db
+    .select({ reviewId: reviewsTable.reviewId })
+    .from(reviewsTable)
+    .where(eq(reviewsTable.status, "approved"));
+  const approvedIds = new Set(approvedReviews.map((review) => review.reviewId));
+  for (const review of publicReviews.body as Array<{ reviewId?: string }>) {
+    assert.ok(review.reviewId);
+    assert.ok(approvedIds.has(review.reviewId));
+  }
 
   const eligible = await get("/api/customer/reviews/eligible");
   assert.equal(eligible.response.status, 401);

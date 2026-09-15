@@ -12,7 +12,7 @@ type RepairRequestEmailData = {
   preferredTime: string | null;
   additionalNotes?: string | null;
   submittedAt: Date;
-  customerType?: "Guest" | "Registered";
+  customerType?: "Guest" | "Registered Customer";
   notificationType?: "repair-request" | "booking";
 };
 

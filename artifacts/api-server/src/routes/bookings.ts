@@ -200,7 +200,7 @@ router.post("/bookings", async (request, response): Promise<void> => {
       preferredTime,
       additionalNotes,
       submittedAt,
-      customerType: "Registered",
+      customerType: "Registered Customer",
       notificationType: "booking",
     });
 

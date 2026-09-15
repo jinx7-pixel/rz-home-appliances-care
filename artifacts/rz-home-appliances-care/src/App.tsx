@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
+  getGetCustomerRepairRequestsQueryKey,
   getGetPublicReviewsQueryKey,
   useCreateRepairRequest,
   useGetPublicReviews,
@@ -871,6 +872,9 @@ function ContactSection() {
       setSuccessMessage(
         `Your repair request has been submitted successfully. Your request ID is ${result.requestId}. A confirmation email has been sent to your email address. Our team will contact you shortly.`,
       );
+      void queryClient.invalidateQueries({
+        queryKey: getGetCustomerRepairRequestsQueryKey(),
+      });
       setFormValues({
         name: '',
         phone: '',

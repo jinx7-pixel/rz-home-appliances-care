@@ -101,7 +101,7 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
       preferredDate,
       preferredTime,
       submittedAt,
-      customerType: authenticatedCustomer ? "Registered" : "Guest",
+      customerType: authenticatedCustomer ? "Registered Customer" : "Guest",
     });
 
     await db
