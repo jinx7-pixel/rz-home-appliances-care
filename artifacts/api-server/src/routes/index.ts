@@ -7,6 +7,7 @@ import bookingsRouter from "./bookings";
 import adminAuthRouter from "./admin-auth";
 import adminRepairRequestsRouter from "./admin-repair-requests";
 import adminBookingsRouter from "./admin-bookings";
+import reviewsRouter from "./reviews";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use("/customer", bookingsRouter);
 router.use("/admin", adminAuthRouter);
 router.use("/admin", adminRepairRequestsRouter);
 router.use("/admin", adminBookingsRouter);
+router.use(reviewsRouter);
 
 export default router;

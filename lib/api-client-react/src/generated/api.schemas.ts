@@ -123,6 +123,112 @@ export interface CustomerBooking {
   additionalNotes: string | null;
 }
 
+export type ReviewStatus = typeof ReviewStatus[keyof typeof ReviewStatus];
+
+
+export const ReviewStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+  hidden: 'hidden',
+} as const;
+
+export type CustomerReviewEligibleSourceType = typeof CustomerReviewEligibleSourceType[keyof typeof CustomerReviewEligibleSourceType];
+
+
+export const CustomerReviewEligibleSourceType = {
+  repair_request: 'repair_request',
+  booking: 'booking',
+} as const;
+
+export interface CustomerReviewEligible {
+  sourceType: CustomerReviewEligibleSourceType;
+  sourceId: string;
+  applianceType: string;
+  status: string;
+  createdAt: string;
+  reviewSubmitted: boolean;
+  /** @nullable */
+  reviewStatus?: ReviewStatus | null;
+  /** @nullable */
+  reviewId?: string | null;
+}
+
+export type CustomerReviewTargetSourceType = typeof CustomerReviewTargetSourceType[keyof typeof CustomerReviewTargetSourceType];
+
+
+export const CustomerReviewTargetSourceType = {
+  repair_request: 'repair_request',
+  booking: 'booking',
+} as const;
+
+export type CustomerReviewSourceType = typeof CustomerReviewSourceType[keyof typeof CustomerReviewSourceType];
+
+
+export const CustomerReviewSourceType = {
+  repair_request: 'repair_request',
+  booking: 'booking',
+} as const;
+
+export interface CustomerReview {
+  reviewId: string;
+  sourceType: CustomerReviewSourceType;
+  sourceId: string;
+  applianceType: string;
+  relatedStatus: string;
+  /** @nullable */
+  relatedDate: string | null;
+  /** @nullable */
+  relatedTime: string | null;
+  /** @nullable */
+  relatedAddress: string | null;
+  /** @nullable */
+  relatedProblemDescription: string | null;
+  rating: number;
+  reviewMessage: string;
+  showFirstName: boolean;
+  isVerified: boolean;
+  status: ReviewStatus;
+  createdAt: string;
+}
+
+export interface CustomerReviewTarget {
+  sourceType: CustomerReviewTargetSourceType;
+  sourceId: string;
+  applianceType: string;
+  status: string;
+  existingReview: CustomerReview | null;
+}
+
+export interface CustomerReviewInput {
+  /** @nullable */
+  requestId?: string | null;
+  /** @nullable */
+  bookingId?: string | null;
+  /**
+     * @minimum 1
+     * @maximum 5
+     */
+  rating: number;
+  /**
+     * @minLength 10
+     * @maxLength 1000
+     */
+  reviewMessage: string;
+  showFirstName: boolean;
+}
+
+export interface PublicReview {
+  reviewId: string;
+  rating: number;
+  reviewMessage: string;
+  customerLabel: string;
+  /** @nullable */
+  applianceType: string | null;
+  isVerified: boolean;
+  createdAt: string;
+}
+
 export interface ApiError {
   error: string;
 }
@@ -345,6 +451,55 @@ export interface AdminBookingUpdate {
   cancellationReason?: string | null;
 }
 
+export type AdminReviewSourceType = typeof AdminReviewSourceType[keyof typeof AdminReviewSourceType];
+
+
+export const AdminReviewSourceType = {
+  repair_request: 'repair_request',
+  booking: 'booking',
+} as const;
+
+export interface AdminReview {
+  reviewId: string;
+  customerId: string;
+  customerName: string;
+  customerEmail: string;
+  sourceType: AdminReviewSourceType;
+  sourceId: string;
+  applianceType: string;
+  rating: number;
+  reviewMessage: string;
+  showFirstName: boolean;
+  isVerified: boolean;
+  status: ReviewStatus;
+  /** @nullable */
+  adminNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminReviewUpdate {
+  status?: ReviewStatus;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  adminNotes?: string | null;
+}
+
+export type GetCustomerReviewTargetParams = {
+requestId?: string;
+bookingId?: string;
+};
+
+export type GetPublicReviewsParams = {
+/**
+ * @minimum 3
+ * @maximum 100
+ */
+limit?: number;
+};
+
 export type GetAdminRepairRequestsParams = {
 /**
  * @maxLength 200
@@ -393,6 +548,28 @@ export type GetAdminBookingsSort = typeof GetAdminBookingsSort[keyof typeof GetA
 
 
 export const GetAdminBookingsSort = {
+  newest: 'newest',
+  oldest: 'oldest',
+} as const;
+
+export type GetAdminReviewsParams = {
+/**
+ * @maxLength 200
+ */
+search?: string;
+/**
+ * @minimum 1
+ * @maximum 5
+ */
+rating?: number;
+status?: ReviewStatus;
+sort?: GetAdminReviewsSort;
+};
+
+export type GetAdminReviewsSort = typeof GetAdminReviewsSort[keyof typeof GetAdminReviewsSort];
+
+
+export const GetAdminReviewsSort = {
   newest: 'newest',
   oldest: 'oldest',
 } as const;

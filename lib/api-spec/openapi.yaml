@@ -160,6 +160,126 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+  /customer/reviews/eligible:
+    get:
+      operationId: getCustomerReviewEligible
+      tags: [customer]
+      summary: List completed customer work that can receive a review
+      responses:
+        "200":
+          description: Completed customer requests and bookings with review state
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomerReviewEligible"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /customer/review-target:
+    get:
+      operationId: getCustomerReviewTarget
+      tags: [customer]
+      summary: Load one completed customer request or booking for review
+      parameters:
+        - name: requestId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: bookingId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Review target and any existing review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerReviewTarget"
+        "400":
+          description: Exactly one request or booking identifier is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Completed customer work not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /customer/reviews:
+    post:
+      operationId: createCustomerReview
+      tags: [customer]
+      summary: Submit a review for the authenticated customer's completed work
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerReviewInput"
+      responses:
+        "201":
+          description: Review submitted for approval
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerReview"
+        "400":
+          description: Invalid review data or incomplete work
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: A review already exists for this work
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /reviews:
+    get:
+      operationId: getPublicReviews
+      tags: [reviews]
+      summary: List approved public customer reviews
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 3
+            maximum: 100
+            default: 6
+      responses:
+        "200":
+          description: Approved reviews safe for public display
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PublicReview"
   /auth/signup:
     post:
       operationId: authSignup
@@ -644,6 +764,148 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+  /admin/reviews:
+    get:
+      operationId: getAdminReviews
+      tags: [admin]
+      summary: List customer reviews for moderation
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 200
+        - name: rating
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ReviewStatus"
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [newest, oldest]
+            default: newest
+      responses:
+        "200":
+          description: Reviews visible to administrators
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminReview"
+        "403":
+          description: Administrator access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /admin/reviews/{reviewId}:
+    get:
+      operationId: getAdminReview
+      tags: [admin]
+      summary: View a customer review and related work
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Review details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminReview"
+        "403":
+          description: Administrator access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Review not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    patch:
+      operationId: updateAdminReview
+      tags: [admin]
+      summary: Moderate a customer review or update internal notes
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminReviewUpdate"
+      responses:
+        "200":
+          description: Review updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminReview"
+        "400":
+          description: Invalid review update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Administrator access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Review not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteAdminReview
+      tags: [admin]
+      summary: Delete a customer review
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Review deleted
+        "403":
+          description: Administrator access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Review not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 components:
   schemas:
     HealthStatus:
@@ -821,6 +1083,160 @@ components:
           type: string
         additionalNotes:
           type: ["string", "null"]
+    ReviewStatus:
+      type: string
+      enum: [pending, approved, rejected, hidden]
+    CustomerReviewEligible:
+      type: object
+      required:
+        - sourceType
+        - sourceId
+        - applianceType
+        - status
+        - createdAt
+        - reviewSubmitted
+      properties:
+        sourceType:
+          type: string
+          enum: [repair_request, booking]
+        sourceId:
+          type: string
+        applianceType:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        reviewSubmitted:
+          type: boolean
+        reviewStatus:
+          type: ["string", "null"]
+          $ref: "#/components/schemas/ReviewStatus"
+        reviewId:
+          type: ["string", "null"]
+    CustomerReviewTarget:
+      type: object
+      required:
+        - sourceType
+        - sourceId
+        - applianceType
+        - status
+        - existingReview
+      properties:
+        sourceType:
+          type: string
+          enum: [repair_request, booking]
+        sourceId:
+          type: string
+        applianceType:
+          type: string
+        status:
+          type: string
+        existingReview:
+          anyOf:
+            - $ref: "#/components/schemas/CustomerReview"
+            - type: "null"
+    CustomerReviewInput:
+      type: object
+      additionalProperties: false
+      required:
+        - rating
+        - reviewMessage
+        - showFirstName
+      properties:
+        requestId:
+          type: ["string", "null"]
+        bookingId:
+          type: ["string", "null"]
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        reviewMessage:
+          type: string
+          minLength: 10
+          maxLength: 1000
+        showFirstName:
+          type: boolean
+    CustomerReview:
+      type: object
+      required:
+        - reviewId
+        - sourceType
+        - sourceId
+        - applianceType
+        - relatedStatus
+        - relatedDate
+        - relatedTime
+        - relatedAddress
+        - relatedProblemDescription
+        - rating
+        - reviewMessage
+        - showFirstName
+        - isVerified
+        - status
+        - createdAt
+      properties:
+        reviewId:
+          type: string
+        sourceType:
+          type: string
+          enum: [repair_request, booking]
+        sourceId:
+          type: string
+        applianceType:
+          type: string
+        relatedStatus:
+          type: string
+        relatedDate:
+          type: ["string", "null"]
+          format: date
+        relatedTime:
+          type: ["string", "null"]
+        relatedAddress:
+          type: ["string", "null"]
+        relatedProblemDescription:
+          type: ["string", "null"]
+        rating:
+          type: integer
+        reviewMessage:
+          type: string
+        showFirstName:
+          type: boolean
+        isVerified:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/ReviewStatus"
+        createdAt:
+          type: string
+          format: date-time
+    PublicReview:
+      type: object
+      required:
+        - reviewId
+        - rating
+        - reviewMessage
+        - customerLabel
+        - applianceType
+        - isVerified
+        - createdAt
+      properties:
+        reviewId:
+          type: string
+        rating:
+          type: integer
+        reviewMessage:
+          type: string
+        customerLabel:
+          type: string
+        applianceType:
+          type: ["string", "null"]
+        isVerified:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
     ApiError:
       type: object
       required:
@@ -1154,3 +1570,66 @@ components:
         cancellationReason:
           type: ["string", "null"]
           maxLength: 2000
+    AdminReview:
+      type: object
+      required:
+        - reviewId
+        - customerId
+        - customerName
+        - customerEmail
+        - sourceType
+        - sourceId
+        - applianceType
+        - rating
+        - reviewMessage
+        - showFirstName
+        - isVerified
+        - status
+        - adminNotes
+        - createdAt
+        - updatedAt
+      properties:
+        reviewId:
+          type: string
+        customerId:
+          type: string
+          format: uuid
+        customerName:
+          type: string
+        customerEmail:
+          type: string
+          format: email
+        sourceType:
+          type: string
+          enum: [repair_request, booking]
+        sourceId:
+          type: string
+        applianceType:
+          type: string
+        rating:
+          type: integer
+        reviewMessage:
+          type: string
+        showFirstName:
+          type: boolean
+        isVerified:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/ReviewStatus"
+        adminNotes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    AdminReviewUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          $ref: "#/components/schemas/ReviewStatus"
+        adminNotes:
+          type: ["string", "null"]
+          maxLength: 5000

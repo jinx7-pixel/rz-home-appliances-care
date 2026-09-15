@@ -4,6 +4,8 @@ import {
   useAuthLogout,
   useAuthMe,
   useGetCustomerRepairRequests,
+  getGetCustomerReviewEligibleQueryKey,
+  useGetCustomerReviewEligible,
 } from '@workspace/api-client-react';
 import { ArrowRight, CalendarDays, Clock3, House, LoaderCircle, LogOut, X } from 'lucide-react';
 
@@ -88,6 +90,13 @@ export function CustomerDashboardPage() {
       retry: false,
     },
   });
+  const reviewEligibleQuery = useGetCustomerReviewEligible({
+    query: {
+      queryKey: getGetCustomerReviewEligibleQueryKey(),
+      enabled: authMeQuery.data?.authenticated === true,
+      retry: false,
+    },
+  });
   const logout = useAuthLogout();
   const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
   const cancelSignOutButtonRef = useRef<HTMLButtonElement>(null);
@@ -96,6 +105,7 @@ export function CustomerDashboardPage() {
     if (
       getErrorStatus(requestsQuery.error) !== 401 &&
       getErrorStatus(bookingsQuery.error) !== 401 &&
+      getErrorStatus(reviewEligibleQuery.error) !== 401 &&
       !(authMeQuery.isSuccess && !authMeQuery.data.authenticated)
     ) {
       return;
@@ -105,6 +115,7 @@ export function CustomerDashboardPage() {
     authMeQuery.data,
     authMeQuery.isSuccess,
     bookingsQuery.error,
+    reviewEligibleQuery.error,
     requestsQuery.error,
   ]);
 
@@ -180,9 +191,9 @@ export function CustomerDashboardPage() {
 
         <section aria-labelledby="customer-dashboard-heading" className="pt-10 sm:pt-14">
           <p className="text-[clamp(1.55rem,3vw,2.35rem)] font-extrabold leading-[1.08] tracking-[-0.055em] text-[hsl(215_74%_28%)]">
-            {authMeQuery.data?.user?.fullName?.trim()
-              ? `Good to see you, ${authMeQuery.data.user.fullName.trim()}! 👋`
-              : 'Good to see you! 👋'}
+              {authMeQuery.data?.user?.fullName?.trim()
+              ? `Good to see you, ${authMeQuery.data.user.fullName.trim()}!`
+              : 'Good to see you!'}
           </p>
           <p className="mt-2 text-[0.95rem] leading-[1.65] text-[hsl(215_20%_45%)]">
             Here’s an overview of your repair requests.
@@ -264,6 +275,17 @@ export function CustomerDashboardPage() {
                     </div>
                   ) : null}
                 </dl>
+                {request.status === 'completed' ? (() => {
+                  const review = reviewEligibleQuery.data?.find((item) => item.sourceType === 'repair_request' && item.sourceId === request.requestId);
+                  return review ? (
+                    <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[hsl(215_35%_90%)] pt-5">
+                      <p className="text-[0.78rem] font-semibold text-[hsl(215_20%_48%)]">{review.reviewSubmitted ? 'Your feedback is with our team.' : 'Had a completed repair? Tell us how it went.'}</p>
+                      <a className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-[0.78rem] font-extrabold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] ${review.reviewSubmitted ? 'border border-[hsl(215_35%_82%)] text-[hsl(215_20%_48%)]' : 'bg-[hsl(215_82%_38%)] text-white hover:bg-[hsl(215_82%_32%)]'}`} data-testid={`link-review-request-${request.requestId}`} href={`${appPath('/customer/review')}?requestId=${encodeURIComponent(request.requestId)}`}>
+                        {review.reviewSubmitted ? 'Review Submitted' : 'Leave a Review'} <ArrowRight aria-hidden="true" className="size-4" />
+                      </a>
+                    </div>
+                  ) : null;
+                })() : null}
               </article>
             ))
           )}
@@ -358,6 +380,17 @@ export function CustomerDashboardPage() {
                       {booking.additionalNotes}
                     </p>
                   ) : null}
+                  {booking.status === 'completed' ? (() => {
+                    const review = reviewEligibleQuery.data?.find((item) => item.sourceType === 'booking' && item.sourceId === booking.bookingId);
+                    return review ? (
+                      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[hsl(215_35%_90%)] pt-5">
+                        <p className="text-[0.78rem] font-semibold text-[hsl(215_20%_48%)]">{review.reviewSubmitted ? 'Your feedback is with our team.' : 'Had a completed booking? Tell us how it went.'}</p>
+                        <a className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-[0.78rem] font-extrabold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] ${review.reviewSubmitted ? 'border border-[hsl(215_35%_82%)] text-[hsl(215_20%_48%)]' : 'bg-[hsl(215_82%_38%)] text-white hover:bg-[hsl(215_82%_32%)]'}`} data-testid={`link-review-booking-${booking.bookingId}`} href={`${appPath('/customer/review')}?bookingId=${encodeURIComponent(booking.bookingId)}`}>
+                          {review.reviewSubmitted ? 'Review Submitted' : 'Leave a Review'} <ArrowRight aria-hidden="true" className="size-4" />
+                        </a>
+                      </div>
+                    ) : null;
+                  })() : null}
                 </article>
               ))
             )}

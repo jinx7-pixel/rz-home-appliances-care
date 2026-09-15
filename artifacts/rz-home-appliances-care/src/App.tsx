@@ -6,7 +6,11 @@ import {
   type ReactNode,
 } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useCreateRepairRequest } from '@workspace/api-client-react';
+import {
+  getGetPublicReviewsQueryKey,
+  useCreateRepairRequest,
+  useGetPublicReviews,
+} from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { MenuHoverLink } from '@/components/ui/menu-hover-effects';
 import { Toaster } from '@/components/ui/toaster';
@@ -24,6 +28,9 @@ import { BookRepairPage } from '@/pages/book-repair';
 import { AdminLoginPage } from '@/pages/admin-login';
 import { AdminDashboardPage } from '@/pages/admin-dashboard';
 import { AdminBookingsPage } from '@/pages/admin-bookings';
+import { AdminReviewsPage } from '@/pages/admin-reviews';
+import { CustomerReviewPage } from '@/pages/customer-review';
+import { PublicReviewsPage } from '@/pages/public-reviews';
 import applianceCareImage from '@assets/ChatGPT_Image_Sep_14,_2026,_03_54_12_PM_1789381955049.png';
 import siddiqBashaImage from '@assets/ChatGPT_Image_Sep_14,_2026,_04_32_51_PM_1789383963232.png';
 import {
@@ -41,6 +48,7 @@ import {
   Phone,
   Refrigerator,
   ShieldCheck,
+  Star,
   Tv,
   WashingMachine,
   X,
@@ -54,6 +62,11 @@ import {
 } from 'wouter';
 
 const queryClient = new QueryClient();
+
+function appPath(path: string): string {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+  return `${base}${path === '/' ? '/' : path}`;
+}
 
 const navigationLinks = [
   { label: 'Services', href: '#services' },
@@ -736,6 +749,59 @@ function AboutSection() {
             Request a Repair
             <ArrowRight aria-hidden="true" className="size-5 transition-transform duration-200 group-hover:translate-x-1" />
           </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CustomerReviewsSection() {
+  const reviewsQuery = useGetPublicReviews(
+    { limit: 100 },
+    { query: { queryKey: getGetPublicReviewsQueryKey({ limit: 100 }), retry: false } },
+  );
+  const reviews = reviewsQuery.data ?? [];
+
+  return (
+    <section
+      aria-labelledby="customer-reviews-heading"
+      className="bg-[hsl(215_48%_14%)] px-5 py-20 text-[hsl(210_40%_98%)] sm:px-8 sm:py-24 lg:px-12 lg:py-28"
+      id="customer-reviews"
+    >
+      <div className="mx-auto w-full max-w-[1440px]">
+        <div className="flex flex-col gap-7 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-[0.68rem] font-extrabold uppercase tracking-[0.22em] text-[hsl(184_85%_64%)]">REAL WORDS FROM REAL HOMES</p>
+            <h2 className="mt-4 max-w-[12ch] text-[clamp(2.7rem,5.3vw,4.8rem)] font-extrabold leading-[0.94] tracking-[-0.075em]" id="customer-reviews-heading">What Our Customers Say</h2>
+          </div>
+          <p className="max-w-[21rem] text-[0.92rem] leading-[1.7] text-[hsl(215_24%_76%)]">The best measure of a careful repair is how it feels after we leave.</p>
+        </div>
+        <div aria-live="polite" className="mt-12">
+          {reviewsQuery.isPending ? (
+            <div className="grid gap-4 md:grid-cols-3">{[1, 2, 3].map((item) => <div className="h-64 animate-pulse rounded-[1.7rem] bg-[hsl(215_42%_19%)]" data-testid={`skeleton-public-review-${item}`} key={item} />)}</div>
+          ) : reviewsQuery.isError ? (
+            <div className="rounded-[1.5rem] border border-[hsl(4_55%_45%)] bg-[hsl(4_55%_24%)] p-6 text-sm font-semibold text-[hsl(4_78%_82%)]" data-testid="text-public-reviews-error">Reviews are unavailable right now. Please check back soon.</div>
+          ) : reviews.length === 0 ? (
+            <div className="rounded-[1.5rem] border border-[hsl(215_25%_30%)] bg-[hsl(215_42%_19%)] p-8 text-center text-[0.95rem] font-semibold text-[hsl(215_24%_76%)]" data-testid="text-public-reviews-empty">Our customer reviews will appear here soon.</div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {reviews.slice(0, 6).map((review) => (
+                <article className="flex min-h-[16rem] flex-col rounded-[1.7rem] border border-[hsl(215_25%_30%)] bg-[hsl(215_42%_19%)] p-6 transition duration-300 hover:-translate-y-1 hover:border-[hsl(184_85%_64%/0.58)] sm:p-7" data-testid={`card-public-review-${review.reviewId}`} key={review.reviewId}>
+                  <div className="flex items-center justify-between gap-3"><span aria-label={`${review.rating} out of 5 stars`} className="inline-flex gap-0.5 text-[hsl(39_86%_60%)]" data-testid={`stars-public-review-${review.reviewId}`}>{[1, 2, 3, 4, 5].map((value) => <Star aria-hidden="true" className={`size-4 ${value <= review.rating ? 'fill-current' : 'text-[hsl(215_25%_36%)]'}`} key={value} />)}</span><span className="inline-flex items-center gap-1.5 rounded-full bg-[hsl(174_54%_28%)] px-2.5 py-1.5 text-[0.62rem] font-extrabold text-[hsl(174_54%_86%)]"><ShieldCheck className="size-3.5" /> Verified Customer</span></div>
+                  <blockquote className="mt-6 text-[1rem] font-semibold leading-[1.65] text-[hsl(210_40%_98%)]">“{review.reviewMessage}”</blockquote>
+                  <div className="mt-auto border-t border-[hsl(215_25%_30%)] pt-5"><p className="text-[0.78rem] font-extrabold text-[hsl(184_85%_72%)]" data-testid={`text-public-review-customer-${review.reviewId}`}>{review.customerLabel}</p><p className="mt-1 text-[0.72rem] text-[hsl(215_24%_72%)]">{review.applianceType ?? 'Appliance service'}</p></div>
+                </article>
+              ))}
+            </div>
+          )}
+          {reviews.length > 6 ? (
+            <a
+              className="mt-7 inline-flex min-h-11 items-center rounded-xl border border-[hsl(184_85%_64%)] px-4 text-[0.78rem] font-extrabold text-[hsl(184_85%_78%)] transition hover:bg-[hsl(184_85%_64%)] hover:text-[hsl(215_74%_20%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(184_85%_64%)]"
+              href={appPath('/reviews')}
+            >
+              View All Reviews
+            </a>
+          ) : null}
         </div>
       </div>
     </section>
@@ -1741,6 +1807,7 @@ function Home() {
       <HowItWorksSection />
       <WhyRzSection />
       <AboutSection />
+      <CustomerReviewsSection />
       <ContactSection />
       <LocationSection />
       <SiteFooter />
@@ -1761,10 +1828,13 @@ function Router() {
         <Route path="/sign-up" component={SignUpPage} />
         <Route path="/logout" component={LogoutPage} />
         <Route path="/customer-dashboard" component={CustomerDashboardPage} />
+        <Route path="/customer/review" component={CustomerReviewPage} />
+        <Route path="/reviews" component={PublicReviewsPage} />
         <Route path="/book-repair" component={BookRepairPage} />
         <Route path="/admin/login" component={AdminLoginPage} />
         <Route path="/admin/dashboard" component={AdminDashboardPage} />
         <Route path="/admin/bookings" component={AdminBookingsPage} />
+        <Route path="/admin/reviews" component={AdminReviewsPage} />
         <Route path="/" component={Home} />
         <Route component={NotFound} />
       </Switch>

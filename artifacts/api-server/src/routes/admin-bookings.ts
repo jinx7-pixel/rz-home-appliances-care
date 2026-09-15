@@ -20,7 +20,10 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { requireAdmin } from "./admin-repair-requests";
-import { sendBookingStatusEmail } from "../lib/repair-request-email";
+import {
+  buildReviewLink,
+  sendBookingStatusEmail,
+} from "../lib/repair-request-email";
 
 const router = Router();
 
@@ -208,6 +211,10 @@ router.patch("/bookings/:bookingId", async (request, response) => {
         address: updatedBooking.address,
         status: requestedStatus,
         cancellationReason: updatedBooking.cancellationReason,
+        reviewLink:
+          requestedStatus === "completed" && updatedBooking.customerId
+            ? buildReviewLink("booking", updatedBooking.bookingId)
+            : null,
       });
     } catch (error) {
       request.log.error(

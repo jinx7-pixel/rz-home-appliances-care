@@ -922,3 +922,27 @@ test("anonymous repair requests are accepted without an auth cookie", async () =
   assert.ok(savedRequest);
   assert.equal(savedRequest.emailStatus, "failed");
 });
+
+test("public reviews stay empty until approved and review APIs enforce authentication", async () => {
+  const publicReviews = await get("/api/reviews?limit=100");
+  assert.equal(publicReviews.response.status, 200);
+  assert.ok(Array.isArray(publicReviews.body));
+  assert.equal((publicReviews.body as unknown[]).length, 0);
+
+  const eligible = await get("/api/customer/reviews/eligible");
+  assert.equal(eligible.response.status, 401);
+
+  const target = await get("/api/customer/review-target?requestId=RZ-not-owned");
+  assert.equal(target.response.status, 401);
+
+  const submission = await request("/api/customer/reviews", {
+    requestId: "RZ-not-owned",
+    rating: 5,
+    reviewMessage: "A helpful repair service.",
+    showFirstName: false,
+  });
+  assert.equal(submission.response.status, 401);
+
+  const adminReviews = await get("/api/admin/reviews");
+  assert.equal(adminReviews.response.status, 403);
+});

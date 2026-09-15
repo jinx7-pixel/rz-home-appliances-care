@@ -121,6 +121,117 @@ export const CreateCustomerBookingResponse = zod.object({
 
 
 /**
+ * @summary List completed customer work that can receive a review
+ */
+export const GetCustomerReviewEligibleResponseItem = zod.object({
+  "sourceType": zod.enum(['repair_request', 'booking']),
+  "sourceId": zod.string(),
+  "applianceType": zod.string(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "reviewSubmitted": zod.boolean(),
+  "reviewStatus": zod.enum(['pending', 'approved', 'rejected', 'hidden']).nullish(),
+  "reviewId": zod.string().nullish()
+})
+export const GetCustomerReviewEligibleResponse = zod.array(GetCustomerReviewEligibleResponseItem)
+
+
+/**
+ * @summary Load one completed customer request or booking for review
+ */
+export const GetCustomerReviewTargetQueryParams = zod.object({
+  "requestId": zod.coerce.string().optional(),
+  "bookingId": zod.coerce.string().optional()
+})
+
+export const GetCustomerReviewTargetResponse = zod.object({
+  "sourceType": zod.enum(['repair_request', 'booking']),
+  "sourceId": zod.string(),
+  "applianceType": zod.string(),
+  "status": zod.string(),
+  "existingReview": zod.union([zod.object({
+  "reviewId": zod.string(),
+  "sourceType": zod.enum(['repair_request', 'booking']),
+  "sourceId": zod.string(),
+  "applianceType": zod.string(),
+  "relatedStatus": zod.string(),
+  "relatedDate": zod.coerce.date().nullable(),
+  "relatedTime": zod.string().nullable(),
+  "relatedAddress": zod.string().nullable(),
+  "relatedProblemDescription": zod.string().nullable(),
+  "rating": zod.number().int(),
+  "reviewMessage": zod.string(),
+  "showFirstName": zod.boolean(),
+  "isVerified": zod.boolean(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'hidden']),
+  "createdAt": zod.coerce.date()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Submit a review for the authenticated customer's completed work
+ */
+export const createCustomerReviewBodyRatingMax = 5;
+
+export const createCustomerReviewBodyReviewMessageMin = 10;
+export const createCustomerReviewBodyReviewMessageMax = 1000;
+
+
+
+export const CreateCustomerReviewBody = zod.object({
+  "requestId": zod.string().nullish(),
+  "bookingId": zod.string().nullish(),
+  "rating": zod.number().int().min(1).max(createCustomerReviewBodyRatingMax),
+  "reviewMessage": zod.string().min(createCustomerReviewBodyReviewMessageMin).max(createCustomerReviewBodyReviewMessageMax),
+  "showFirstName": zod.boolean()
+})
+
+export const CreateCustomerReviewResponse = zod.object({
+  "reviewId": zod.string(),
+  "sourceType": zod.enum(['repair_request', 'booking']),
+  "sourceId": zod.string(),
+  "applianceType": zod.string(),
+  "relatedStatus": zod.string(),
+  "relatedDate": zod.coerce.date().nullable(),
+  "relatedTime": zod.string().nullable(),
+  "relatedAddress": zod.string().nullable(),
+  "relatedProblemDescription": zod.string().nullable(),
+  "rating": zod.number().int(),
+  "reviewMessage": zod.string(),
+  "showFirstName": zod.boolean(),
+  "isVerified": zod.boolean(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'hidden']),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List approved public customer reviews
+ */
+export const getPublicReviewsQueryLimitDefault = 6;
+export const getPublicReviewsQueryLimitMin = 3;
+export const getPublicReviewsQueryLimitMax = 100;
+
+
+
+export const GetPublicReviewsQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(getPublicReviewsQueryLimitMin).max(getPublicReviewsQueryLimitMax).default(getPublicReviewsQueryLimitDefault)
+})
+
+export const GetPublicReviewsResponseItem = zod.object({
+  "reviewId": zod.string(),
+  "rating": zod.number().int(),
+  "reviewMessage": zod.string(),
+  "customerLabel": zod.string(),
+  "applianceType": zod.string().nullable(),
+  "isVerified": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const GetPublicReviewsResponse = zod.array(GetPublicReviewsResponseItem)
+
+
+/**
  * @summary Create a customer account
  */
 export const authSignupBodyFullNameMin = 2;
@@ -487,5 +598,112 @@ export const UpdateAdminBookingResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
+
+
+/**
+ * @summary List customer reviews for moderation
+ */
+export const getAdminReviewsQuerySearchMax = 200;
+
+export const getAdminReviewsQueryRatingMax = 5;
+
+export const getAdminReviewsQuerySortDefault = `newest`;
+
+export const GetAdminReviewsQueryParams = zod.object({
+  "search": zod.coerce.string().max(getAdminReviewsQuerySearchMax).optional(),
+  "rating": zod.coerce.number().int().min(1).max(getAdminReviewsQueryRatingMax).optional(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'hidden']).optional(),
+  "sort": zod.enum(['newest', 'oldest']).default(getAdminReviewsQuerySortDefault)
+})
+
+export const GetAdminReviewsResponseItem = zod.object({
+  "reviewId": zod.string(),
+  "customerId": zod.string().uuid(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().email(),
+  "sourceType": zod.enum(['repair_request', 'booking']),
+  "sourceId": zod.string(),
+  "applianceType": zod.string(),
+  "rating": zod.number().int(),
+  "reviewMessage": zod.string(),
+  "showFirstName": zod.boolean(),
+  "isVerified": zod.boolean(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'hidden']),
+  "adminNotes": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const GetAdminReviewsResponse = zod.array(GetAdminReviewsResponseItem)
+
+
+/**
+ * @summary View a customer review and related work
+ */
+export const GetAdminReviewParams = zod.object({
+  "reviewId": zod.coerce.string()
+})
+
+export const GetAdminReviewResponse = zod.object({
+  "reviewId": zod.string(),
+  "customerId": zod.string().uuid(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().email(),
+  "sourceType": zod.enum(['repair_request', 'booking']),
+  "sourceId": zod.string(),
+  "applianceType": zod.string(),
+  "rating": zod.number().int(),
+  "reviewMessage": zod.string(),
+  "showFirstName": zod.boolean(),
+  "isVerified": zod.boolean(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'hidden']),
+  "adminNotes": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Moderate a customer review or update internal notes
+ */
+export const UpdateAdminReviewParams = zod.object({
+  "reviewId": zod.coerce.string()
+})
+
+export const updateAdminReviewBodyAdminNotesMax = 5000;
+
+
+
+export const UpdateAdminReviewBody = zod.object({
+  "status": zod.enum(['pending', 'approved', 'rejected', 'hidden']).optional(),
+  "adminNotes": zod.string().max(updateAdminReviewBodyAdminNotesMax).nullish()
+})
+
+export const UpdateAdminReviewResponse = zod.object({
+  "reviewId": zod.string(),
+  "customerId": zod.string().uuid(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().email(),
+  "sourceType": zod.enum(['repair_request', 'booking']),
+  "sourceId": zod.string(),
+  "applianceType": zod.string(),
+  "rating": zod.number().int(),
+  "reviewMessage": zod.string(),
+  "showFirstName": zod.boolean(),
+  "isVerified": zod.boolean(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'hidden']),
+  "adminNotes": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a customer review
+ */
+export const DeleteAdminReviewParams = zod.object({
+  "reviewId": zod.coerce.string()
+})
+
+export const DeleteAdminReviewResponse = zod.void()
 
 

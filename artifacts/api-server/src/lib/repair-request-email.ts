@@ -269,7 +269,38 @@ type RepairStatusEmailData = {
   applianceType: string;
   status: "in_progress" | "completed" | "cancelled";
   cancellationReason?: string | null;
+  reviewLink?: string | null;
 };
+
+function getApplicationBaseUrl(): string | null {
+  const configured = process.env.APP_BASE_URL?.trim();
+  const developmentDomain = process.env.REPLIT_DEV_DOMAIN?.trim();
+  const candidate =
+    configured || (developmentDomain ? `https://${developmentDomain}` : null);
+  if (!candidate) return null;
+
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    const configuredPath = process.env.APP_BASE_PATH?.trim();
+    if (configuredPath) {
+      url.pathname = `/${configuredPath.replace(/^\/|\/$/g, "")}`;
+    }
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
+export function buildReviewLink(
+  sourceType: "request" | "booking",
+  sourceId: string,
+): string | null {
+  const baseUrl = getApplicationBaseUrl();
+  if (!baseUrl) return null;
+  const parameter = sourceType === "request" ? "requestId" : "bookingId";
+  return `${baseUrl}/customer/review?${parameter}=${encodeURIComponent(sourceId)}`;
+}
 
 export async function sendRepairStatusEmail(
   data: RepairStatusEmailData,
@@ -310,6 +341,14 @@ export async function sendRepairStatusEmail(
     ...(supportEmail ? [`Support email: ${supportEmail}`] : []),
   ].join("\n");
   const supportHtml = `For support, contact RZ Home Appliances Care at +91 80738 48334.${supportEmail ? `<br>Support email: ${escapeHtml(supportEmail)}` : ""}`;
+  const reviewText =
+    data.status === "completed" && data.reviewLink
+      ? `\n\nLeave a review: ${data.reviewLink}`
+      : "";
+  const reviewHtml =
+    data.status === "completed" && data.reviewLink
+      ? `<p><a href="${escapeHtml(data.reviewLink)}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#155db5;color:#ffffff;text-decoration:none;font-weight:700;">Leave a Review</a></p>`
+      : "";
 
   await sendEmail({
     from,
@@ -318,7 +357,7 @@ export async function sendRepairStatusEmail(
     text: [
       `Hi ${data.customerName},`,
       "",
-      statusContent.text,
+      `${statusContent.text}${reviewText}`,
       "",
       `Service type: ${data.applianceType}`,
       `Request ID: ${data.requestId}`,
@@ -332,6 +371,7 @@ export async function sendRepairStatusEmail(
       <p>Hi ${escapeHtml(data.customerName)},</p>
       <p>${statusContent.html}</p>
       <p><strong>Service type:</strong> ${escapeHtml(data.applianceType)}<br><strong>Request ID:</strong> ${escapeHtml(data.requestId)}</p>
+      ${reviewHtml}
       <p>${supportHtml}</p>
       <p>Thank you,<br>RZ Home Appliances Care</p>
     `,
@@ -348,6 +388,7 @@ type BookingStatusEmailData = {
   address: string;
   status: "confirmed" | "in_progress" | "completed" | "cancelled";
   cancellationReason?: string | null;
+  reviewLink?: string | null;
 };
 
 export async function sendBookingStatusEmail(
@@ -370,6 +411,14 @@ export async function sendBookingStatusEmail(
     ...(supportEmail ? [`Support email: ${supportEmail}`] : []),
   ].join("\n");
   const contactHtml = `For support, contact RZ Home Appliances Care at +91 80738 48334.${supportEmail ? `<br>Support email: ${escapeHtml(supportEmail)}` : ""}`;
+  const reviewText =
+    data.status === "completed" && data.reviewLink
+      ? `\n\nLeave a review: ${data.reviewLink}`
+      : "";
+  const reviewHtml =
+    data.status === "completed" && data.reviewLink
+      ? `<p><a href="${escapeHtml(data.reviewLink)}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#155db5;color:#ffffff;text-decoration:none;font-weight:700;">Leave a Review</a></p>`
+      : "";
   const scheduleText = [
     `Appointment date: ${data.preferredDate}`,
     `Appointment time: ${data.preferredTime}`,
@@ -410,7 +459,7 @@ export async function sendBookingStatusEmail(
     text: [
       `Hi ${data.customerName},`,
       "",
-      content.text,
+      `${content.text}${reviewText}`,
       "",
       `Booking ID: ${data.bookingId}`,
       `Appliance/service type: ${data.applianceType}`,
@@ -426,6 +475,7 @@ export async function sendBookingStatusEmail(
       <p>Hi ${escapeHtml(data.customerName)},</p>
       <p>${content.html}</p>
       <p><strong>Booking ID:</strong> ${escapeHtml(data.bookingId)}<br><strong>Appliance/service type:</strong> ${escapeHtml(data.applianceType)}<br>${scheduleHtml}<br><strong>Service address:</strong> ${escapeHtml(data.address)}</p>
+      ${reviewHtml}
       <p>${contactHtml}</p>
       <p>Thank you,<br>RZ Home Appliances Care</p>
     `,
