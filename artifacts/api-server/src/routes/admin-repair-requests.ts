@@ -49,6 +49,7 @@ function serializeRepairRequest(request: typeof repairRequestsTable.$inferSelect
     preferredTime: request.preferredTime,
     status: normalizeStatus(request.status),
     adminNotes: request.adminNotes,
+    cancellationReason: request.cancellationReason,
     emailStatus: request.emailStatus,
     createdAt: request.createdAt,
     updatedAt: request.updatedAt,
@@ -144,6 +145,7 @@ router.patch("/repair-requests/:requestId", async (request, response) => {
   const values: {
     status?: string;
     adminNotes?: string | null;
+    cancellationReason?: string | null;
     updatedAt: Date;
   } = {
     updatedAt: new Date(),
@@ -154,6 +156,9 @@ router.patch("/repair-requests/:requestId", async (request, response) => {
   }
   if (Object.prototype.hasOwnProperty.call(parsed.data, "adminNotes")) {
     values.adminNotes = parsed.data.adminNotes?.trim() || null;
+  }
+  if (Object.prototype.hasOwnProperty.call(parsed.data, "cancellationReason")) {
+    values.cancellationReason = parsed.data.cancellationReason?.trim() || null;
   }
 
   const [existingRequest] = await db
@@ -211,8 +216,7 @@ router.patch("/repair-requests/:requestId", async (request, response) => {
         email: updatedRequest.email,
         applianceType: updatedRequest.applianceType,
         status: requestedStatus,
-        cancellationReason:
-          requestedStatus === "cancelled" ? updatedRequest.adminNotes : null,
+        cancellationReason: updatedRequest.cancellationReason,
       });
     } catch (error) {
       request.log.error(

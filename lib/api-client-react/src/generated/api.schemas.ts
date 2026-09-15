@@ -265,6 +265,8 @@ export interface AdminRepairRequest {
   status: AdminRequestStatus;
   /** @nullable */
   adminNotes: string | null;
+  /** @nullable */
+  cancellationReason: string | null;
   emailStatus: string;
   createdAt: string;
   updatedAt: string;
@@ -277,6 +279,11 @@ export interface AdminRepairRequestUpdate {
      * @nullable
      */
   adminNotes?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  cancellationReason?: string | null;
 }
 
 export type GetAdminRepairRequestsParams = {

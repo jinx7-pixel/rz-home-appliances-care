@@ -14,4 +14,9 @@ export interface AdminRepairRequestUpdate {
      * @nullable
      */
   adminNotes?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  cancellationReason?: string | null;
 }

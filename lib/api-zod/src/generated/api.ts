@@ -306,6 +306,7 @@ export const GetAdminRepairRequestsResponseItem = zod.object({
   "preferredTime": zod.string().nullable(),
   "status": zod.enum(['pending', 'contacted', 'in_progress', 'completed', 'cancelled']),
   "adminNotes": zod.string().nullable(),
+  "cancellationReason": zod.string().nullable(),
   "emailStatus": zod.string(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -334,6 +335,7 @@ export const GetAdminRepairRequestResponse = zod.object({
   "preferredTime": zod.string().nullable(),
   "status": zod.enum(['pending', 'contacted', 'in_progress', 'completed', 'cancelled']),
   "adminNotes": zod.string().nullable(),
+  "cancellationReason": zod.string().nullable(),
   "emailStatus": zod.string(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -349,11 +351,14 @@ export const UpdateAdminRepairRequestParams = zod.object({
 
 export const updateAdminRepairRequestBodyAdminNotesMax = 5000;
 
+export const updateAdminRepairRequestBodyCancellationReasonMax = 2000;
+
 
 
 export const UpdateAdminRepairRequestBody = zod.object({
   "status": zod.enum(['pending', 'contacted', 'in_progress', 'completed', 'cancelled']).optional(),
-  "adminNotes": zod.string().max(updateAdminRepairRequestBodyAdminNotesMax).nullish()
+  "adminNotes": zod.string().max(updateAdminRepairRequestBodyAdminNotesMax).nullish(),
+  "cancellationReason": zod.string().max(updateAdminRepairRequestBodyCancellationReasonMax).nullish()
 })
 
 export const UpdateAdminRepairRequestResponse = zod.object({
@@ -370,6 +375,7 @@ export const UpdateAdminRepairRequestResponse = zod.object({
   "preferredTime": zod.string().nullable(),
   "status": zod.enum(['pending', 'contacted', 'in_progress', 'completed', 'cancelled']),
   "adminNotes": zod.string().nullable(),
+  "cancellationReason": zod.string().nullable(),
   "emailStatus": zod.string(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()

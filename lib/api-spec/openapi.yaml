@@ -880,6 +880,7 @@ components:
         - preferredTime
         - status
         - adminNotes
+        - cancellationReason
         - emailStatus
         - createdAt
         - updatedAt
@@ -913,6 +914,8 @@ components:
           $ref: "#/components/schemas/AdminRequestStatus"
         adminNotes:
           type: ["string", "null"]
+        cancellationReason:
+          type: ["string", "null"]
         emailStatus:
           type: string
         createdAt:
@@ -930,3 +933,6 @@ components:
         adminNotes:
           type: ["string", "null"]
           maxLength: 5000
+        cancellationReason:
+          type: ["string", "null"]
+          maxLength: 2000

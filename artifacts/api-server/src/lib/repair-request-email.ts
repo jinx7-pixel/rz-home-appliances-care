@@ -281,7 +281,7 @@ export async function sendRepairStatusEmail(
     process.env.BUSINESS_EMAIL?.trim().toLowerCase();
 
   if (!from || !isValidEmail(customerEmail)) {
-    throw new Error("Email delivery is not configured");
+    throw new Error("Email delivery is not configured or the customer email is invalid");
   }
 
   const statusContent = {

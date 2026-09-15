@@ -26,6 +26,8 @@ export interface AdminRepairRequest {
   status: AdminRequestStatus;
   /** @nullable */
   adminNotes: string | null;
+  /** @nullable */
+  cancellationReason: string | null;
   emailStatus: string;
   createdAt: Date;
   updatedAt: Date;
