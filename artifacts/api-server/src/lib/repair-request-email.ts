@@ -10,6 +10,7 @@ type RepairRequestEmailData = {
   address: string;
   preferredDate: string | null;
   preferredTime: string | null;
+  additionalNotes?: string | null;
   submittedAt: Date;
 };
 
@@ -112,6 +113,9 @@ export async function sendRepairRequestEmails(
     `Problem: ${data.problemDescription}`,
     `Address: ${data.address}`,
     `Preferred schedule: ${preferredSchedule}`,
+    ...(data.additionalNotes
+      ? [`Additional notes: ${data.additionalNotes}`]
+      : []),
     `Submitted: ${submittedAt}`,
   ].join("\n");
 
@@ -142,6 +146,7 @@ export async function sendRepairRequestEmails(
         <p><strong>Problem:</strong><br>${escapeHtml(data.problemDescription).replace(/\n/g, "<br>")}</p>
         <p><strong>Address:</strong><br>${escapeHtml(data.address).replace(/\n/g, "<br>")}</p>
         <p><strong>Preferred schedule:</strong> ${escapeHtml(preferredSchedule)}</p>
+        ${data.additionalNotes ? `<p><strong>Additional notes:</strong><br>${escapeHtml(data.additionalNotes).replace(/\n/g, "<br>")}</p>` : ""}
         <p><strong>Submitted:</strong> ${escapeHtml(submittedAt)}</p>
       `,
     }),

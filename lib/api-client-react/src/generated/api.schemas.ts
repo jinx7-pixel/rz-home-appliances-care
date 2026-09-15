@@ -67,6 +67,62 @@ export interface CustomerRepairRequest {
   createdAt: string;
 }
 
+export type CustomerBookingInputApplianceType = typeof CustomerBookingInputApplianceType[keyof typeof CustomerBookingInputApplianceType];
+
+
+export const CustomerBookingInputApplianceType = {
+  Washing_Machine_Repair: 'Washing Machine Repair',
+  Refrigerator_Repair: 'Refrigerator Repair',
+  Micro_Oven_Repair: 'Micro Oven Repair',
+  LED_TV_Repair: 'LED TV Repair',
+} as const;
+
+export interface CustomerBookingInput {
+  /** @pattern ^[0-9]{10}$ */
+  phone: string;
+  applianceType: CustomerBookingInputApplianceType;
+  /**
+     * @minLength 10
+     * @maxLength 2000
+     */
+  problemDescription: string;
+  preferredDate: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  preferredTime: string;
+  /**
+     * @minLength 10
+     * @maxLength 500
+     */
+  address: string;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  additionalNotes?: string | null;
+}
+
+export interface CustomerBookingSubmission {
+  success: boolean;
+  bookingId: string;
+  message: string;
+}
+
+export interface CustomerBooking {
+  bookingId: string;
+  applianceType: string;
+  problemDescription: string;
+  preferredDate: string;
+  preferredTime: string;
+  status: string;
+  createdAt: string;
+  address: string;
+  /** @nullable */
+  additionalNotes: string | null;
+}
+
 export interface ApiError {
   error: string;
 }

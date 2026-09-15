@@ -20,6 +20,7 @@ import {
   SignUpPage,
 } from '@/pages/auth';
 import { CustomerDashboardPage } from '@/pages/customer-dashboard';
+import { BookRepairPage } from '@/pages/book-repair';
 import applianceCareImage from '@assets/ChatGPT_Image_Sep_14,_2026,_03_54_12_PM_1789381955049.png';
 import siddiqBashaImage from '@assets/ChatGPT_Image_Sep_14,_2026,_04_32_51_PM_1789383963232.png';
 import {
@@ -1757,6 +1758,7 @@ function Router() {
         <Route path="/sign-up" component={SignUpPage} />
         <Route path="/logout" component={LogoutPage} />
         <Route path="/customer-dashboard" component={CustomerDashboardPage} />
+        <Route path="/book-repair" component={BookRepairPage} />
         <Route path="/" component={Home} />
         <Route component={NotFound} />
       </Switch>

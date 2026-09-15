@@ -91,6 +91,73 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+  /customer/bookings:
+    get:
+      operationId: getCustomerBookings
+      tags: [customer]
+      summary: List the authenticated customer's bookings
+      responses:
+        "200":
+          description: Bookings belonging to the authenticated customer
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomerBooking"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      operationId: createCustomerBooking
+      tags: [customer]
+      summary: Create a booking for the authenticated customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerBookingInput"
+      responses:
+        "201":
+          description: Booking accepted and both emails sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerBookingSubmission"
+        "400":
+          description: Invalid booking data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Too many booking requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: Database or server failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "502":
+          description: Email delivery failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /auth/signup:
     post:
       operationId: authSignup
@@ -339,6 +406,91 @@ components:
         createdAt:
           type: string
           format: date-time
+    CustomerBookingInput:
+      type: object
+      additionalProperties: false
+      required:
+        - phone
+        - applianceType
+        - problemDescription
+        - preferredDate
+        - preferredTime
+        - address
+      properties:
+        phone:
+          type: string
+          pattern: "^[0-9]{10}$"
+        applianceType:
+          type: string
+          enum:
+            - Washing Machine Repair
+            - Refrigerator Repair
+            - Micro Oven Repair
+            - LED TV Repair
+        problemDescription:
+          type: string
+          minLength: 10
+          maxLength: 2000
+        preferredDate:
+          type: string
+          format: date
+        preferredTime:
+          type: string
+          minLength: 1
+          maxLength: 100
+        address:
+          type: string
+          minLength: 10
+          maxLength: 500
+        additionalNotes:
+          type: ["string", "null"]
+          maxLength: 2000
+    CustomerBookingSubmission:
+      type: object
+      required:
+        - success
+        - bookingId
+        - message
+      properties:
+        success:
+          type: boolean
+        bookingId:
+          type: string
+        message:
+          type: string
+    CustomerBooking:
+      type: object
+      required:
+        - bookingId
+        - applianceType
+        - problemDescription
+        - preferredDate
+        - preferredTime
+        - status
+        - createdAt
+        - address
+        - additionalNotes
+      properties:
+        bookingId:
+          type: string
+        applianceType:
+          type: string
+        problemDescription:
+          type: string
+        preferredDate:
+          type: string
+          format: date
+        preferredTime:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        address:
+          type: string
+        additionalNotes:
+          type: ["string", "null"]
     ApiError:
       type: object
       required:

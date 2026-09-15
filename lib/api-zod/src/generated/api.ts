@@ -71,6 +71,56 @@ export const GetCustomerRepairRequestsResponse = zod.array(GetCustomerRepairRequ
 
 
 /**
+ * @summary List the authenticated customer's bookings
+ */
+export const GetCustomerBookingsResponseItem = zod.object({
+  "bookingId": zod.string(),
+  "applianceType": zod.string(),
+  "problemDescription": zod.string(),
+  "preferredDate": zod.coerce.date(),
+  "preferredTime": zod.string(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "address": zod.string(),
+  "additionalNotes": zod.string().nullable()
+})
+export const GetCustomerBookingsResponse = zod.array(GetCustomerBookingsResponseItem)
+
+
+/**
+ * @summary Create a booking for the authenticated customer
+ */
+export const createCustomerBookingBodyPhoneRegExp = new RegExp('^[0-9]{10}$');
+export const createCustomerBookingBodyProblemDescriptionMin = 10;
+export const createCustomerBookingBodyProblemDescriptionMax = 2000;
+
+export const createCustomerBookingBodyPreferredTimeMax = 100;
+
+export const createCustomerBookingBodyAddressMin = 10;
+export const createCustomerBookingBodyAddressMax = 500;
+
+export const createCustomerBookingBodyAdditionalNotesMax = 2000;
+
+
+
+export const CreateCustomerBookingBody = zod.object({
+  "phone": zod.string().regex(createCustomerBookingBodyPhoneRegExp),
+  "applianceType": zod.enum(['Washing Machine Repair', 'Refrigerator Repair', 'Micro Oven Repair', 'LED TV Repair']),
+  "problemDescription": zod.string().min(createCustomerBookingBodyProblemDescriptionMin).max(createCustomerBookingBodyProblemDescriptionMax),
+  "preferredDate": zod.coerce.date(),
+  "preferredTime": zod.string().min(1).max(createCustomerBookingBodyPreferredTimeMax),
+  "address": zod.string().min(createCustomerBookingBodyAddressMin).max(createCustomerBookingBodyAddressMax),
+  "additionalNotes": zod.string().max(createCustomerBookingBodyAdditionalNotesMax).nullish()
+})
+
+export const CreateCustomerBookingResponse = zod.object({
+  "success": zod.boolean(),
+  "bookingId": zod.string(),
+  "message": zod.string()
+})
+
+
+/**
  * @summary Create a customer account
  */
 export const authSignupBodyFullNameMin = 2;
