@@ -1,11 +1,14 @@
 import { createHash, randomUUID } from "node:crypto";
 import assert from "node:assert/strict";
 import http from "node:http";
-import { after, before, beforeEach, test } from "node:test";
+import { after, before, beforeEach, mock, test } from "node:test";
 import { eq, like } from "drizzle-orm";
+import bcrypt from "bcryptjs";
+import nodemailer, { type Transporter } from "nodemailer";
 import type { AddressInfo } from "node:net";
 import app from "../src/app.ts";
 import {
+  adminUsersTable,
   customersTable,
   db,
   passwordResetTokensTable,
@@ -16,11 +19,20 @@ import {
 process.env.NODE_ENV = "production";
 process.env.APP_BASE_URL = "";
 process.env.REPLIT_DEV_DOMAIN = "";
+process.env.EMAIL_FROM = "care@example.test";
+process.env.SMTP_HOST = "smtp.example.test";
+process.env.SMTP_PORT = "587";
+process.env.SMTP_USER = "test-user";
+process.env.SMTP_APP_PASSWORD = "test-password";
+process.env.SMTP_REQUIRE_TLS = "true";
+process.env.SMTP_SECURE = "false";
 delete process.env.BUSINESS_EMAIL;
-delete process.env.EMAIL_FROM;
+delete process.env.OWNER_EMAIL;
 
 const TEST_EMAIL_PREFIX = "auth-regression-";
+const TEST_ADMIN_PREFIX = "repair-status-admin-";
 const TEST_PASSWORD = "ValidPass1";
+const TEST_ADMIN_PASSWORD = "AdminPass1";
 const requireIpv6Loopback = process.env.REQUIRE_IPV6_LOOPBACK === "1";
 
 let server: ReturnType<typeof app.listen>;
@@ -31,6 +43,29 @@ let ipv6MappedBaseUrl: string | undefined;
 let ipv6UnavailableReason: string | undefined;
 let clientIp = "198.51.100.1";
 let nextClientIpOctet = 1;
+
+type CapturedEmail = {
+  from: string;
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+};
+
+const sentEmails: CapturedEmail[] = [];
+let emailDeliveryError: Error | undefined;
+const fakeTransport = {
+  async sendMail(payload: CapturedEmail) {
+    if (emailDeliveryError) {
+      throw emailDeliveryError;
+    }
+    sentEmails.push(payload);
+    return { rejected: [] };
+  },
+  async verify() {},
+} as unknown as Transporter;
+
+mock.method(nodemailer, "createTransport", () => fakeTransport);
 
 type JsonResponse = {
   response: Response;
@@ -59,6 +94,28 @@ async function request(
       ...(cookie ? { cookie } : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+  const text = await response.text();
+  return {
+    response,
+    body: text ? (JSON.parse(text) as Record<string, unknown>) : {},
+  };
+}
+
+async function patch(
+  path: string,
+  body: Record<string, unknown>,
+  cookie?: string,
+): Promise<JsonResponse> {
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "PATCH",
+    headers: {
+      "content-type": "application/json",
+      "x-forwarded-for": clientIp,
+      ...(cookie ? { cookie } : {}),
+    },
+    body: JSON.stringify(body),
   });
 
   const text = await response.text();
@@ -125,12 +182,16 @@ async function get(path: string, cookie?: string): Promise<JsonResponse> {
 }
 
 function sessionCookie(response: Response): string {
+  return cookieNamed(response, "rz_session");
+}
+
+function cookieNamed(response: Response, name: string): string {
   const cookies =
     typeof response.headers.getSetCookie === "function"
       ? response.headers.getSetCookie()
       : [response.headers.get("set-cookie") ?? ""];
-  const cookie = cookies.find((value) => value.startsWith("rz_session="));
-  assert.ok(cookie, "expected the login response to set a session cookie");
+  const cookie = cookies.find((value) => value.startsWith(`${name}=`));
+  assert.ok(cookie, `expected the login response to set a ${name} cookie`);
   return cookie.split(";", 1)[0];
 }
 
@@ -154,10 +215,61 @@ async function customerForEmail(email: string) {
   return customer;
 }
 
+async function createAdminSession(): Promise<string> {
+  const username = `${TEST_ADMIN_PREFIX}${randomUUID()}`;
+  await db.insert(adminUsersTable).values({
+    username,
+    displayName: "Repair Status Admin",
+    passwordHash: await bcrypt.hash(TEST_ADMIN_PASSWORD, 4),
+  });
+
+  const login = await request("/api/admin/auth/login", {
+    username,
+    password: TEST_ADMIN_PASSWORD,
+  });
+  assert.equal(login.response.status, 200);
+  return cookieNamed(login.response, "rz_admin_session");
+}
+
+async function createRepairRequest(
+  status: "pending" | "contacted" = "pending",
+): Promise<string> {
+  const requestId = `RZ-${randomUUID().replaceAll("-", "").slice(0, 12)}`;
+  await db.insert(repairRequestsTable).values({
+    requestId,
+    customerName: "Jane Customer",
+    phone: "9876543210",
+    email: testEmail("status"),
+    applianceType: "Washing Machine",
+    problemDescription: "The appliance does not start.",
+    address: "123 Test Street",
+    status,
+    emailStatus: "pending",
+  });
+  return requestId;
+}
+
+async function repairRequestForId(requestId: string) {
+  const [repairRequest] = await db
+    .select()
+    .from(repairRequestsTable)
+    .where(eq(repairRequestsTable.requestId, requestId))
+    .limit(1);
+  assert.ok(repairRequest, `expected repair request ${requestId}`);
+  return repairRequest;
+}
+
 async function cleanupTestData(): Promise<void> {
+  sentEmails.length = 0;
+  emailDeliveryError = undefined;
+
   await db
     .delete(repairRequestsTable)
     .where(like(repairRequestsTable.email, `${TEST_EMAIL_PREFIX}%`));
+
+  await db
+    .delete(adminUsersTable)
+    .where(like(adminUsersTable.username, `${TEST_ADMIN_PREFIX}%`));
 
   await db
     .delete(customersTable)
@@ -610,6 +722,179 @@ test("reset-password rate limit allows eight attempts and returns a generic 429 
     JSON.stringify(limited.body),
     /invalid-|ValidPass1|credentials/i,
   );
+});
+
+test("admin repair status saves stay silent for pending, contacted, and unchanged statuses", async () => {
+  const requestId = await createRepairRequest();
+  const adminCookie = await createAdminSession();
+
+  const pending = await patch(
+    `/api/admin/repair-requests/${requestId}`,
+    { status: "pending" },
+    adminCookie,
+  );
+  assert.equal(pending.response.status, 200);
+
+  const contacted = await patch(
+    `/api/admin/repair-requests/${requestId}`,
+    { status: "contacted" },
+    adminCookie,
+  );
+  assert.equal(contacted.response.status, 200);
+  assert.equal(contacted.body.status, "contacted");
+
+  const unchanged = await patch(
+    `/api/admin/repair-requests/${requestId}`,
+    { adminNotes: "Internal follow-up" },
+    adminCookie,
+  );
+  assert.equal(unchanged.response.status, 200);
+  assert.equal(unchanged.body.status, "contacted");
+  assert.equal(sentEmails.length, 0);
+});
+
+test("admin repair status emails contain the exact customer update for each notified transition", async () => {
+  const requestId = await createRepairRequest();
+  const adminCookie = await createAdminSession();
+
+  for (const status of ["in_progress", "completed"] as const) {
+    const updated = await patch(
+      `/api/admin/repair-requests/${requestId}`,
+      { status },
+      adminCookie,
+    );
+    assert.equal(updated.response.status, 200);
+    assert.equal(updated.body.status, status);
+  }
+
+  const cancellationReason = "Customer is unavailable for the scheduled visit.";
+  const cancelled = await patch(
+    `/api/admin/repair-requests/${requestId}`,
+    { status: "cancelled", cancellationReason },
+    adminCookie,
+  );
+  assert.equal(cancelled.response.status, 200);
+  assert.equal(cancelled.body.status, "cancelled");
+
+  assert.equal(sentEmails.length, 3);
+  const [inProgress, completed, cancelledEmail] = sentEmails;
+  assert.equal(
+    inProgress.subject,
+    `Your Repair Request Is Now In Progress – ${requestId}`,
+  );
+  assert.equal(
+    inProgress.text,
+    [
+      "Hi Jane Customer,",
+      "",
+      `Your repair request ${requestId} is now in progress. Our team is currently working on your repair request.`,
+      "",
+      "We will keep you updated if any additional information is required.",
+      "",
+      "Service type: Washing Machine",
+      `Request ID: ${requestId}`,
+      "For support, contact RZ Home Appliances Care at +91 80738 48334.",
+      "",
+      "Thank you,",
+      "RZ Home Appliances Care",
+    ].join("\n"),
+  );
+  assert.match(inProgress.html, /Your repair request is now in progress/);
+  assert.match(inProgress.html, /Service type:<\/strong> Washing Machine/);
+
+  assert.equal(
+    completed.subject,
+    `Your Repair Request Has Been Completed – ${requestId}`,
+  );
+  assert.equal(
+    completed.text,
+    [
+      "Hi Jane Customer,",
+      "",
+      `Your repair request ${requestId} has been completed. Thank you for choosing RZ Home Appliances Care.`,
+      "",
+      "Service type: Washing Machine",
+      `Request ID: ${requestId}`,
+      "For support, contact RZ Home Appliances Care at +91 80738 48334.",
+      "",
+      "Thank you,",
+      "RZ Home Appliances Care",
+    ].join("\n"),
+  );
+  assert.match(completed.html, /Your repair request has been completed/);
+
+  assert.equal(
+    cancelledEmail.subject,
+    `Update About Your Repair Request – ${requestId}`,
+  );
+  assert.equal(
+    cancelledEmail.text,
+    [
+      "Hi Jane Customer,",
+      "",
+      `Your repair request ${requestId} has been cancelled.`,
+      "",
+      `Reason: ${cancellationReason}`,
+      "",
+      "Service type: Washing Machine",
+      `Request ID: ${requestId}`,
+      "For support, contact RZ Home Appliances Care at +91 80738 48334.",
+      "",
+      "Thank you,",
+      "RZ Home Appliances Care",
+    ].join("\n"),
+  );
+  assert.match(cancelledEmail.html, /Your repair request has been cancelled/);
+  assert.match(cancelledEmail.html, /<strong>Reason:<\/strong> Customer is unavailable/);
+});
+
+test("admin repair status remains updated when the customer email fails", async () => {
+  const requestId = await createRepairRequest();
+  const adminCookie = await createAdminSession();
+  emailDeliveryError = new Error("simulated SMTP failure");
+
+  const updated = await patch(
+    `/api/admin/repair-requests/${requestId}`,
+    { status: "in_progress" },
+    adminCookie,
+  );
+  assert.equal(updated.response.status, 200);
+  assert.equal(updated.body.status, "in_progress");
+
+  const savedRequest = await repairRequestForId(requestId);
+  assert.equal(savedRequest.status, "in_progress");
+  assert.equal(sentEmails.length, 0);
+});
+
+test("repeated and concurrent attempts for one repair transition send only one customer email", async () => {
+  const requestId = await createRepairRequest();
+  const adminCookie = await createAdminSession();
+
+  const concurrentUpdates = await Promise.all([
+    patch(
+      `/api/admin/repair-requests/${requestId}`,
+      { status: "in_progress" },
+      adminCookie,
+    ),
+    patch(
+      `/api/admin/repair-requests/${requestId}`,
+      { status: "in_progress" },
+      adminCookie,
+    ),
+  ]);
+  assert.deepEqual(
+    concurrentUpdates.map(({ response }) => response.status),
+    [200, 200],
+  );
+
+  const repeated = await patch(
+    `/api/admin/repair-requests/${requestId}`,
+    { status: "in_progress" },
+    adminCookie,
+  );
+  assert.equal(repeated.response.status, 200);
+  assert.equal(sentEmails.length, 1);
+  assert.equal((await repairRequestForId(requestId)).status, "in_progress");
 });
 
 test("anonymous repair requests are accepted without an auth cookie", async () => {
