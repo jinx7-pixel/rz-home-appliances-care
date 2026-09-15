@@ -167,15 +167,13 @@ export function CustomerDashboardPage() {
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-            <button
-              aria-label="Back to website and sign out"
+            <a
+              aria-label="Back to website"
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[hsl(215_35%_82%)] bg-white px-4 text-[0.78rem] font-extrabold text-[hsl(215_74%_28%)] transition hover:-translate-y-0.5 hover:border-[hsl(199_82%_52%)] hover:bg-[hsl(199_82%_97%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={logout.isPending}
-              onClick={() => setIsSignOutDialogOpen(true)}
-              type="button"
+              href={appPath('/')}
             >
               Back to Website
-            </button>
+            </a>
             <button
               aria-label="Sign out"
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[hsl(215_82%_38%)] px-4 text-[0.78rem] font-extrabold text-white shadow-[0_14px_24px_-18px_hsl(215_82%_30%/0.9)] transition hover:-translate-y-0.5 hover:bg-[hsl(215_82%_32%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"

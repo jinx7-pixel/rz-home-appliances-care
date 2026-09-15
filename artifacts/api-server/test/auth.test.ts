@@ -943,9 +943,9 @@ test("authenticated contact submissions attach to the session customer and dashb
     const submission = await request(
       "/api/repair-requests",
       {
-        customerName: "Regression Customer",
+        customerName: "Untrusted Form Name",
         phone: "9876543210",
-        email,
+        email: otherEmail,
         applianceType: "Washing Machine Repair",
         problemDescription: "The appliance does not start.",
         address: "123 Test Street",
@@ -959,6 +959,8 @@ test("authenticated contact submissions attach to the session customer and dashb
     );
     const customer = await customerForEmail(email);
     assert.equal(savedRequest.customerId, customer.id);
+    assert.equal(savedRequest.customerName, "Regression Customer");
+    assert.equal(savedRequest.email, email);
     assert.equal(savedRequest.emailStatus, "sent");
     assert.ok(
       sentEmails.some((message) =>

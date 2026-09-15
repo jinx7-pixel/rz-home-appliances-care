@@ -59,17 +59,24 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
   const requestId = createPublicRequestId();
   const submittedAt = new Date();
   const authenticatedCustomer = await getAuthenticatedCustomer(req);
+  const customerName =
+    authenticatedCustomer?.fullName.trim() ?? input.customerName.trim();
+  const email =
+    authenticatedCustomer?.email.trim().toLowerCase() ??
+    input.email.trim().toLowerCase();
   const preferredDate = input.preferredDate
     ? input.preferredDate.toISOString().slice(0, 10)
     : null;
   const preferredTime = input.preferredTime?.trim() || null;
 
   try {
-    await db.insert(repairRequestsTable).values({
+    const [savedRequest] = await db
+      .insert(repairRequestsTable)
+      .values({
       requestId,
-      customerName: input.customerName.trim(),
+      customerName,
       phone: input.phone,
-      email: input.email.trim().toLowerCase(),
+      email,
       applianceType: input.applianceType,
       problemDescription: input.problemDescription.trim(),
       address: input.address.trim(),
@@ -80,49 +87,62 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
       emailStatus: "pending",
       createdAt: submittedAt,
       updatedAt: submittedAt,
-    });
+      })
+      .returning({
+        customerId: repairRequestsTable.customerId,
+        customerName: repairRequestsTable.customerName,
+        email: repairRequestsTable.email,
+      });
+
+    if (!savedRequest) {
+      throw new Error("Repair request insert returned no saved row");
+    }
+
+    const savedCustomerType = savedRequest.customerId
+      ? "Registered Customer"
+      : "Guest";
+
+    try {
+      await sendRepairRequestEmails({
+        requestId,
+        customerName: savedRequest.customerName,
+        phone: input.phone,
+        email: savedRequest.email,
+        applianceType: input.applianceType,
+        problemDescription: input.problemDescription.trim(),
+        address: input.address.trim(),
+        preferredDate,
+        preferredTime,
+        submittedAt,
+        customerType: savedCustomerType,
+      });
+
+      await db
+        .update(repairRequestsTable)
+        .set({ emailStatus: "sent", updatedAt: new Date() })
+        .where(eq(repairRequestsTable.requestId, requestId));
+    } catch (error) {
+      req.log.error({ err: error, requestId }, "Failed to send repair request emails");
+      await db
+        .update(repairRequestsTable)
+        .set({ emailStatus: "failed", updatedAt: new Date() })
+        .where(eq(repairRequestsTable.requestId, requestId))
+        .catch((updateError) => {
+          req.log.error(
+            { err: updateError, requestId },
+            "Failed to record repair email failure",
+          );
+        });
+      res.status(502).json({
+        error:
+          "Your request was saved, but we could not send the confirmation email. Please call us at +91 80738 48334.",
+      });
+      return;
+    }
   } catch (error) {
     req.log.error({ err: error, requestId }, "Failed to save repair request");
     res.status(500).json({
       error: "We could not save your repair request. Please try again.",
-    });
-    return;
-  }
-
-  try {
-    await sendRepairRequestEmails({
-      requestId,
-      customerName: input.customerName.trim(),
-      phone: input.phone,
-      email: input.email.trim().toLowerCase(),
-      applianceType: input.applianceType,
-      problemDescription: input.problemDescription.trim(),
-      address: input.address.trim(),
-      preferredDate,
-      preferredTime,
-      submittedAt,
-      customerType: authenticatedCustomer ? "Registered Customer" : "Guest",
-    });
-
-    await db
-      .update(repairRequestsTable)
-      .set({ emailStatus: "sent", updatedAt: new Date() })
-      .where(eq(repairRequestsTable.requestId, requestId));
-  } catch (error) {
-    req.log.error({ err: error, requestId }, "Failed to send repair request emails");
-    await db
-      .update(repairRequestsTable)
-      .set({ emailStatus: "failed", updatedAt: new Date() })
-      .where(eq(repairRequestsTable.requestId, requestId))
-      .catch((updateError) => {
-        req.log.error(
-          { err: updateError, requestId },
-          "Failed to record repair email failure",
-        );
-      });
-    res.status(502).json({
-      error:
-        "Your request was saved, but we could not send the confirmation email. Please call us at +91 80738 48334.",
     });
     return;
   }
