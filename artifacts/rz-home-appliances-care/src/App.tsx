@@ -5,34 +5,18 @@ import {
   type FormEvent,
   type ReactNode,
 } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import {
-  getGetCustomerRepairRequestsQueryKey,
-  getGetPublicReviewsQueryKey,
-  useAuthMe,
-  useCreateRepairRequest,
-  useGetPublicReviews,
-} from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { MenuHoverLink } from '@/components/ui/menu-hover-effects';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import {
-  ForgotPasswordPage,
-  LogoutPage,
-  ResetPasswordPage,
-  SignInPage as AuthSignInPage,
-  SignUpPage,
-} from '@/pages/auth';
-import { CustomerDashboardPage } from '@/pages/customer-dashboard';
-import { BookRepairPage } from '@/pages/book-repair';
-import { AdminLoginPage } from '@/pages/admin-login';
-import { AdminDashboardPage } from '@/pages/admin-dashboard';
-import { AdminBookingsPage } from '@/pages/admin-bookings';
-import { AdminReviewsPage } from '@/pages/admin-reviews';
-import { CustomerReviewPage } from '@/pages/customer-review';
-import { PublicReviewsPage } from '@/pages/public-reviews';
+  AccountPage,
+  AdminPage,
+  BookingPage,
+  ReviewPage,
+  ReviewsPage,
+} from '@/pages/static-pages';
 import applianceCareImage from '@assets/ChatGPT_Image_Sep_14,_2026,_03_54_12_PM_1789381955049.png';
 import siddiqBashaImage from '@assets/ChatGPT_Image_Sep_14,_2026,_04_32_51_PM_1789383963232.png';
 import {
@@ -62,8 +46,6 @@ import {
   useLocation,
   Router as WouterRouter,
 } from 'wouter';
-
-const queryClient = new QueryClient();
 
 function appPath(path: string): string {
   const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -242,17 +224,9 @@ function BrandMark() {
 function HomeNavbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const authMeQuery = useAuthMe({
-    query: {
-      queryKey: ['auth-me'],
-      retry: false,
-    },
-  });
-  const isAuthenticated = authMeQuery.data?.authenticated === true;
-  const authLinkLabel = isAuthenticated ? 'Sign Out' : 'Sign In';
-  const authLinkHref = isAuthenticated
-    ? appPath('/logout')
-    : appPath('/sign-in');
+  const isAuthenticated = false;
+  const authLinkLabel = 'Sign In';
+  const authLinkHref = appPath('/sign-in');
 
   useEffect(() => {
     if (!isMenuOpen) {
@@ -319,8 +293,8 @@ function HomeNavbar() {
               return (
                 <a
                   className="ml-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-[hsl(214_30%_82%)] bg-[hsl(204_100%_99%/0.7)] px-4 text-[0.79rem] font-bold tracking-[0.01em] text-[hsl(215_74%_28%)] transition duration-200 hover:-translate-y-0.5 hover:border-[hsl(215_65%_62%)] hover:bg-[hsl(199_82%_94%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(210_40%_98%)] active:translate-y-0"
-                  data-testid={`link-${isAuthenticated ? 'sign-out' : 'sign-in'}`}
-                  href={authLinkHref}
+                  data-testid="link-sign-in"
+                  href={appPath('/sign-in')}
                   key={link.label}
                   onClick={closeMenu}
                 >
@@ -769,11 +743,29 @@ function AboutSection() {
 }
 
 function CustomerReviewsSection() {
-  const reviewsQuery = useGetPublicReviews(
-    { limit: 100 },
-    { query: { queryKey: getGetPublicReviewsQueryKey({ limit: 100 }), retry: false } },
-  );
-  const reviews = reviewsQuery.data ?? [];
+  const reviews = [
+    {
+      reviewId: 'sample-1',
+      rating: 5,
+      reviewMessage: 'Clear communication, careful work, and the washing machine was running again the same day.',
+      customerLabel: 'Ananya R.',
+      applianceType: 'Washing Machine Repair',
+    },
+    {
+      reviewId: 'sample-2',
+      rating: 5,
+      reviewMessage: 'They explained the refrigerator issue before starting and kept the visit straightforward.',
+      customerLabel: 'Rahul M.',
+      applianceType: 'Refrigerator Repair',
+    },
+    {
+      reviewId: 'sample-3',
+      rating: 5,
+      reviewMessage: 'Friendly service and a practical fix for our LED TV. We knew exactly what to expect.',
+      customerLabel: 'Priya K.',
+      applianceType: 'LED TV Repair',
+    },
+  ];
 
   return (
     <section
@@ -790,23 +782,15 @@ function CustomerReviewsSection() {
           <p className="max-w-[21rem] text-[0.92rem] leading-[1.7] text-[hsl(215_24%_76%)]">The best measure of a careful repair is how it feels after we leave.</p>
         </div>
         <div aria-live="polite" className="mt-12">
-          {reviewsQuery.isPending ? (
-            <div className="grid gap-4 md:grid-cols-3">{[1, 2, 3].map((item) => <div className="h-64 animate-pulse rounded-[1.7rem] bg-[hsl(215_42%_19%)]" data-testid={`skeleton-public-review-${item}`} key={item} />)}</div>
-          ) : reviewsQuery.isError ? (
-            <div className="rounded-[1.5rem] border border-[hsl(4_55%_45%)] bg-[hsl(4_55%_24%)] p-6 text-sm font-semibold text-[hsl(4_78%_82%)]" data-testid="text-public-reviews-error">Reviews are unavailable right now. Please check back soon.</div>
-          ) : reviews.length === 0 ? (
-            <div className="rounded-[1.5rem] border border-[hsl(215_25%_30%)] bg-[hsl(215_42%_19%)] p-8 text-center text-[0.95rem] font-semibold text-[hsl(215_24%_76%)]" data-testid="text-public-reviews-empty">Our customer reviews will appear here soon.</div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {reviews.slice(0, 6).map((review) => (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {reviews.map((review) => (
                 <article className="flex min-h-[16rem] flex-col rounded-[1.7rem] border border-[hsl(215_25%_30%)] bg-[hsl(215_42%_19%)] p-6 transition duration-300 hover:-translate-y-1 hover:border-[hsl(184_85%_64%/0.58)] sm:p-7" data-testid={`card-public-review-${review.reviewId}`} key={review.reviewId}>
                   <div className="flex items-center justify-between gap-3"><span aria-label={`${review.rating} out of 5 stars`} className="inline-flex gap-0.5 text-[hsl(39_86%_60%)]" data-testid={`stars-public-review-${review.reviewId}`}>{[1, 2, 3, 4, 5].map((value) => <Star aria-hidden="true" className={`size-4 ${value <= review.rating ? 'fill-current' : 'text-[hsl(215_25%_36%)]'}`} key={value} />)}</span><span className="inline-flex items-center gap-1.5 rounded-full bg-[hsl(174_54%_28%)] px-2.5 py-1.5 text-[0.62rem] font-extrabold text-[hsl(174_54%_86%)]"><ShieldCheck className="size-3.5" /> Verified Customer</span></div>
                   <blockquote className="mt-6 text-[1rem] font-semibold leading-[1.65] text-[hsl(210_40%_98%)]">“{review.reviewMessage}”</blockquote>
                   <div className="mt-auto border-t border-[hsl(215_25%_30%)] pt-5"><p className="text-[0.78rem] font-extrabold text-[hsl(184_85%_72%)]" data-testid={`text-public-review-customer-${review.reviewId}`}>{review.customerLabel}</p><p className="mt-1 text-[0.72rem] text-[hsl(215_24%_72%)]">{review.applianceType ?? 'Appliance service'}</p></div>
                 </article>
-              ))}
-            </div>
-          )}
+            ))}
+          </div>
           {reviews.length > 6 ? (
             <a
               className="mt-7 inline-flex min-h-11 items-center rounded-xl border border-[hsl(184_85%_64%)] px-4 text-[0.78rem] font-extrabold text-[hsl(184_85%_78%)] transition hover:bg-[hsl(184_85%_64%)] hover:text-[hsl(215_74%_20%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(184_85%_64%)]"
@@ -833,7 +817,6 @@ function ContactSection() {
   const [formErrors, setFormErrors] = useState<RepairFormErrors>({});
   const [successMessage, setSuccessMessage] = useState('');
   const [submitError, setSubmitError] = useState('');
-  const createRepairRequestMutation = useCreateRepairRequest();
 
   const updateField = (field: keyof RepairFormValues, value: string) => {
     setFormValues((current) => ({ ...current, [field]: value }));
@@ -842,9 +825,8 @@ function ContactSection() {
     setSubmitError('');
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (createRepairRequestMutation.isPending) return;
 
     const errors: RepairFormErrors = {};
     if (formValues.name.trim().length < 2) errors.name = 'Please enter your full name.';
@@ -869,35 +851,17 @@ function ContactSection() {
     setSubmitError('');
     if (Object.keys(errors).length > 0) return;
 
-    try {
-      const result = await createRepairRequestMutation.mutateAsync({
-        data: {
-          customerName: formValues.name.trim(),
-          phone: formValues.phone,
-          email: formValues.email.trim(),
-          applianceType: formValues.service as (typeof repairServiceOptions)[number],
-          problemDescription: formValues.issue.trim(),
-          address: formValues.address.trim(),
-        },
-      });
-
-      setSuccessMessage(
-        `Your repair request has been submitted successfully. Your request ID is ${result.requestId}. A confirmation email has been sent to your email address. Our team will contact you shortly.`,
-      );
-      void queryClient.invalidateQueries({
-        queryKey: getGetCustomerRepairRequestsQueryKey(),
-      });
-      setFormValues({
-        name: '',
-        phone: '',
-        email: '',
-        service: '',
-        issue: '',
-        address: '',
-      });
-    } catch (error) {
-      setSubmitError(getRepairRequestErrorMessage(error));
-    }
+    setSuccessMessage(
+      'Your request is ready to send. This frontend-only preview does not store submissions or send email yet—please call us or use WhatsApp to complete your request.',
+    );
+    setFormValues({
+      name: '',
+      phone: '',
+      email: '',
+      service: '',
+      issue: '',
+      address: '',
+    });
   };
 
   return (
@@ -1170,13 +1134,10 @@ function ContactSection() {
           <button
             className="group mt-6 inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-[hsl(215_82%_43%)] px-5 text-[0.96rem] font-extrabold text-[hsl(210_40%_98%)] shadow-[0_18px_30px_-18px_hsl(215_82%_30%/0.9)] transition duration-200 hover:-translate-y-0.5 hover:bg-[hsl(215_82%_36%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-4 focus-visible:ring-offset-[hsl(204_67%_95%)] active:translate-y-0"
             data-testid="button-submit-repair-request"
-            disabled={createRepairRequestMutation.isPending}
             type="submit"
           >
-            {createRepairRequestMutation.isPending ? 'Submitting your request...' : 'Send my repair request'}
-            {!createRepairRequestMutation.isPending ? (
-              <ArrowRight aria-hidden="true" className="size-5 transition-transform duration-200 group-hover:translate-x-1" />
-            ) : null}
+            Send my repair request
+            <ArrowRight aria-hidden="true" className="size-5 transition-transform duration-200 group-hover:translate-x-1" />
           </button>
           <p className="mt-4 text-center text-[0.78rem] leading-6 text-[hsl(215_20%_48%)]">
             By submitting, you agree to be contacted about your repair request.
@@ -1838,20 +1799,20 @@ function Router() {
     // survives a page crash.
     <RoutedErrorBoundary>
       <Switch>
-        <Route path="/sign-in" component={AuthSignInPage} />
-        <Route path="/forgot-password" component={ForgotPasswordPage} />
-        <Route path="/reset-password" component={ResetPasswordPage} />
-        <Route path="/sign-up" component={SignUpPage} />
-        <Route path="/logout" component={LogoutPage} />
-        <Route path="/customer-dashboard" component={CustomerDashboardPage} />
-        <Route path="/customer/review/:sourceType/:sourceId" component={CustomerReviewPage} />
-        <Route path="/customer/review" component={CustomerReviewPage} />
-        <Route path="/reviews" component={PublicReviewsPage} />
-        <Route path="/book-repair" component={BookRepairPage} />
-        <Route path="/admin/login" component={AdminLoginPage} />
-        <Route path="/admin/dashboard" component={AdminDashboardPage} />
-        <Route path="/admin/bookings" component={AdminBookingsPage} />
-        <Route path="/admin/reviews" component={AdminReviewsPage} />
+        <Route path="/sign-in" component={AccountPage} />
+        <Route path="/forgot-password" component={AccountPage} />
+        <Route path="/reset-password" component={AccountPage} />
+        <Route path="/sign-up" component={AccountPage} />
+        <Route path="/logout" component={AccountPage} />
+        <Route path="/customer-dashboard" component={AccountPage} />
+        <Route path="/customer/review/:sourceType/:sourceId" component={ReviewPage} />
+        <Route path="/customer/review" component={ReviewPage} />
+        <Route path="/reviews" component={ReviewsPage} />
+        <Route path="/book-repair" component={BookingPage} />
+        <Route path="/admin/login" component={AdminPage} />
+        <Route path="/admin/dashboard" component={AdminPage} />
+        <Route path="/admin/bookings" component={AdminPage} />
+        <Route path="/admin/reviews" component={AdminPage} />
         <Route path="/" component={Home} />
         <Route component={NotFound} />
       </Switch>
@@ -1866,14 +1827,12 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <TooltipProvider>
+      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+        <Router />
+      </WouterRouter>
+      <Toaster />
+    </TooltipProvider>
   );
 }
 
