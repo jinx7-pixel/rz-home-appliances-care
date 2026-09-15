@@ -212,6 +212,7 @@ export function AdminPage() {
   const [requests, setRequests] = useState<AdminRepairRequest[]>([]);
   const [requestError, setRequestError] = useState('');
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+  const [updatingRequestId, setUpdatingRequestId] = useState('');
 
   useEffect(() => {
     if (isLoginPage) {
@@ -310,6 +311,40 @@ export function AdminPage() {
     }
   };
 
+  const updateRequestStatus = async (
+    requestId: string,
+    status: AdminRepairStatus,
+  ) => {
+    setRequestError('');
+    setUpdatingRequestId(requestId);
+    try {
+      const response = await fetch(
+        `/api/admin/repair-requests/${encodeURIComponent(requestId)}`,
+        {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status }),
+        },
+      );
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.error || 'Could not update request status.');
+      }
+      setRequests((current) =>
+        current.map((request) =>
+          request.requestId === requestId
+            ? { ...request, status: body.status }
+            : request,
+        ),
+      );
+    } catch (error) {
+      setRequestError(error instanceof Error ? error.message : 'Could not update request status.');
+    } finally {
+      setUpdatingRequestId('');
+    }
+  };
+
   const logout = async () => {
     await fetch('/api/admin/auth/logout', {
       method: 'POST',
@@ -394,7 +429,22 @@ export function AdminPage() {
                   <p className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-[hsl(188_75%_43%)]">Request ID</p>
                   <h2 className="mt-2 text-xl font-extrabold text-[hsl(215_74%_28%)]">{request.requestId}</h2>
                 </div>
-                <span className="rounded-full bg-[hsl(199_82%_94%)] px-3 py-1.5 text-[0.7rem] font-extrabold uppercase tracking-[0.08em] text-[hsl(215_74%_28%)]">{request.status.replace('_', ' ')}</span>
+                <label className="grid gap-1 text-[0.62rem] font-extrabold uppercase tracking-[0.08em] text-[hsl(215_20%_48%)]">
+                  Status
+                  <select
+                    aria-label={`Update status for ${request.requestId}`}
+                    className="min-h-9 rounded-xl border border-[hsl(199_82%_72%)] bg-[hsl(199_82%_94%)] px-3 text-[0.7rem] font-extrabold uppercase tracking-[0.06em] text-[hsl(215_74%_28%)] outline-none focus:ring-2 focus:ring-[hsl(199_82%_62%/0.35)] disabled:cursor-wait disabled:opacity-60"
+                    disabled={updatingRequestId === request.requestId}
+                    onChange={(event) => void updateRequestStatus(request.requestId, event.target.value as AdminRepairStatus)}
+                    value={request.status}
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="in_progress">In progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </label>
               </div>
               <div className="mt-5 grid gap-5 text-[0.84rem] sm:grid-cols-2 lg:grid-cols-4">
                 <div><p className="font-extrabold text-[hsl(215_20%_48%)]">Customer</p><p className="mt-1 font-semibold">{request.customerName}</p></div>
@@ -426,3 +476,10 @@ type AdminRepairRequest = {
   status: 'pending' | 'contacted' | 'in_progress' | 'completed' | 'cancelled';
   createdAt: string;
 };
+
+type AdminRepairStatus =
+  | 'pending'
+  | 'contacted'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled';
