@@ -200,3 +200,108 @@ export interface AuthMessageResult {
   message: string;
 }
 
+export interface AdminLoginInput {
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  username: string;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  password: string;
+}
+
+export interface AdminUser {
+  id: string;
+  username: string;
+  displayName: string;
+}
+
+export interface AdminLoginResult {
+  admin: AdminUser;
+}
+
+export interface AdminMeResult {
+  authenticated: boolean;
+  admin: AdminUser | null;
+}
+
+export type AdminRequestStatus = typeof AdminRequestStatus[keyof typeof AdminRequestStatus];
+
+
+export const AdminRequestStatus = {
+  pending: 'pending',
+  contacted: 'contacted',
+  in_progress: 'in_progress',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+
+export type AdminRepairRequestCustomerType = typeof AdminRepairRequestCustomerType[keyof typeof AdminRepairRequestCustomerType];
+
+
+export const AdminRepairRequestCustomerType = {
+  guest: 'guest',
+  registered: 'registered',
+} as const;
+
+export interface AdminRepairRequest {
+  requestId: string;
+  customerName: string;
+  email: string;
+  phone: string;
+  applianceType: string;
+  problemDescription: string;
+  address: string;
+  /** @nullable */
+  customerId: string | null;
+  customerType: AdminRepairRequestCustomerType;
+  /** @nullable */
+  preferredDate: string | null;
+  /** @nullable */
+  preferredTime: string | null;
+  status: AdminRequestStatus;
+  /** @nullable */
+  adminNotes: string | null;
+  emailStatus: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminRepairRequestUpdate {
+  status?: AdminRequestStatus;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  adminNotes?: string | null;
+}
+
+export type GetAdminRepairRequestsParams = {
+/**
+ * @maxLength 200
+ */
+search?: string;
+status?: AdminRequestStatus;
+customerType?: GetAdminRepairRequestsCustomerType;
+sort?: GetAdminRepairRequestsSort;
+};
+
+export type GetAdminRepairRequestsCustomerType = typeof GetAdminRepairRequestsCustomerType[keyof typeof GetAdminRepairRequestsCustomerType];
+
+
+export const GetAdminRepairRequestsCustomerType = {
+  guest: 'guest',
+  registered: 'registered',
+} as const;
+
+export type GetAdminRepairRequestsSort = typeof GetAdminRepairRequestsSort[keyof typeof GetAdminRepairRequestsSort];
+
+
+export const GetAdminRepairRequestsSort = {
+  newest: 'newest',
+  oldest: 'oldest',
+} as const;
+

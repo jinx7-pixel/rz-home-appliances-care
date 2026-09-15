@@ -14,6 +14,8 @@ tags:
     description: Anonymous appliance repair request submissions
   - name: auth
     description: Customer authentication
+  - name: admin
+    description: Administrator authentication and repair request management
 paths:
   /healthz:
     get:
@@ -314,6 +316,200 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthMeResult"
+  /admin/auth/login:
+    post:
+      operationId: adminAuthLogin
+      tags: [admin]
+      summary: Sign in an administrator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginInput"
+      responses:
+        "200":
+          description: Administrator signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminLoginResult"
+        "400":
+          description: Invalid login details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Too many login attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /admin/auth/logout:
+    post:
+      operationId: adminAuthLogout
+      tags: [admin]
+      summary: Sign out an administrator
+      responses:
+        "200":
+          description: Administrator signed out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthMessageResult"
+  /admin/auth/me:
+    get:
+      operationId: adminAuthMe
+      tags: [admin]
+      summary: Get the current administrator session
+      responses:
+        "200":
+          description: Administrator authentication state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMeResult"
+  /admin/repair-requests:
+    get:
+      operationId: getAdminRepairRequests
+      tags: [admin]
+      summary: List all contact and repair requests
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 200
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/AdminRequestStatus"
+        - name: customerType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [guest, registered]
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [newest, oldest]
+            default: newest
+      responses:
+        "200":
+          description: All contact and repair requests visible to administrators
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminRepairRequest"
+        "401":
+          description: Administrator authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Administrator access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /admin/repair-requests/{requestId}:
+    get:
+      operationId: getAdminRepairRequest
+      tags: [admin]
+      summary: View a complete repair request
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Complete repair request details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminRepairRequest"
+        "401":
+          description: Administrator authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Administrator access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Repair request not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    patch:
+      operationId: updateAdminRepairRequest
+      tags: [admin]
+      summary: Update a repair request status or internal notes
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminRepairRequestUpdate"
+      responses:
+        "200":
+          description: Repair request updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminRepairRequest"
+        "400":
+          description: Invalid update data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Administrator authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Administrator access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Repair request not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 components:
   schemas:
     HealthStatus:
@@ -612,3 +808,125 @@ components:
       properties:
         message:
           type: string
+    AdminLoginInput:
+      type: object
+      additionalProperties: false
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 64
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+    AdminUser:
+      type: object
+      required:
+        - id
+        - username
+        - displayName
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        displayName:
+          type: string
+    AdminLoginResult:
+      type: object
+      required:
+        - admin
+      properties:
+        admin:
+          $ref: "#/components/schemas/AdminUser"
+    AdminMeResult:
+      type: object
+      required:
+        - authenticated
+        - admin
+      properties:
+        authenticated:
+          type: boolean
+        admin:
+          anyOf:
+            - $ref: "#/components/schemas/AdminUser"
+            - type: "null"
+    AdminRequestStatus:
+      type: string
+      enum:
+        - pending
+        - contacted
+        - in_progress
+        - completed
+        - cancelled
+    AdminRepairRequest:
+      type: object
+      required:
+        - requestId
+        - customerName
+        - email
+        - phone
+        - applianceType
+        - problemDescription
+        - address
+        - customerId
+        - customerType
+        - preferredDate
+        - preferredTime
+        - status
+        - adminNotes
+        - emailStatus
+        - createdAt
+        - updatedAt
+      properties:
+        requestId:
+          type: string
+        customerName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        applianceType:
+          type: string
+        problemDescription:
+          type: string
+        address:
+          type: string
+        customerId:
+          type: ["string", "null"]
+          format: uuid
+        customerType:
+          type: string
+          enum: [guest, registered]
+        preferredDate:
+          type: ["string", "null"]
+          format: date
+        preferredTime:
+          type: ["string", "null"]
+        status:
+          $ref: "#/components/schemas/AdminRequestStatus"
+        adminNotes:
+          type: ["string", "null"]
+        emailStatus:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    AdminRepairRequestUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          $ref: "#/components/schemas/AdminRequestStatus"
+        adminNotes:
+          type: ["string", "null"]
+          maxLength: 5000

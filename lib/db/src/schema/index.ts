@@ -22,3 +22,5 @@ export * from "./bookings";
 export * from "./customers";
 export * from "./auth-sessions";
 export * from "./password-reset-tokens";
+export * from "./admin-users";
+export * from "./admin-sessions";

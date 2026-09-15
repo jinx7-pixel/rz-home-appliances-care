@@ -29,6 +29,7 @@ export const repairRequestsTable = pgTable(
     preferredDate: date("preferred_date", { mode: "string" }),
     preferredTime: varchar("preferred_time", { length: 100 }),
     status: varchar("status", { length: 24 }).notNull().default("pending"),
+    adminNotes: text("admin_notes"),
     emailStatus: varchar("email_status", { length: 24 })
       .notNull()
       .default("pending"),

@@ -234,3 +234,145 @@ export const AuthMeResponse = zod.object({
 })
 
 
+/**
+ * @summary Sign in an administrator
+ */
+export const adminAuthLoginBodyUsernameMax = 64;
+
+export const adminAuthLoginBodyPasswordMax = 128;
+
+
+
+export const AdminAuthLoginBody = zod.object({
+  "username": zod.string().min(1).max(adminAuthLoginBodyUsernameMax),
+  "password": zod.string().min(1).max(adminAuthLoginBodyPasswordMax)
+})
+
+export const AdminAuthLoginResponse = zod.object({
+  "admin": zod.object({
+  "id": zod.string().uuid(),
+  "username": zod.string(),
+  "displayName": zod.string()
+})
+})
+
+
+/**
+ * @summary Sign out an administrator
+ */
+export const AdminAuthLogoutResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Get the current administrator session
+ */
+export const AdminAuthMeResponse = zod.object({
+  "authenticated": zod.boolean(),
+  "admin": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "username": zod.string(),
+  "displayName": zod.string()
+}),zod.null()])
+})
+
+
+/**
+ * @summary List all contact and repair requests
+ */
+export const getAdminRepairRequestsQuerySearchMax = 200;
+
+export const getAdminRepairRequestsQuerySortDefault = `newest`;
+
+export const GetAdminRepairRequestsQueryParams = zod.object({
+  "search": zod.coerce.string().max(getAdminRepairRequestsQuerySearchMax).optional(),
+  "status": zod.enum(['pending', 'contacted', 'in_progress', 'completed', 'cancelled']).optional(),
+  "customerType": zod.enum(['guest', 'registered']).optional(),
+  "sort": zod.enum(['newest', 'oldest']).default(getAdminRepairRequestsQuerySortDefault)
+})
+
+export const GetAdminRepairRequestsResponseItem = zod.object({
+  "requestId": zod.string(),
+  "customerName": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "applianceType": zod.string(),
+  "problemDescription": zod.string(),
+  "address": zod.string(),
+  "customerId": zod.string().uuid().nullable(),
+  "customerType": zod.enum(['guest', 'registered']),
+  "preferredDate": zod.coerce.date().nullable(),
+  "preferredTime": zod.string().nullable(),
+  "status": zod.enum(['pending', 'contacted', 'in_progress', 'completed', 'cancelled']),
+  "adminNotes": zod.string().nullable(),
+  "emailStatus": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const GetAdminRepairRequestsResponse = zod.array(GetAdminRepairRequestsResponseItem)
+
+
+/**
+ * @summary View a complete repair request
+ */
+export const GetAdminRepairRequestParams = zod.object({
+  "requestId": zod.coerce.string()
+})
+
+export const GetAdminRepairRequestResponse = zod.object({
+  "requestId": zod.string(),
+  "customerName": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "applianceType": zod.string(),
+  "problemDescription": zod.string(),
+  "address": zod.string(),
+  "customerId": zod.string().uuid().nullable(),
+  "customerType": zod.enum(['guest', 'registered']),
+  "preferredDate": zod.coerce.date().nullable(),
+  "preferredTime": zod.string().nullable(),
+  "status": zod.enum(['pending', 'contacted', 'in_progress', 'completed', 'cancelled']),
+  "adminNotes": zod.string().nullable(),
+  "emailStatus": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a repair request status or internal notes
+ */
+export const UpdateAdminRepairRequestParams = zod.object({
+  "requestId": zod.coerce.string()
+})
+
+export const updateAdminRepairRequestBodyAdminNotesMax = 5000;
+
+
+
+export const UpdateAdminRepairRequestBody = zod.object({
+  "status": zod.enum(['pending', 'contacted', 'in_progress', 'completed', 'cancelled']).optional(),
+  "adminNotes": zod.string().max(updateAdminRepairRequestBodyAdminNotesMax).nullish()
+})
+
+export const UpdateAdminRepairRequestResponse = zod.object({
+  "requestId": zod.string(),
+  "customerName": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "applianceType": zod.string(),
+  "problemDescription": zod.string(),
+  "address": zod.string(),
+  "customerId": zod.string().uuid().nullable(),
+  "customerType": zod.enum(['guest', 'registered']),
+  "preferredDate": zod.coerce.date().nullable(),
+  "preferredTime": zod.string().nullable(),
+  "status": zod.enum(['pending', 'contacted', 'in_progress', 'completed', 'cancelled']),
+  "adminNotes": zod.string().nullable(),
+  "emailStatus": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+

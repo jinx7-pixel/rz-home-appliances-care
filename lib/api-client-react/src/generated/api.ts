@@ -20,6 +20,11 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminLoginInput,
+  AdminLoginResult,
+  AdminMeResult,
+  AdminRepairRequest,
+  AdminRepairRequestUpdate,
   ApiError,
   AuthForgotPasswordInput,
   AuthLoginInput,
@@ -32,6 +37,7 @@ import type {
   CustomerBookingInput,
   CustomerBookingSubmission,
   CustomerRepairRequest,
+  GetAdminRepairRequestsParams,
   HealthStatus,
   RepairRequestInput,
   RepairRequestSubmission
@@ -975,4 +981,493 @@ export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = E
 
 
 
+
+export const getAdminAuthLoginUrl = () => {
+
+
+
+
+  return `/api/admin/auth/login`
+}
+
+/**
+ * @summary Sign in an administrator
+ */
+export const adminAuthLogin = async (adminLoginInput: AdminLoginInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminLoginResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminLoginResult>(getAdminAuthLoginUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminLoginInput)
+  }
+);}
+
+
+
+
+
+export const getAdminAuthLoginMutationKey = () => ['adminAuthLogin'] as const;
+
+export const getAdminAuthLoginMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminAuthLogin>>, TError,AdminAuthLoginMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminAuthLogin>>, TError,AdminAuthLoginMutationVariables, TContext> => {
+
+const mutationKey = getAdminAuthLoginMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminAuthLogin>>, AdminAuthLoginMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  adminAuthLogin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminAuthLoginMutationResult = NonNullable<Awaited<ReturnType<typeof adminAuthLogin>>>
+    export type AdminAuthLoginMutationBody = BodyType<AdminLoginInput>
+    export type AdminAuthLoginMutationError = ErrorType<ApiError>
+    export type AdminAuthLoginMutationVariables = {data: BodyType<AdminLoginInput>}
+
+    /**
+ * @summary Sign in an administrator
+ */
+export const useAdminAuthLogin = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminAuthLogin>>, TError,AdminAuthLoginMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminAuthLogin>>,
+        TError,
+        AdminAuthLoginMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAdminAuthLoginMutationOptions(options));
+    }
+
+export const getAdminAuthLogoutUrl = () => {
+
+
+
+
+  return `/api/admin/auth/logout`
+}
+
+/**
+ * @summary Sign out an administrator
+ */
+export const adminAuthLogout = async ( options?: Parameters<typeof customFetch>[1]): Promise<AuthMessageResult> => {
+
+  return customFetch<AuthMessageResult>(getAdminAuthLogoutUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminAuthLogoutMutationKey = () => ['adminAuthLogout'] as const;
+
+export const getAdminAuthLogoutMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminAuthLogout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminAuthLogout>>, TError,void, TContext> => {
+
+const mutationKey = getAdminAuthLogoutMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminAuthLogout>>, void> = () => {
+
+
+          return  adminAuthLogout(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminAuthLogoutMutationResult = NonNullable<Awaited<ReturnType<typeof adminAuthLogout>>>
+
+    export type AdminAuthLogoutMutationError = ErrorType<unknown>
+
+
+    /**
+ * @summary Sign out an administrator
+ */
+export const useAdminAuthLogout = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminAuthLogout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminAuthLogout>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getAdminAuthLogoutMutationOptions(options));
+    }
+
+export const getAdminAuthMeUrl = () => {
+
+
+
+
+  return `/api/admin/auth/me`
+}
+
+/**
+ * @summary Get the current administrator session
+ */
+export const adminAuthMe = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminMeResult> => {
+
+  return customFetch<AdminMeResult>(getAdminAuthMeUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminAuthMeQueryKey = () => {
+    return [
+    `/api/admin/auth/me`
+    ] as const;
+    }
+
+
+export const getAdminAuthMeQueryOptions = <TData = Awaited<ReturnType<typeof adminAuthMe>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof adminAuthMe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdminAuthMeQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminAuthMe>>> = ({ signal }) => adminAuthMe({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof adminAuthMe>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type AdminAuthMeQueryResult = NonNullable<Awaited<ReturnType<typeof adminAuthMe>>>
+export type AdminAuthMeQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the current administrator session
+ */
+
+export function useAdminAuthMe<TData = Awaited<ReturnType<typeof adminAuthMe>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof adminAuthMe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getAdminAuthMeQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminRepairRequestsUrl = (params?: GetAdminRepairRequestsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/repair-requests?${stringifiedParams}` : `/api/admin/repair-requests`
+}
+
+/**
+ * @summary List all contact and repair requests
+ */
+export const getAdminRepairRequests = async (params?: GetAdminRepairRequestsParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminRepairRequest[]> => {
+
+  return customFetch<AdminRepairRequest[]>(getGetAdminRepairRequestsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminRepairRequestsQueryKey = (params?: GetAdminRepairRequestsParams,) => {
+    return [
+    `/api/admin/repair-requests`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminRepairRequestsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminRepairRequests>>, TError = ErrorType<ApiError>>(params?: GetAdminRepairRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminRepairRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminRepairRequestsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminRepairRequests>>> = ({ signal }) => getAdminRepairRequests(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminRepairRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminRepairRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminRepairRequests>>>
+export type GetAdminRepairRequestsQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary List all contact and repair requests
+ */
+
+export function useGetAdminRepairRequests<TData = Awaited<ReturnType<typeof getAdminRepairRequests>>, TError = ErrorType<ApiError>>(
+ params?: GetAdminRepairRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminRepairRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminRepairRequestsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminRepairRequestUrl = (requestId: string,) => {
+
+
+
+
+  return `/api/admin/repair-requests/${requestId}`
+}
+
+/**
+ * @summary View a complete repair request
+ */
+export const getAdminRepairRequest = async (requestId: string, options?: Parameters<typeof customFetch>[1]): Promise<AdminRepairRequest> => {
+
+  return customFetch<AdminRepairRequest>(getGetAdminRepairRequestUrl(requestId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminRepairRequestQueryKey = (requestId: string,) => {
+    return [
+    `/api/admin/repair-requests/${requestId}`
+    ] as const;
+    }
+
+
+export const getGetAdminRepairRequestQueryOptions = <TData = Awaited<ReturnType<typeof getAdminRepairRequest>>, TError = ErrorType<ApiError>>(requestId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminRepairRequest>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminRepairRequestQueryKey(requestId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminRepairRequest>>> = ({ signal }) => getAdminRepairRequest(requestId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: requestId !== null && requestId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminRepairRequest>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminRepairRequestQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminRepairRequest>>>
+export type GetAdminRepairRequestQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary View a complete repair request
+ */
+
+export function useGetAdminRepairRequest<TData = Awaited<ReturnType<typeof getAdminRepairRequest>>, TError = ErrorType<ApiError>>(
+ requestId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminRepairRequest>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminRepairRequestQueryOptions(requestId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAdminRepairRequestUrl = (requestId: string,) => {
+
+
+
+
+  return `/api/admin/repair-requests/${requestId}`
+}
+
+/**
+ * @summary Update a repair request status or internal notes
+ */
+export const updateAdminRepairRequest = async (requestId: string,
+    adminRepairRequestUpdate: AdminRepairRequestUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AdminRepairRequest> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminRepairRequest>(getUpdateAdminRepairRequestUrl(requestId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminRepairRequestUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminRepairRequestMutationKey = () => ['updateAdminRepairRequest'] as const;
+
+export const getUpdateAdminRepairRequestMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminRepairRequest>>, TError,UpdateAdminRepairRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminRepairRequest>>, TError,UpdateAdminRepairRequestMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminRepairRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminRepairRequest>>, UpdateAdminRepairRequestMutationVariables> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  updateAdminRepairRequest(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminRepairRequestMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminRepairRequest>>>
+    export type UpdateAdminRepairRequestMutationBody = BodyType<AdminRepairRequestUpdate>
+    export type UpdateAdminRepairRequestMutationError = ErrorType<ApiError>
+    export type UpdateAdminRepairRequestMutationVariables = {requestId: string;data: BodyType<AdminRepairRequestUpdate>}
+
+    /**
+ * @summary Update a repair request status or internal notes
+ */
+export const useUpdateAdminRepairRequest = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminRepairRequest>>, TError,UpdateAdminRepairRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminRepairRequest>>,
+        TError,
+        UpdateAdminRepairRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminRepairRequestMutationOptions(options));
+    }
 
