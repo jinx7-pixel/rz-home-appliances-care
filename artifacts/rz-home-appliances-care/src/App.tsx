@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   getGetCustomerRepairRequestsQueryKey,
   getGetPublicReviewsQueryKey,
+  useAuthMe,
   useCreateRepairRequest,
   useGetPublicReviews,
 } from '@workspace/api-client-react';
@@ -821,7 +822,15 @@ function ContactSection() {
   const [formErrors, setFormErrors] = useState<RepairFormErrors>({});
   const [successMessage, setSuccessMessage] = useState('');
   const [submitError, setSubmitError] = useState('');
+  const authMeQuery = useAuthMe({
+    query: {
+      queryKey: ['auth-me'],
+      retry: false,
+    },
+  });
   const createRepairRequestMutation = useCreateRepairRequest();
+  const authenticatedUser =
+    authMeQuery.data?.authenticated === true ? authMeQuery.data.user : null;
 
   const updateField = (field: keyof RepairFormValues, value: string) => {
     setFormValues((current) => ({ ...current, [field]: value }));
@@ -992,6 +1001,27 @@ function ContactSection() {
               </h3>
               <p className="mt-2 text-[0.92rem] text-[hsl(215_20%_45%)]">
                 A few details are all we need.
+              </p>
+              <p className="mt-3 text-[0.78rem] font-semibold text-[hsl(215_20%_50%)]">
+                {authMeQuery.isPending ? (
+                  'Checking sign-in status...'
+                ) : authenticatedUser ? (
+                  <>
+                    Signed in as {authenticatedUser.fullName}. This request will be marked as{' '}
+                    <span className="font-extrabold text-[hsl(215_74%_38%)]">Registered Customer</span>
+                    .{' '}
+                    <a
+                      className="font-extrabold text-[hsl(215_74%_38%)] underline underline-offset-2 hover:text-[hsl(215_82%_28%)]"
+                      href="/logout"
+                    >
+                      Sign out to submit as a guest.
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    You are submitting as a <span className="font-extrabold text-[hsl(215_74%_38%)]">Guest</span>.
+                  </>
+                )}
               </p>
             </div>
             <span className="shrink-0 rounded-full bg-[hsl(170_54%_90%)] px-3 py-2 text-[0.61rem] font-extrabold uppercase tracking-[0.16em] text-[hsl(215_74%_38%)]">
