@@ -5,6 +5,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
   varchar,
@@ -49,7 +50,7 @@ export const reviewsTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
-    uniqueIndex("reviews_review_id_unique").on(table.reviewId),
+    unique("reviews_review_id_unique").on(table.reviewId),
     uniqueIndex("reviews_customer_request_unique").on(
       table.customerId,
       table.requestId,

@@ -11,7 +11,6 @@ import { z } from "zod/v4";
 import { bookingsTable } from "./bookings";
 import { customersTable } from "./customers";
 import { repairRequestsTable } from "./repair-requests";
-import { reviewsTable } from "./reviews";
 
 export const reviewInvitationsTable = pgTable(
   "review_invitations",
@@ -30,10 +29,7 @@ export const reviewInvitationsTable = pgTable(
       () => bookingsTable.bookingId,
       { onDelete: "cascade" },
     ),
-    reviewId: varchar("review_id", { length: 24 }).references(
-      () => reviewsTable.reviewId,
-      { onDelete: "set null" },
-    ),
+    reviewId: varchar("review_id", { length: 24 }),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     usedAt: timestamp("used_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
