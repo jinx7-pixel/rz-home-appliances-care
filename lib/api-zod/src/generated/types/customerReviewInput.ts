@@ -12,6 +12,12 @@ export interface CustomerReviewInput {
   /** @nullable */
   bookingId?: string | null;
   /**
+     * @minLength 32
+     * @maxLength 128
+     * @nullable
+     */
+  token?: string | null;
+  /**
      * @minimum 1
      * @maximum 5
      */

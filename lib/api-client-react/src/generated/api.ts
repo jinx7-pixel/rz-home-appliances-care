@@ -662,7 +662,7 @@ export const getCreateCustomerReviewUrl = () => {
 }
 
 /**
- * @summary Submit a review for the authenticated customer's completed work
+ * @summary Submit a review for a completed customer service
  */
 export const createCustomerReview = async (customerReviewInput: CustomerReviewInput, options?: Parameters<typeof customFetch>[1]): Promise<CustomerReview> => {
 
@@ -728,7 +728,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateCustomerReviewMutationVariables = {data: BodyType<CustomerReviewInput>}
 
     /**
- * @summary Submit a review for the authenticated customer's completed work
+ * @summary Submit a review for a completed customer service
  */
 export const useCreateCustomerReview = <TError = ErrorType<ApiError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCustomerReview>>, TError,CreateCustomerReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

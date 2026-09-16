@@ -20,9 +20,9 @@ export const reviewsTable = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     reviewId: varchar("review_id", { length: 24 }).notNull(),
-    customerId: uuid("customer_id")
-      .notNull()
-      .references(() => customersTable.id, { onDelete: "cascade" }),
+    customerId: uuid("customer_id").references(() => customersTable.id, {
+      onDelete: "set null",
+    }),
     requestId: varchar("request_id", { length: 24 }).references(
       () => repairRequestsTable.requestId,
       { onDelete: "cascade" },
@@ -58,6 +58,8 @@ export const reviewsTable = pgTable(
       table.customerId,
       table.bookingId,
     ),
+    uniqueIndex("reviews_request_unique").on(table.requestId),
+    uniqueIndex("reviews_booking_unique").on(table.bookingId),
     index("reviews_status_idx").on(table.status),
     index("reviews_customer_id_idx").on(table.customerId),
   ],

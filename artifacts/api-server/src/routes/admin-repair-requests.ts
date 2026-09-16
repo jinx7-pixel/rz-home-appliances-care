@@ -26,6 +26,7 @@ import {
   buildReviewLink,
   sendRepairStatusEmail,
 } from "../lib/repair-request-email";
+import { createReviewInvitation } from "../lib/review-invitations";
 
 const router = Router();
 
@@ -218,6 +219,15 @@ router.patch("/repair-requests/:requestId", async (request, response) => {
       requestedStatus === "cancelled")
   ) {
     try {
+      const reviewToken =
+        requestedStatus === "completed"
+          ? await createReviewInvitation({
+              sourceType: "request",
+              sourceId: updatedRequest.requestId,
+              customerId: updatedRequest.customerId,
+              customerEmail: updatedRequest.email,
+            })
+          : null;
       await sendRepairStatusEmail({
         requestId: updatedRequest.requestId,
         customerName: updatedRequest.customerName,
@@ -225,10 +235,7 @@ router.patch("/repair-requests/:requestId", async (request, response) => {
         applianceType: updatedRequest.applianceType,
         status: requestedStatus,
         cancellationReason: updatedRequest.cancellationReason,
-        reviewLink:
-          requestedStatus === "completed" && updatedRequest.customerId
-            ? buildReviewLink("request", updatedRequest.requestId)
-            : null,
+        reviewLink: reviewToken ? buildReviewLink(reviewToken) : null,
       });
     } catch (error) {
       request.log.error(

@@ -140,6 +140,7 @@ export const GetCustomerReviewEligibleResponse = zod.array(GetCustomerReviewElig
  * @summary Load one completed customer request or booking for review
  */
 export const GetCustomerReviewTargetQueryParams = zod.object({
+  "token": zod.coerce.string().optional(),
   "requestId": zod.coerce.string().optional(),
   "bookingId": zod.coerce.string().optional()
 })
@@ -170,8 +171,11 @@ export const GetCustomerReviewTargetResponse = zod.object({
 
 
 /**
- * @summary Submit a review for the authenticated customer's completed work
+ * @summary Submit a review for a completed customer service
  */
+export const createCustomerReviewBodyTokenMin = 32;
+export const createCustomerReviewBodyTokenMax = 128;
+
 export const createCustomerReviewBodyRatingMax = 5;
 
 export const createCustomerReviewBodyReviewMessageMin = 10;
@@ -182,6 +186,7 @@ export const createCustomerReviewBodyReviewMessageMax = 1000;
 export const CreateCustomerReviewBody = zod.object({
   "requestId": zod.string().nullish(),
   "bookingId": zod.string().nullish(),
+  "token": zod.string().min(createCustomerReviewBodyTokenMin).max(createCustomerReviewBodyTokenMax).nullish(),
   "rating": zod.number().int().min(1).max(createCustomerReviewBodyRatingMax),
   "reviewMessage": zod.string().min(createCustomerReviewBodyReviewMessageMin).max(createCustomerReviewBodyReviewMessageMax),
   "showFirstName": zod.boolean()
@@ -618,12 +623,17 @@ export const GetAdminReviewsQueryParams = zod.object({
 
 export const GetAdminReviewsResponseItem = zod.object({
   "reviewId": zod.string(),
-  "customerId": zod.string().uuid(),
+  "customerId": zod.string().uuid().nullish(),
   "customerName": zod.string(),
   "customerEmail": zod.string().email(),
   "sourceType": zod.enum(['repair_request', 'booking']),
   "sourceId": zod.string(),
   "applianceType": zod.string(),
+  "relatedStatus": zod.string(),
+  "relatedDate": zod.coerce.date().nullable(),
+  "relatedTime": zod.string().nullable(),
+  "relatedAddress": zod.string().nullable(),
+  "relatedProblemDescription": zod.string().nullable(),
   "rating": zod.number().int(),
   "reviewMessage": zod.string(),
   "showFirstName": zod.boolean(),
@@ -645,12 +655,17 @@ export const GetAdminReviewParams = zod.object({
 
 export const GetAdminReviewResponse = zod.object({
   "reviewId": zod.string(),
-  "customerId": zod.string().uuid(),
+  "customerId": zod.string().uuid().nullish(),
   "customerName": zod.string(),
   "customerEmail": zod.string().email(),
   "sourceType": zod.enum(['repair_request', 'booking']),
   "sourceId": zod.string(),
   "applianceType": zod.string(),
+  "relatedStatus": zod.string(),
+  "relatedDate": zod.coerce.date().nullable(),
+  "relatedTime": zod.string().nullable(),
+  "relatedAddress": zod.string().nullable(),
+  "relatedProblemDescription": zod.string().nullable(),
   "rating": zod.number().int(),
   "reviewMessage": zod.string(),
   "showFirstName": zod.boolean(),
@@ -680,12 +695,17 @@ export const UpdateAdminReviewBody = zod.object({
 
 export const UpdateAdminReviewResponse = zod.object({
   "reviewId": zod.string(),
-  "customerId": zod.string().uuid(),
+  "customerId": zod.string().uuid().nullish(),
   "customerName": zod.string(),
   "customerEmail": zod.string().email(),
   "sourceType": zod.enum(['repair_request', 'booking']),
   "sourceId": zod.string(),
   "applianceType": zod.string(),
+  "relatedStatus": zod.string(),
+  "relatedDate": zod.coerce.date().nullable(),
+  "relatedTime": zod.string().nullable(),
+  "relatedAddress": zod.string().nullable(),
+  "relatedProblemDescription": zod.string().nullable(),
   "rating": zod.number().int(),
   "reviewMessage": zod.string(),
   "showFirstName": zod.boolean(),

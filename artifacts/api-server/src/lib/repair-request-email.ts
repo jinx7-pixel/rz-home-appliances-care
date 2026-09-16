@@ -315,13 +315,11 @@ function getApplicationBaseUrl(): string | null {
 }
 
 export function buildReviewLink(
-  sourceType: "request" | "booking",
-  sourceId: string,
+  token: string,
 ): string | null {
   const baseUrl = getApplicationBaseUrl();
   if (!baseUrl) return null;
-  const parameter = sourceType === "request" ? "requestId" : "bookingId";
-  return `${baseUrl}/customer/review?${parameter}=${encodeURIComponent(sourceId)}`;
+  return `${baseUrl}/customer/review?token=${encodeURIComponent(token)}`;
 }
 
 export async function sendRepairStatusEmail(

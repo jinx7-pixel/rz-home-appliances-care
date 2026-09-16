@@ -186,6 +186,11 @@ paths:
       tags: [customer]
       summary: Load one completed customer request or booking for review
       parameters:
+        - name: token
+          in: query
+          required: false
+          schema:
+            type: string
         - name: requestId
           in: query
           required: false
@@ -225,7 +230,7 @@ paths:
     post:
       operationId: createCustomerReview
       tags: [customer]
-      summary: Submit a review for the authenticated customer's completed work
+      summary: Submit a review for a completed customer service
       requestBody:
         required: true
         content:
@@ -1149,6 +1154,10 @@ components:
           type: ["string", "null"]
         bookingId:
           type: ["string", "null"]
+        token:
+          type: ["string", "null"]
+          minLength: 32
+          maxLength: 128
         rating:
           type: integer
           minimum: 1
@@ -1574,12 +1583,16 @@ components:
       type: object
       required:
         - reviewId
-        - customerId
         - customerName
         - customerEmail
         - sourceType
         - sourceId
         - applianceType
+        - relatedStatus
+        - relatedDate
+        - relatedTime
+        - relatedAddress
+        - relatedProblemDescription
         - rating
         - reviewMessage
         - showFirstName
@@ -1592,7 +1605,7 @@ components:
         reviewId:
           type: string
         customerId:
-          type: string
+          type: ["string", "null"]
           format: uuid
         customerName:
           type: string
@@ -1606,6 +1619,17 @@ components:
           type: string
         applianceType:
           type: string
+        relatedStatus:
+          type: string
+        relatedDate:
+          type: ["string", "null"]
+          format: date
+        relatedTime:
+          type: ["string", "null"]
+        relatedAddress:
+          type: ["string", "null"]
+        relatedProblemDescription:
+          type: ["string", "null"]
         rating:
           type: integer
         reviewMessage:

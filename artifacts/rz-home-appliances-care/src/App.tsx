@@ -711,29 +711,33 @@ function AboutSection() {
 }
 
 function CustomerReviewsSection() {
-  const reviews = [
-    {
-      reviewId: 'sample-1',
-      rating: 5,
-      reviewMessage: 'Clear communication, careful work, and the washing machine was running again the same day.',
-      customerLabel: 'Ananya R.',
-      applianceType: 'Washing Machine Repair',
-    },
-    {
-      reviewId: 'sample-2',
-      rating: 5,
-      reviewMessage: 'They explained the refrigerator issue before starting and kept the visit straightforward.',
-      customerLabel: 'Rahul M.',
-      applianceType: 'Refrigerator Repair',
-    },
-    {
-      reviewId: 'sample-3',
-      rating: 5,
-      reviewMessage: 'Friendly service and a practical fix for our LED TV. We knew exactly what to expect.',
-      customerLabel: 'Priya K.',
-      applianceType: 'LED TV Repair',
-    },
-  ];
+  const [reviews, setReviews] = useState<Array<{
+    reviewId: string;
+    rating: number;
+    reviewMessage: string;
+    customerLabel: string;
+    applianceType: string | null;
+    isVerified: boolean;
+  }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/reviews?limit=6', { cache: 'no-store' })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || 'Reviews are unavailable right now.');
+        if (!cancelled) setReviews(body);
+      })
+      .catch((reason) => {
+        if (!cancelled) setError(reason instanceof Error ? reason.message : 'Reviews are unavailable right now.');
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <section
@@ -750,7 +754,10 @@ function CustomerReviewsSection() {
           <p className="max-w-[21rem] text-[0.92rem] leading-[1.7] text-[hsl(215_24%_76%)]">The best measure of a careful repair is how it feels after we leave.</p>
         </div>
         <div aria-live="polite" className="mt-12">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {isLoading ? <p className="rounded-2xl border border-[hsl(215_25%_30%)] bg-[hsl(215_42%_19%)] p-8 text-center font-semibold text-[hsl(215_24%_76%)]">Loading customer reviews…</p> : null}
+          {error ? <p className="rounded-2xl border border-red-300/40 bg-red-950/30 p-6 text-sm font-semibold text-red-100" role="alert">{error}</p> : null}
+          {!isLoading && !error && reviews.length === 0 ? <p className="rounded-2xl border border-dashed border-[hsl(215_25%_30%)] bg-[hsl(215_42%_19%)] p-8 text-center font-semibold text-[hsl(215_24%_76%)]">Approved customer reviews will appear here after moderation.</p> : null}
+          {!isLoading && !error ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {reviews.map((review) => (
                 <article className="flex min-h-[16rem] flex-col rounded-[1.7rem] border border-[hsl(215_25%_30%)] bg-[hsl(215_42%_19%)] p-6 transition duration-300 hover:-translate-y-1 hover:border-[hsl(184_85%_64%/0.58)] sm:p-7" data-testid={`card-public-review-${review.reviewId}`} key={review.reviewId}>
                   <div className="flex items-center justify-between gap-3"><span aria-label={`${review.rating} out of 5 stars`} className="inline-flex gap-0.5 text-[hsl(39_86%_60%)]" data-testid={`stars-public-review-${review.reviewId}`}>{[1, 2, 3, 4, 5].map((value) => <Star aria-hidden="true" className={`size-4 ${value <= review.rating ? 'fill-current' : 'text-[hsl(215_25%_36%)]'}`} key={value} />)}</span><span className="inline-flex items-center gap-1.5 rounded-full bg-[hsl(174_54%_28%)] px-2.5 py-1.5 text-[0.62rem] font-extrabold text-[hsl(174_54%_86%)]"><ShieldCheck className="size-3.5" /> Verified Customer</span></div>
@@ -758,8 +765,8 @@ function CustomerReviewsSection() {
                   <div className="mt-auto border-t border-[hsl(215_25%_30%)] pt-5"><p className="text-[0.78rem] font-extrabold text-[hsl(184_85%_72%)]" data-testid={`text-public-review-customer-${review.reviewId}`}>{review.customerLabel}</p><p className="mt-1 text-[0.72rem] text-[hsl(215_24%_72%)]">{review.applianceType ?? 'Appliance service'}</p></div>
                 </article>
             ))}
-          </div>
-          {reviews.length > 6 ? (
+          </div> : null}
+          {reviews.length >= 6 ? (
             <a
               className="mt-7 inline-flex min-h-11 items-center rounded-xl border border-[hsl(184_85%_64%)] px-4 text-[0.78rem] font-extrabold text-[hsl(184_85%_78%)] transition hover:bg-[hsl(184_85%_64%)] hover:text-[hsl(215_74%_20%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(184_85%_64%)]"
               href={appPath('/reviews')}

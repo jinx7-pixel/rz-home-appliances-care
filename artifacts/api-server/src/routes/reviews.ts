@@ -6,6 +6,7 @@ import {
   desc,
   eq,
   ilike,
+  isNull,
   or,
   type SQL,
 } from "drizzle-orm";
@@ -33,6 +34,12 @@ import {
 } from "@workspace/db";
 import { getAuthenticatedCustomer } from "../lib/auth-session";
 import { requireAdmin } from "./admin-repair-requests";
+import {
+  getReviewInvitation,
+  getReviewInvitationRecord,
+  markReviewInvitationUsed,
+  reviewExistsForSource,
+} from "../lib/review-invitations";
 
 const router: IRouter = Router();
 
@@ -72,18 +79,28 @@ function sourceIdFor(review: {
 }
 
 async function getCompletedTarget(
-  customerId: string,
+  customerId: string | null,
+  customerEmail: string | null,
   requestId: string | undefined,
   bookingId: string | undefined,
 ) {
   if (requestId) {
+    const ownership = customerId
+      ? and(
+          eq(repairRequestsTable.customerId, customerId),
+          eq(repairRequestsTable.email, customerEmail!),
+        )
+      : and(
+          isNull(repairRequestsTable.customerId),
+          eq(repairRequestsTable.email, customerEmail!),
+        );
     const [request] = await db
       .select()
       .from(repairRequestsTable)
       .where(
         and(
           eq(repairRequestsTable.requestId, requestId),
-          eq(repairRequestsTable.customerId, customerId),
+            ownership,
           eq(repairRequestsTable.status, "completed"),
         ),
       )
@@ -95,18 +112,27 @@ async function getCompletedTarget(
           applianceType: request.applianceType,
           status: request.status,
           createdAt: request.createdAt,
+          customerId: request.customerId,
+          customerName: request.customerName,
+          customerEmail: request.email,
         }
       : null;
   }
 
   if (bookingId) {
+    const ownership = customerId
+      ? and(
+          eq(bookingsTable.customerId, customerId),
+          eq(bookingsTable.email, customerEmail!),
+        )
+      : eq(bookingsTable.email, customerEmail!);
     const [booking] = await db
       .select()
       .from(bookingsTable)
       .where(
         and(
           eq(bookingsTable.bookingId, bookingId),
-          eq(bookingsTable.customerId, customerId),
+            ownership,
           eq(bookingsTable.status, "completed"),
         ),
       )
@@ -118,6 +144,9 @@ async function getCompletedTarget(
           applianceType: booking.applianceType,
           status: booking.status,
           createdAt: booking.createdAt,
+          customerId: booking.customerId,
+          customerName: booking.customerName,
+          customerEmail: booking.email,
         }
       : null;
   }
@@ -232,24 +261,48 @@ router.get("/customer/reviews/eligible", async (request, response) => {
 
 router.get("/customer/review-target", async (request, response) => {
   const customer = await getAuthenticatedCustomer(request, response);
-  if (!customer) {
-    response.status(401).json({ error: "Authentication is required to view reviews." });
-    return;
-  }
-
   const parsed = GetCustomerReviewTargetQueryParams.safeParse(request.query);
   if (!parsed.success) {
     response.status(400).json({ error: "Choose one request or booking to review." });
     return;
   }
 
-  const { requestId, bookingId } = parsed.data;
-  if ((requestId ? 1 : 0) + (bookingId ? 1 : 0) !== 1) {
+  const { requestId, bookingId, token } = parsed.data;
+  const invitation = token ? await getReviewInvitation(token) : null;
+  if (token && !invitation) {
+    const record = await getReviewInvitationRecord(token);
+    if (record?.reviewId) {
+      response.status(409).json({ error: "A review has already been submitted for this service." });
+      return;
+    }
+    response.status(404).json({ error: "This review link is invalid or has expired." });
+    return;
+  }
+  const resolvedRequestId = invitation?.requestId ?? requestId;
+  const resolvedBookingId = invitation?.bookingId ?? bookingId;
+  if (
+    invitation &&
+    ((requestId && requestId !== invitation.requestId) ||
+      (bookingId && bookingId !== invitation.bookingId))
+  ) {
+    response.status(403).json({ error: "This review link is not valid for that service." });
+    return;
+  }
+  if ((resolvedRequestId ? 1 : 0) + (resolvedBookingId ? 1 : 0) !== 1) {
     response.status(400).json({ error: "Choose one request or booking to review." });
     return;
   }
 
-  const target = await getCompletedTarget(customer.id, requestId, bookingId);
+  if (!invitation && !customer) {
+    response.status(401).json({ error: "Authentication is required to view reviews." });
+    return;
+  }
+  const target = await getCompletedTarget(
+    invitation?.customerId ?? customer?.id ?? null,
+    invitation?.customerEmail ?? customer?.email ?? null,
+    resolvedRequestId,
+    resolvedBookingId,
+  );
   if (!target) {
     response.status(404).json({
       error: "Only your completed repair work can receive a review.",
@@ -262,10 +315,9 @@ router.get("/customer/review-target", async (request, response) => {
     .from(reviewsTable)
     .where(
       and(
-        eq(reviewsTable.customerId, customer.id),
-        requestId
-          ? eq(reviewsTable.requestId, requestId)
-          : eq(reviewsTable.bookingId, bookingId!),
+        resolvedRequestId
+          ? eq(reviewsTable.requestId, resolvedRequestId)
+          : eq(reviewsTable.bookingId, resolvedBookingId!),
       ),
     )
     .limit(1);
@@ -277,18 +329,7 @@ router.get("/customer/review-target", async (request, response) => {
       applianceType: target.applianceType,
       status: target.status,
       existingReview: existingReview
-        ? {
-            reviewId: existingReview.reviewId,
-            sourceType: sourceTypeFor(existingReview),
-            sourceId: sourceIdFor(existingReview),
-            applianceType: existingReview.applianceType,
-            rating: existingReview.rating,
-            reviewMessage: existingReview.reviewMessage,
-            showFirstName: existingReview.showFirstName,
-            isVerified: existingReview.isVerified,
-            status: existingReview.status,
-            createdAt: existingReview.createdAt,
-          }
+        ? await serializeAdminReview(existingReview)
         : null,
     }),
   );
@@ -296,24 +337,48 @@ router.get("/customer/review-target", async (request, response) => {
 
 router.post("/customer/reviews", async (request, response) => {
   const customer = await getAuthenticatedCustomer(request, response);
-  if (!customer) {
-    response.status(401).json({ error: "Authentication is required to submit a review." });
-    return;
-  }
-
   const parsed = CreateCustomerReviewBody.safeParse(request.body);
   if (!parsed.success) {
     response.status(400).json({ error: "Please add a rating and a review of at least 10 characters." });
     return;
   }
 
-  const { requestId, bookingId } = parsed.data;
-  if ((requestId ? 1 : 0) + (bookingId ? 1 : 0) !== 1) {
+  const { requestId, bookingId, token } = parsed.data;
+  const invitation = token ? await getReviewInvitation(token) : null;
+  if (token && !invitation) {
+    const record = await getReviewInvitationRecord(token);
+    if (record?.reviewId) {
+      response.status(409).json({ error: "A review has already been submitted for this service." });
+      return;
+    }
+    response.status(404).json({ error: "This review link is invalid or has expired." });
+    return;
+  }
+  if (!invitation && !customer) {
+    response.status(401).json({ error: "Authentication is required to submit a review." });
+    return;
+  }
+  const resolvedRequestId = invitation?.requestId ?? requestId ?? undefined;
+  const resolvedBookingId = invitation?.bookingId ?? bookingId ?? undefined;
+  if (
+    invitation &&
+    ((requestId && requestId !== invitation.requestId) ||
+      (bookingId && bookingId !== invitation.bookingId))
+  ) {
+    response.status(403).json({ error: "This review link is not valid for that service." });
+    return;
+  }
+  if ((resolvedRequestId ? 1 : 0) + (resolvedBookingId ? 1 : 0) !== 1) {
     response.status(400).json({ error: "Choose one request or booking to review." });
     return;
   }
 
-  const target = await getCompletedTarget(customer.id, requestId ?? undefined, bookingId ?? undefined);
+  const target = await getCompletedTarget(
+    invitation?.customerId ?? customer?.id ?? null,
+    invitation?.customerEmail ?? customer?.email ?? null,
+    resolvedRequestId,
+    resolvedBookingId,
+  );
   if (!target) {
     response.status(400).json({
       error: "Only your completed repair work can receive a review.",
@@ -321,19 +386,7 @@ router.post("/customer/reviews", async (request, response) => {
     return;
   }
 
-  const [existingReview] = await db
-    .select({ reviewId: reviewsTable.reviewId })
-    .from(reviewsTable)
-    .where(
-      and(
-        eq(reviewsTable.customerId, customer.id),
-        requestId
-          ? eq(reviewsTable.requestId, requestId)
-          : eq(reviewsTable.bookingId, bookingId!),
-      ),
-    )
-    .limit(1);
-  if (existingReview) {
+  if (await reviewExistsForSource(resolvedRequestId ?? null, resolvedBookingId ?? null)) {
     response.status(409).json({ error: "A review has already been submitted for this work." });
     return;
   }
@@ -343,11 +396,11 @@ router.post("/customer/reviews", async (request, response) => {
       .insert(reviewsTable)
       .values({
         reviewId: createReviewId(),
-        customerId: customer.id,
-        requestId: requestId ?? null,
-        bookingId: bookingId ?? null,
-        customerName: customer.fullName,
-        customerEmail: customer.email,
+         customerId: target.customerId,
+         requestId: resolvedRequestId ?? null,
+         bookingId: resolvedBookingId ?? null,
+         customerName: target.customerName,
+         customerEmail: target.customerEmail,
         applianceType: target.applianceType,
         rating: parsed.data.rating,
         reviewMessage: parsed.data.reviewMessage.trim(),
@@ -357,20 +410,12 @@ router.post("/customer/reviews", async (request, response) => {
       })
       .returning();
 
-    response.status(201).json(
-      CreateCustomerReviewResponse.parse({
-        reviewId: review.reviewId,
-        sourceType: target.sourceType,
-        sourceId: target.sourceId,
-        applianceType: review.applianceType,
-        rating: review.rating,
-        reviewMessage: review.reviewMessage,
-        showFirstName: review.showFirstName,
-        isVerified: review.isVerified,
-        status: review.status,
-        createdAt: review.createdAt,
-      }),
-    );
+     if (invitation) {
+       await markReviewInvitationUsed(invitation.id, review.reviewId);
+     }
+     response.status(201).json(
+       CreateCustomerReviewResponse.parse(await serializeAdminReview(review)),
+     );
   } catch (error) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "23505") {
       response.status(409).json({ error: "A review has already been submitted for this work." });

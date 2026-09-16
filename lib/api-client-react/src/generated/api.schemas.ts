@@ -206,6 +206,12 @@ export interface CustomerReviewInput {
   /** @nullable */
   bookingId?: string | null;
   /**
+     * @minLength 32
+     * @maxLength 128
+     * @nullable
+     */
+  token?: string | null;
+  /**
      * @minimum 1
      * @maximum 5
      */
@@ -461,12 +467,22 @@ export const AdminReviewSourceType = {
 
 export interface AdminReview {
   reviewId: string;
-  customerId: string;
+  /** @nullable */
+  customerId?: string | null;
   customerName: string;
   customerEmail: string;
   sourceType: AdminReviewSourceType;
   sourceId: string;
   applianceType: string;
+  relatedStatus: string;
+  /** @nullable */
+  relatedDate: string | null;
+  /** @nullable */
+  relatedTime: string | null;
+  /** @nullable */
+  relatedAddress: string | null;
+  /** @nullable */
+  relatedProblemDescription: string | null;
   rating: number;
   reviewMessage: string;
   showFirstName: boolean;
@@ -488,6 +504,7 @@ export interface AdminReviewUpdate {
 }
 
 export type GetCustomerReviewTargetParams = {
+token?: string;
 requestId?: string;
 bookingId?: string;
 };

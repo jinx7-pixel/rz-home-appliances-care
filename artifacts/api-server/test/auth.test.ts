@@ -15,6 +15,7 @@ import {
   passwordResetTokensTable,
   pool,
   repairRequestsTable,
+  reviewInvitationsTable,
   reviewsTable,
 } from "@workspace/db";
 
@@ -172,6 +173,21 @@ async function requestFromSource(
 
 async function get(path: string, cookie?: string): Promise<JsonResponse> {
   const response = await fetch(`${baseUrl}${path}`, {
+    headers: {
+      "x-forwarded-for": clientIp,
+      ...(cookie ? { cookie } : {}),
+    },
+  });
+  const text = await response.text();
+  return {
+    response,
+    body: text ? (JSON.parse(text) as Record<string, unknown>) : {},
+  };
+}
+
+async function remove(path: string, cookie?: string): Promise<JsonResponse> {
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "DELETE",
     headers: {
       "x-forwarded-for": clientIp,
       ...(cookie ? { cookie } : {}),
@@ -1104,6 +1120,25 @@ test("booking creation and status emails use the exact booking customer", async 
   assert.equal(sentEmails[0].to, booking.email);
   assert.equal(sentEmails[0].replyTo, "owner@example.test");
   assert.ok(sentEmails[0].to !== previousEmail);
+
+  process.env.APP_BASE_URL = "https://care.example.test";
+  sentEmails.length = 0;
+  const completed = await patch(
+    `/api/admin/bookings/${booking.bookingId}`,
+    { status: "completed" },
+    adminCookie,
+  );
+  assert.equal(completed.response.status, 200);
+  assert.equal(sentEmails.length, 1);
+  assert.equal(sentEmails[0].to, booking.email);
+  const bookingToken = sentEmails[0].text.match(/token=([a-f0-9]{64})/)?.[1];
+  assert.ok(bookingToken);
+  const bookingTarget = await get(
+    `/api/customer/review-target?token=${bookingToken}`,
+  );
+  assert.equal(bookingTarget.response.status, 200);
+  assert.equal(bookingTarget.body.sourceType, "booking");
+  process.env.APP_BASE_URL = "";
 });
 
 test("public reviews expose only approved reviews and review APIs enforce authentication", async () => {
@@ -1136,4 +1171,124 @@ test("public reviews expose only approved reviews and review APIs enforce authen
 
   const adminReviews = await get("/api/admin/reviews");
   assert.equal(adminReviews.response.status, 403);
+});
+
+test("guest completion emails contain a secure review link and guest reviews are moderated once", async () => {
+  const previousBaseUrl = process.env.APP_BASE_URL;
+  process.env.APP_BASE_URL = "https://care.example.test";
+  try {
+    const requestId = await createRepairRequest("pending");
+    const adminCookie = await createAdminSession();
+    sentEmails.length = 0;
+
+    const completed = await patch(
+      `/api/admin/repair-requests/${requestId}`,
+      { status: "completed" },
+      adminCookie,
+    );
+    assert.equal(completed.response.status, 200);
+    assert.equal(sentEmails.length, 1);
+    assert.equal(sentEmails[0].to, (await repairRequestForId(requestId)).email);
+    assert.match(sentEmails[0].text, /Leave a review: https:\/\/care\.example\.test\/customer\/review\?token=/);
+    assert.match(sentEmails[0].html, /Leave a Review/);
+
+    const token = sentEmails[0].text.match(/token=([a-f0-9]{64})/)?.[1];
+    assert.ok(token);
+    const invalid = await get("/api/customer/review-target?token=invalid-token");
+    assert.equal(invalid.response.status, 404);
+    const mismatched = await get(
+      `/api/customer/review-target?token=${token}&requestId=RZ-other-source`,
+    );
+    assert.equal(mismatched.response.status, 403);
+    const target = await get(`/api/customer/review-target?token=${token}`);
+    assert.equal(target.response.status, 200);
+    assert.equal(target.body.sourceId, requestId);
+    assert.equal(target.body.existingReview, null);
+
+    const submitted = await request("/api/customer/reviews", {
+      token,
+      rating: 5,
+      reviewMessage: "The technician explained everything and repaired it carefully.",
+      showFirstName: false,
+    });
+    assert.equal(submitted.response.status, 201);
+    assert.equal(submitted.body.status, "pending");
+    assert.equal(submitted.body.sourceId, requestId);
+
+    const duplicate = await request("/api/customer/reviews", {
+      token,
+      rating: 5,
+      reviewMessage: "This second submission must not be accepted.",
+      showFirstName: false,
+    });
+    assert.equal(duplicate.response.status, 409);
+
+    const adminReviews = await get("/api/admin/reviews", adminCookie);
+    assert.equal(adminReviews.response.status, 200);
+    const review = (adminReviews.body as unknown[]).find(
+      (item) => (item as { sourceId?: string }).sourceId === requestId,
+    ) as { reviewId: string; customerId: string | null } | undefined;
+    assert.ok(review);
+    assert.equal(review.customerId, null);
+
+    const approved = await patch(
+      `/api/admin/reviews/${review.reviewId}`,
+      { status: "approved" },
+      adminCookie,
+    );
+    assert.equal(approved.response.status, 200);
+    const publicReviews = await get("/api/reviews?limit=100");
+    assert.ok(
+      (publicReviews.body as unknown[]).some(
+        (item) => (item as { reviewId?: string }).reviewId === review.reviewId,
+      ),
+    );
+
+    const hidden = await patch(
+      `/api/admin/reviews/${review.reviewId}`,
+      { status: "hidden", adminNotes: "Hidden during moderation test." },
+      adminCookie,
+    );
+    assert.equal(hidden.response.status, 200);
+    const hiddenPublicReviews = await get("/api/reviews?limit=100");
+    assert.ok(
+      !(hiddenPublicReviews.body as unknown[]).some(
+        (item) => (item as { reviewId?: string }).reviewId === review.reviewId,
+      ),
+    );
+    const deleted = await remove(
+      `/api/admin/reviews/${review.reviewId}`,
+      adminCookie,
+    );
+    assert.equal(deleted.response.status, 204);
+    const deletedDetail = await get(
+      `/api/admin/reviews/${review.reviewId}`,
+      adminCookie,
+    );
+    assert.equal(deletedDetail.response.status, 404);
+
+    const expiredRequestId = await createRepairRequest("pending");
+    const expiredCompletion = await patch(
+      `/api/admin/repair-requests/${expiredRequestId}`,
+      { status: "completed" },
+      adminCookie,
+    );
+    assert.equal(expiredCompletion.response.status, 200);
+    const expiredToken = sentEmails[sentEmails.length - 1].text.match(/token=([a-f0-9]{64})/)?.[1];
+    assert.ok(expiredToken);
+    const [invitation] = await db
+      .select({ id: reviewInvitationsTable.id })
+      .from(reviewInvitationsTable)
+      .where(eq(reviewInvitationsTable.tokenHash, hashToken(expiredToken)))
+      .limit(1);
+    assert.ok(invitation);
+    await db
+      .update(reviewInvitationsTable)
+      .set({ expiresAt: new Date(0) })
+      .where(eq(reviewInvitationsTable.id, invitation.id));
+    const expired = await get(`/api/customer/review-target?token=${expiredToken}`);
+    assert.equal(expired.response.status, 404);
+  } finally {
+    process.env.APP_BASE_URL = previousBaseUrl;
+  }
 });

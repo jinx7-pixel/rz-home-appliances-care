@@ -7,6 +7,7 @@
  */
 
 export type GetCustomerReviewTargetParams = {
+token?: string;
 requestId?: string;
 bookingId?: string;
 };
