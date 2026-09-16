@@ -18,7 +18,7 @@ import {
   ReviewsPage,
 } from '@/pages/static-pages';
 import applianceCareImage from '@assets/ChatGPT_Image_Sep_14,_2026,_03_54_12_PM_1789381955049.png';
-import siddiqBashaImage from '@assets/ChatGPT_Image_Sep_14,_2026,_04_32_51_PM_1789383963232.png';
+import siddiqBashaImage from '@assets/IMG_20260916_205205_1789572132299.jpg';
 import {
   ArrowRight,
   ArrowLeft,
@@ -619,9 +619,9 @@ function AboutSection() {
               alt="Siddiq Basha, owner of RZ Home Appliances Care"
               className="block h-auto max-h-[45rem] w-full rounded-[1.45rem] object-contain object-top sm:rounded-[2rem]"
               data-testid="img-siddiq-basha"
-              height="1390"
+              height="2028"
               src={siddiqBashaImage}
-              width="1132"
+              width="1080"
             />
             <figcaption className="absolute bottom-5 left-5 rounded-xl border border-[hsl(210_40%_98%/0.7)] bg-[hsl(215_32%_14%/0.88)] px-4 py-3 text-[0.74rem] font-bold text-[hsl(210_40%_98%)] shadow-[0_12px_28px_-18px_hsl(215_53%_23%)] backdrop-blur-md sm:bottom-7 sm:left-7">
               <span className="block text-[0.61rem] font-extrabold uppercase tracking-[0.18em] text-[hsl(199_82%_72%)]">
