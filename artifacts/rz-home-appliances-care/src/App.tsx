@@ -7,6 +7,14 @@ import {
 } from 'react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { MenuHoverLink } from '@/components/ui/menu-hover-effects';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
@@ -1698,8 +1706,34 @@ function AuthInfoPage({
 }
 
 function Home() {
+  const [isServiceAreaDialogOpen, setIsServiceAreaDialogOpen] = useState(true);
+
   return (
     <div className="min-h-[100dvh] w-full scroll-smooth bg-[hsl(210_40%_98%)]" id="top">
+      <Dialog open={isServiceAreaDialogOpen} onOpenChange={setIsServiceAreaDialogOpen}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-[31rem] rounded-[1.5rem] border-[hsl(210_35%_88%)] bg-[hsl(210_40%_98%)] p-6 shadow-[0_30px_80px_-34px_hsl(215_53%_23%/0.75)] sm:p-8">
+          <DialogHeader className="pr-7 text-left">
+            <div className="mb-2 flex size-11 items-center justify-center rounded-2xl bg-[hsl(199_82%_90%/0.7)] text-[hsl(199_82%_43%)]">
+              <MapPin aria-hidden="true" className="size-5" />
+            </div>
+            <DialogTitle className="text-[1.45rem] font-extrabold tracking-[-0.04em] text-[hsl(215_32%_14%)]">
+              Service available in Bengaluru
+            </DialogTitle>
+            <DialogDescription className="pt-2 text-[0.98rem] leading-7 text-[hsl(215_20%_42%)]">
+              RZ Home Appliances Care currently serves Bengaluru, Karnataka only. You are welcome to browse our services and submit a request.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogClose asChild>
+            <button
+              className="mt-1 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[hsl(215_82%_38%)] px-5 text-[0.84rem] font-extrabold text-white transition hover:bg-[hsl(215_82%_32%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(210_40%_98%)] active:translate-y-px"
+              data-testid="button-dismiss-service-area-dialog"
+              type="button"
+            >
+              Continue to website
+            </button>
+          </DialogClose>
+        </DialogContent>
+      </Dialog>
       <HomeNavbar />
       <main
         aria-labelledby="hero-heading"
