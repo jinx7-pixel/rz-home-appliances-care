@@ -296,7 +296,10 @@ type RepairStatusEmailData = {
 
 function getApplicationBaseUrl(): string | null {
   const configured = process.env.APP_BASE_URL?.trim();
-  const developmentDomain = process.env.REPLIT_DEV_DOMAIN?.trim();
+  const developmentDomain =
+    process.env.NODE_ENV === "production"
+      ? null
+      : process.env.REPLIT_DEV_DOMAIN?.trim();
   const candidate =
     configured || (developmentDomain ? `https://${developmentDomain}` : null);
   if (!candidate) return null;

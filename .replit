@@ -29,3 +29,6 @@ SMTP_SECURE = "false"
 SMTP_USER = "redacted@example.invalid"
 EMAIL_FROM = "redacted@example.invalid"
 OWNER_EMAIL = "redacted@example.invalid"
+
+[userenv.production]
+APP_BASE_URL = "https://navbar-builder.replit.app"
