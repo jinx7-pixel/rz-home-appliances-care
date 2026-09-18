@@ -328,7 +328,7 @@ type AdminReview = {
   updatedAt: string;
 };
 
-function AdminReviewsPanel() {
+function AdminReviewsPanel({ onLogout }: { onLogout: () => void }) {
   const [reviews, setReviews] = useState<AdminReview[]>([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
@@ -407,9 +407,14 @@ function AdminReviewsPanel() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[0.68rem] font-extrabold uppercase tracking-[0.22em] text-[hsl(188_75%_43%)]">CUSTOMER FEEDBACK</p>
-          <h2 className="mt-3 text-3xl font-extrabold tracking-[-0.05em] text-[hsl(215_74%_28%)]" id="admin-reviews-heading">Review moderation</h2>
+          <h1 className="mt-3 text-[clamp(2.7rem,6vw,5.2rem)] font-extrabold leading-[0.94] tracking-[-0.08em] text-[hsl(215_74%_28%)]" id="admin-reviews-heading">Review moderation.</h1>
+          <p className="mt-5 max-w-[40rem] text-[1rem] leading-[1.7] text-[hsl(215_20%_45%)]">Review customer feedback, keep internal notes, and decide what appears publicly.</p>
         </div>
-        <button className="inline-flex min-h-10 items-center rounded-xl border border-[hsl(215_35%_82%)] bg-white px-4 text-xs font-extrabold text-[hsl(215_74%_28%)] disabled:opacity-60" disabled={isLoading} onClick={() => void loadReviews()} type="button"><RefreshCw className={`mr-2 size-4 ${isLoading ? 'animate-spin' : ''}`} /> Refresh</button>
+        <div className="flex flex-wrap gap-3">
+          <a className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[hsl(215_35%_82%)] bg-white px-4 text-xs font-extrabold text-[hsl(215_74%_28%)] hover:bg-[hsl(199_82%_94%)]" href={appPath('/admin/dashboard')}><ArrowLeft className="size-4" /> Dashboard</a>
+          <button className="inline-flex min-h-10 items-center rounded-xl border border-[hsl(215_35%_82%)] bg-white px-4 text-xs font-extrabold text-[hsl(215_74%_28%)] disabled:opacity-60" disabled={isLoading} onClick={() => void loadReviews()} type="button"><RefreshCw className={`mr-2 size-4 ${isLoading ? 'animate-spin' : ''}`} /> {isLoading ? 'Refreshing…' : 'Refresh'}</button>
+          <button className="inline-flex min-h-10 items-center rounded-xl bg-[hsl(215_82%_38%)] px-4 text-xs font-extrabold text-white hover:bg-[hsl(215_82%_32%)]" onClick={onLogout} type="button">Sign out</button>
+        </div>
       </div>
       <div className="mt-5 grid gap-3 rounded-2xl border border-[hsl(215_35%_86%)] bg-white p-4 sm:grid-cols-[1fr_auto_auto_auto]">
         <input aria-label="Search reviews" className="min-h-10 rounded-xl border border-[hsl(215_35%_82%)] px-3 text-sm" onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void loadReviews(); }} placeholder="Search customer, email, review ID…" value={search} />
@@ -417,6 +422,7 @@ function AdminReviewsPanel() {
         <select aria-label="Filter review rating" className="min-h-10 rounded-xl border border-[hsl(215_35%_82%)] px-3 text-sm" onChange={(event) => setRating(event.target.value)} value={rating}><option value="">All ratings</option>{[5, 4, 3, 2, 1].map((value) => <option key={value} value={value}>{value} stars</option>)}</select>
         <select aria-label="Sort reviews" className="min-h-10 rounded-xl border border-[hsl(215_35%_82%)] px-3 text-sm" onChange={(event) => setSort(event.target.value)} value={sort}><option value="newest">Newest</option><option value="oldest">Oldest</option></select>
       </div>
+      {isLoading ? <p className="mt-5 rounded-2xl border border-[hsl(215_35%_86%)] bg-white p-6 text-sm font-semibold text-[hsl(215_20%_48%)]" role="status">Loading reviews…</p> : null}
       {error ? <p className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-900" role="alert">{error}</p> : null}
       {!isLoading && !error && reviews.length === 0 ? <p className="mt-5 rounded-2xl border border-dashed border-[hsl(215_35%_78%)] bg-white p-8 text-center text-sm font-semibold text-[hsl(215_20%_48%)]">No reviews match these filters.</p> : null}
       <div className="mt-5 grid gap-4">
@@ -429,7 +435,7 @@ function AdminReviewsPanel() {
             <div className="mt-4 flex gap-1 text-[hsl(39_92%_53%)]">{[1, 2, 3, 4, 5].map((star) => <Star className={`size-4 ${star <= review.rating ? 'fill-current' : ''}`} key={star} />)}</div>
             <blockquote className="mt-3 text-sm font-semibold leading-6">“{review.reviewMessage}”</blockquote>
             <details className="mt-4 rounded-xl bg-[hsl(210_40%_98%)] p-3 text-sm"><summary className="cursor-pointer font-extrabold text-[hsl(215_74%_28%)]">Service details</summary><div className="mt-3 grid gap-2 text-[hsl(215_20%_42%)] sm:grid-cols-2"><p>Status: {review.relatedStatus}</p><p>Date: {review.relatedDate ?? 'Not specified'}</p><p>Time: {review.relatedTime ?? 'Not specified'}</p><p>Address: {review.relatedAddress ?? 'Not available'}</p><p className="sm:col-span-2">Problem: {review.relatedProblemDescription ?? 'Not available'}</p></div></details>
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end"><label className="grid flex-1 gap-1 text-xs font-extrabold text-[hsl(215_20%_48%)]">Internal notes<textarea className="min-h-16 rounded-xl border border-[hsl(215_35%_82%)] p-3 text-sm font-medium text-[hsl(215_32%_14%)]" onChange={(event) => setNotes((current) => ({ ...current, [review.reviewId]: event.target.value }))} value={notes[review.reviewId] ?? ''} /></label><div className="flex gap-2"><button className="min-h-10 rounded-xl border border-[hsl(215_35%_82%)] px-3 text-xs font-extrabold text-[hsl(215_74%_28%)] disabled:opacity-50" disabled={updatingId === review.reviewId} onClick={() => void updateReview(review.reviewId, { adminNotes: notes[review.reviewId] ?? null })} type="button">Save notes</button><button className="min-h-10 rounded-xl border border-red-200 px-3 text-xs font-extrabold text-red-700 disabled:opacity-50" disabled={updatingId === review.reviewId} onClick={() => void deleteReview(review.reviewId)} type="button">Delete</button></div></div>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end"><label className="grid flex-1 gap-1 text-xs font-extrabold text-[hsl(215_20%_48%)]">Internal notes<textarea className="min-h-16 rounded-xl border border-[hsl(215_35%_82%)] p-3 text-sm font-medium text-[hsl(215_32%_14%)]" disabled={updatingId === review.reviewId} onChange={(event) => setNotes((current) => ({ ...current, [review.reviewId]: event.target.value }))} value={notes[review.reviewId] ?? ''} /></label><div className="flex gap-2"><button className="min-h-10 rounded-xl border border-[hsl(215_35%_82%)] px-3 text-xs font-extrabold text-[hsl(215_74%_28%)] disabled:opacity-50" disabled={updatingId === review.reviewId} onClick={() => void updateReview(review.reviewId, { adminNotes: notes[review.reviewId] ?? null })} type="button">{updatingId === review.reviewId ? 'Saving…' : 'Save notes'}</button><button className="min-h-10 rounded-xl border border-red-200 px-3 text-xs font-extrabold text-red-700 disabled:opacity-50" disabled={updatingId === review.reviewId} onClick={() => void deleteReview(review.reviewId)} type="button">{updatingId === review.reviewId ? 'Working…' : 'Delete'}</button></div></div>
           </article>
         ))}
       </div>
@@ -440,6 +446,7 @@ function AdminReviewsPanel() {
 export function AdminPage() {
   const [location, setLocation] = useLocation();
   const isLoginPage = location === '/admin/login';
+  const isReviewsPage = location === '/admin/reviews';
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -485,18 +492,20 @@ export function AdminPage() {
           throw new Error(siteStatus.error || 'Could not load website status.');
         }
         setWebsiteEnabled(siteStatus.enabled === true);
-        setIsLoadingRequests(true);
-        const requestsResponse = await fetch(
-          '/api/admin/repair-requests?customerType=guest&sort=newest',
-          { credentials: 'include', cache: 'no-store' },
-        );
-        const requestsBody = await requestsResponse.json();
-        if (!requestsResponse.ok) {
-          throw new Error(requestsBody.error || 'Could not load repair requests.');
-        }
-        if (!cancelled) {
-          setRequests(requestsBody);
-          setRequestError('');
+        if (!isReviewsPage) {
+          setIsLoadingRequests(true);
+          const requestsResponse = await fetch(
+            '/api/admin/repair-requests?customerType=guest&sort=newest',
+            { credentials: 'include', cache: 'no-store' },
+          );
+          const requestsBody = await requestsResponse.json();
+          if (!requestsResponse.ok) {
+            throw new Error(requestsBody.error || 'Could not load repair requests.');
+          }
+          if (!cancelled) {
+            setRequests(requestsBody);
+            setRequestError('');
+          }
         }
       } catch (error) {
         if (!cancelled) {
@@ -514,7 +523,7 @@ export function AdminPage() {
     return () => {
       cancelled = true;
     };
-  }, [isLoginPage, setLocation]);
+  }, [isLoginPage, isReviewsPage, setLocation]);
 
   const login = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -660,6 +669,14 @@ export function AdminPage() {
     );
   }
 
+  if (isReviewsPage) {
+    return (
+      <PageShell>
+        <AdminReviewsPanel onLogout={() => void logout()} />
+      </PageShell>
+    );
+  }
+
   return (
     <PageShell>
       <section className="py-14 sm:py-20">
@@ -673,6 +690,9 @@ export function AdminPage() {
             <button className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[hsl(215_35%_82%)] bg-white px-4 text-[0.78rem] font-extrabold text-[hsl(215_74%_28%)] hover:bg-[hsl(199_82%_94%)] disabled:opacity-60" disabled={isLoadingRequests} onClick={() => void refreshRequests()} type="button">
               <RefreshCw className={`size-4 ${isLoadingRequests ? 'animate-spin' : ''}`} /> Refresh
             </button>
+            <a className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[hsl(215_35%_82%)] bg-white px-4 text-[0.78rem] font-extrabold text-[hsl(215_74%_28%)] hover:bg-[hsl(199_82%_94%)]" href={appPath('/admin/reviews')}>
+              <MessageSquareQuote className="size-4" /> Reviews
+            </a>
             <button className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[hsl(215_82%_38%)] px-4 text-[0.78rem] font-extrabold text-white hover:bg-[hsl(215_82%_32%)]" onClick={() => void logout()} type="button">
               Sign out
             </button>
@@ -704,7 +724,6 @@ export function AdminPage() {
             </button>
           </div>
         </section>
-        <AdminReviewsPanel />
         {requestError ? <p className="mt-8 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[0.82rem] font-semibold leading-[1.6] text-red-900" role="alert">{requestError}</p> : null}
         <div className="mt-10 grid gap-5">
           {requests.length === 0 && !isLoadingRequests ? (
