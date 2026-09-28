@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import nodemailer, { type Transporter } from "nodemailer";
 import type { AddressInfo } from "node:net";
 import app from "../src/app.ts";
+import { isInitialAdminBootstrapEligible } from "../src/routes/admin-auth.ts";
 import {
   adminUsersTable,
   bookingsTable,
@@ -78,6 +79,10 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
+function originFor(targetBaseUrl = baseUrl): string {
+  return new URL(targetBaseUrl).origin;
+}
+
 function testEmail(label: string): string {
   return `${TEST_EMAIL_PREFIX}${label}-${randomUUID()}@example.test`;
 }
@@ -92,6 +97,7 @@ async function request(
     method: "POST",
     headers: {
       "content-type": "application/json",
+      origin: originFor(),
       "x-forwarded-for": requestClientIp,
       ...(cookie ? { cookie } : {}),
     },
@@ -114,6 +120,7 @@ async function patch(
     method: "PATCH",
     headers: {
       "content-type": "application/json",
+      origin: originFor(),
       "x-forwarded-for": clientIp,
       ...(cookie ? { cookie } : {}),
     },
@@ -147,6 +154,7 @@ async function requestFromSource(
         localAddress: sourceAddress,
         headers: {
           "content-type": "application/json",
+          origin: originFor(targetBaseUrl),
           "content-length": Buffer.byteLength(payload),
           "x-forwarded-for": forwardedFor,
         },
@@ -187,6 +195,7 @@ async function remove(path: string, cookie?: string): Promise<JsonResponse> {
   const response = await fetch(`${baseUrl}${path}`, {
     method: "DELETE",
     headers: {
+      origin: originFor(),
       "x-forwarded-for": clientIp,
       ...(cookie ? { cookie } : {}),
     },
@@ -318,6 +327,191 @@ after(async () => {
     });
   }
   await pool.end();
+});
+
+test("ADMIN_PASSWORD bootstrap eligibility ends once an admin is initialized", () => {
+  assert.equal(
+    isInitialAdminBootstrapEligible(
+      "admin",
+      "bootstrap-pass",
+      "bootstrap-pass",
+      false,
+    ),
+    true,
+  );
+  assert.equal(
+    isInitialAdminBootstrapEligible(
+      "admin",
+      "bootstrap-pass",
+      "bootstrap-pass",
+      true,
+    ),
+    false,
+  );
+  assert.equal(
+    isInitialAdminBootstrapEligible(
+      "owner",
+      "bootstrap-pass",
+      "bootstrap-pass",
+      false,
+    ),
+    false,
+  );
+  assert.equal(
+    isInitialAdminBootstrapEligible(
+      "admin",
+      "wrong-pass",
+      "bootstrap-pass",
+      false,
+    ),
+    false,
+  );
+  assert.equal(
+    isInitialAdminBootstrapEligible(
+      "admin",
+      "bootstrap-pass",
+      undefined,
+      false,
+    ),
+    false,
+  );
+});
+
+test("CORS is origin-restricted and admin mutations reject cross-origin requests", async () => {
+  const previousBaseUrl = process.env.APP_BASE_URL;
+  const productionOrigin = "https://navbar-builder.replit.app";
+  const untrustedOrigin = "https://attacker.example";
+  process.env.APP_BASE_URL = productionOrigin;
+
+  try {
+    const allowedOriginResponse = await fetch(`${baseUrl}/api/healthz`, {
+      headers: { origin: productionOrigin },
+    });
+    assert.equal(
+      allowedOriginResponse.headers.get("access-control-allow-origin"),
+      productionOrigin,
+    );
+
+    const untrustedOriginResponse = await fetch(`${baseUrl}/api/healthz`, {
+      headers: { origin: untrustedOrigin },
+    });
+    assert.equal(
+      untrustedOriginResponse.headers.get("access-control-allow-origin"),
+      null,
+    );
+
+    const allowedPreflight = await fetch(
+      `${baseUrl}/api/admin/repair-requests/example`,
+      {
+        method: "OPTIONS",
+        headers: {
+          origin: productionOrigin,
+          "access-control-request-method": "PATCH",
+          "access-control-request-headers": "content-type",
+        },
+      },
+    );
+    assert.equal(allowedPreflight.status, 204);
+    assert.equal(
+      allowedPreflight.headers.get("access-control-allow-origin"),
+      productionOrigin,
+    );
+    assert.equal(
+      allowedPreflight.headers.get("access-control-allow-credentials"),
+      null,
+    );
+    assert.deepEqual(
+      allowedPreflight.headers
+        .get("access-control-allow-methods")
+        ?.split(",")
+        .map((method) => method.trim()),
+      ["GET", "HEAD", "POST", "PATCH", "DELETE"],
+    );
+
+    const untrustedPreflight = await fetch(
+      `${baseUrl}/api/admin/repair-requests/example`,
+      {
+        method: "OPTIONS",
+        headers: {
+          origin: untrustedOrigin,
+          "access-control-request-method": "PATCH",
+          "access-control-request-headers": "content-type",
+        },
+      },
+    );
+    assert.equal(
+      untrustedPreflight.headers.get("access-control-allow-origin"),
+      null,
+    );
+
+    const requestId = await createRepairRequest();
+    const adminCookie = await createAdminSession();
+    const rejectedMutation = await fetch(
+      `${baseUrl}/api/admin/repair-requests/${requestId}`,
+      {
+        method: "PATCH",
+        headers: {
+          origin: untrustedOrigin,
+          "content-type": "application/json",
+          cookie: adminCookie,
+        },
+        body: JSON.stringify({ status: "contacted" }),
+      },
+    );
+    assert.equal(rejectedMutation.status, 403);
+    assert.equal((await repairRequestForId(requestId)).status, "pending");
+
+    const rejectedWithoutOrigin = await fetch(
+      `${baseUrl}/api/admin/repair-requests/${requestId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          cookie: adminCookie,
+        },
+        body: JSON.stringify({ status: "contacted" }),
+      },
+    );
+    assert.equal(rejectedWithoutOrigin.status, 403);
+    assert.equal((await repairRequestForId(requestId)).status, "pending");
+
+    const unauthenticatedMutation = await patch(
+      `/api/admin/repair-requests/${requestId}`,
+      { status: "contacted" },
+    );
+    assert.equal(unauthenticatedMutation.response.status, 403);
+
+    const configuredOriginOnDifferentHost = await fetch(
+      `${baseUrl}/api/admin/repair-requests/${requestId}`,
+      {
+        method: "PATCH",
+        headers: {
+          origin: productionOrigin,
+          "content-type": "application/json",
+          cookie: adminCookie,
+        },
+        body: JSON.stringify({ status: "contacted" }),
+      },
+    );
+    assert.equal(configuredOriginOnDifferentHost.status, 403);
+    assert.equal((await repairRequestForId(requestId)).status, "pending");
+
+    const allowedMutation = await patch(
+      `/api/admin/repair-requests/${requestId}`,
+      { status: "contacted" },
+      adminCookie,
+    );
+    assert.equal(allowedMutation.response.status, 200);
+    assert.equal((await repairRequestForId(requestId)).status, "contacted");
+
+    const allowedAdminList = await get(
+      "/api/admin/repair-requests",
+      adminCookie,
+    );
+    assert.equal(allowedAdminList.response.status, 200);
+  } finally {
+    process.env.APP_BASE_URL = previousBaseUrl;
+  }
 });
 
 test("rate limits trust forwarded IPs only from the configured proxy addresses", async () => {
@@ -478,6 +672,7 @@ test("removed customer auth, history, and booking routes stay unavailable", asyn
       method,
       headers: {
         "content-type": "application/json",
+        origin: originFor(),
         "x-forwarded-for": clientIp,
       },
       body: body === undefined ? undefined : JSON.stringify(body),

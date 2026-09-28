@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
@@ -66,6 +66,43 @@ function reportProductionProxyConfiguration(): void {
 
 reportProductionProxyConfiguration();
 
+function getConfiguredFrontendOrigin(): string | undefined {
+  const configuredBaseUrl = process.env.APP_BASE_URL?.trim();
+  if (!configuredBaseUrl) return undefined;
+
+  try {
+    const url = new URL(configuredBaseUrl);
+    if (
+      (url.protocol !== "http:" && url.protocol !== "https:") ||
+      (process.env.NODE_ENV === "production" && url.protocol !== "https:")
+    ) {
+      return undefined;
+    }
+    return url.origin;
+  } catch {
+    return undefined;
+  }
+}
+
+function getRequestOrigin(request: Request): string | undefined {
+  const host = request.get("host");
+  if (!host) return undefined;
+
+  try {
+    return new URL(`${request.protocol}://${host}`).origin;
+  } catch {
+    return undefined;
+  }
+}
+
+function isAllowedAdminMutationOrigin(
+  origin: string | undefined,
+  request: Request,
+): boolean {
+  const requestOrigin = getRequestOrigin(request);
+  return Boolean(origin && requestOrigin && origin === requestOrigin);
+}
+
 app.use((req, _res, next) => {
   const remoteAddress = normalizedRemoteAddress(req.socket.remoteAddress);
 
@@ -103,7 +140,36 @@ app.use(
     },
   }),
 );
-app.use(cors());
+app.use(
+  cors({
+    origin(origin, callback) {
+      const configuredOrigin = getConfiguredFrontendOrigin();
+      callback(
+        null,
+        origin && configuredOrigin && origin === configuredOrigin
+          ? origin
+          : false,
+      );
+    },
+    methods: ["GET", "HEAD", "POST", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type"],
+  }),
+);
+app.use("/api/admin", (request, response, next) => {
+  if (!["POST", "PATCH", "DELETE"].includes(request.method)) {
+    next();
+    return;
+  }
+
+  if (!isAllowedAdminMutationOrigin(request.get("origin"), request)) {
+    response.status(403).json({
+      error: "Cross-origin admin requests are not allowed.",
+    });
+    return;
+  }
+
+  next();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

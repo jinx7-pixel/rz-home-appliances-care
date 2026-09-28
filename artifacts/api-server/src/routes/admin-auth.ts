@@ -21,13 +21,27 @@ const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_ATTEMPTS = 10;
 const loginAttempts = new Map<string, number[]>();
 
+export function isInitialAdminBootstrapEligible(
+  username: string,
+  submittedPassword: string,
+  bootstrapPassword: string | undefined,
+  adminAlreadyInitialized: boolean,
+): boolean {
+  return (
+    !adminAlreadyInitialized &&
+    username === "admin" &&
+    Boolean(bootstrapPassword) &&
+    submittedPassword === bootstrapPassword
+  );
+}
+
 router.use((_request, response, next) => {
   response.set("Cache-Control", "no-store");
   next();
 });
 
-// The initial administrator can be bootstrapped from ADMIN_PASSWORD on first
-// login. The password is never stored in source, client code, or responses.
+// ADMIN_PASSWORD is only accepted while the admin user table is uninitialized.
+// Existing accounts are always authenticated against their stored bcrypt hash.
 function clientKey(request: Request): string {
   return request.ip || request.socket.remoteAddress || "unknown";
 }
@@ -89,40 +103,46 @@ router.post("/auth/login", async (request, response) => {
     username === "admin" &&
     bootstrapPassword &&
     parsed.data.password === bootstrapPassword &&
-    (!admin || !passwordMatches || !admin.isActive)
+    !admin
   ) {
-    const passwordHash = await bcrypt.hash(bootstrapPassword, 12);
-    if (admin) {
-      await db
-        .update(adminUsersTable)
-        .set({
-          displayName: "RZ Administrator",
-          passwordHash,
-          isActive: true,
-          updatedAt: new Date(),
-        })
-        .where(eq(adminUsersTable.id, admin.id));
-    } else {
+    const [initializedAdmin] = await db
+      .select({ id: adminUsersTable.id })
+      .from(adminUsersTable)
+      .limit(1);
+
+    if (
+      isInitialAdminBootstrapEligible(
+        username,
+        parsed.data.password,
+        bootstrapPassword,
+        Boolean(initializedAdmin),
+      )
+    ) {
+      const passwordHash = await bcrypt.hash(bootstrapPassword, 12);
       await db.insert(adminUsersTable).values({
         username: "admin",
         displayName: "RZ Administrator",
         passwordHash,
         isActive: true,
-      });
-    }
+      }).onConflictDoNothing({ target: adminUsersTable.username });
 
-    [admin] = await db
-      .select({
-        id: adminUsersTable.id,
-        username: adminUsersTable.username,
-        displayName: adminUsersTable.displayName,
-        passwordHash: adminUsersTable.passwordHash,
-        isActive: adminUsersTable.isActive,
-      })
-      .from(adminUsersTable)
-      .where(eq(adminUsersTable.username, username))
-      .limit(1);
-    passwordMatches = Boolean(admin);
+      // Another first-login request may have won the insert race. Only accept
+      // the password if it matches the row that actually exists.
+      [admin] = await db
+        .select({
+          id: adminUsersTable.id,
+          username: adminUsersTable.username,
+          displayName: adminUsersTable.displayName,
+          passwordHash: adminUsersTable.passwordHash,
+          isActive: adminUsersTable.isActive,
+        })
+        .from(adminUsersTable)
+        .where(eq(adminUsersTable.username, username))
+        .limit(1);
+      passwordMatches = admin
+        ? await bcrypt.compare(parsed.data.password, admin.passwordHash)
+        : false;
+    }
   }
 
   if (!admin || !admin.isActive || !passwordMatches) {
