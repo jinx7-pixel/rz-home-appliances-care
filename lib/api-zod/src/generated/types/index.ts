@@ -6,13 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from './adminBooking';
-export * from './adminBookingCustomerType';
-export * from './adminBookingStatus';
-export * from './adminBookingUpdate';
 export * from './adminLoginInput';
 export * from './adminLoginResult';
 export * from './adminMeResult';
+export * from './adminMessageResult';
 export * from './adminRepairRequest';
 export * from './adminRepairRequestCustomerType';
 export * from './adminRepairRequestUpdate';
@@ -22,29 +19,11 @@ export * from './adminReviewSourceType';
 export * from './adminReviewUpdate';
 export * from './adminUser';
 export * from './apiError';
-export * from './authForgotPasswordInput';
-export * from './authLoginInput';
-export * from './authLoginResult';
-export * from './authMeResult';
-export * from './authMessageResult';
-export * from './authResetPasswordInput';
-export * from './authSignupInput';
-export * from './authUser';
-export * from './customerBooking';
-export * from './customerBookingInput';
-export * from './customerBookingInputApplianceType';
-export * from './customerBookingSubmission';
-export * from './customerRepairRequest';
 export * from './customerReview';
-export * from './customerReviewEligible';
-export * from './customerReviewEligibleSourceType';
 export * from './customerReviewInput';
 export * from './customerReviewSourceType';
 export * from './customerReviewTarget';
 export * from './customerReviewTargetSourceType';
-export * from './getAdminBookingsCustomerType';
-export * from './getAdminBookingsParams';
-export * from './getAdminBookingsSort';
 export * from './getAdminRepairRequestsCustomerType';
 export * from './getAdminRepairRequestsParams';
 export * from './getAdminRepairRequestsSort';

@@ -19,9 +19,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import {
-  AccountPage,
   AdminPage,
-  BookingPage,
   ReviewPage,
   ReviewsPage,
 } from '@/pages/static-pages';
@@ -29,12 +27,8 @@ import applianceCareImage from '@assets/ChatGPT_Image_Sep_14,_2026,_03_54_12_PM_
 import siddiqBashaImage from '@assets/IMG_20260916_205205_1789572132299.jpg';
 import {
   ArrowRight,
-  ArrowLeft,
   Check,
-  Eye,
-  EyeOff,
   House,
-  LockKeyhole,
   Mail,
   MapPin,
   Menu,
@@ -211,11 +205,6 @@ function getRepairRequestErrorMessage(error: unknown): string {
   }
 
   return 'We could not submit your repair request. Please try again.';
-};
-
-type SignInErrors = {
-  email?: string;
-  password?: string;
 };
 
 function BrandMark() {
@@ -1405,310 +1394,6 @@ function WhatsAppFloatButton() {
   );
 }
 
-function SignInPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<SignInErrors>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState('');
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const nextErrors: SignInErrors = {};
-    const normalizedEmail = email.trim();
-
-    if (!normalizedEmail) {
-      nextErrors.email = 'Please enter your email address.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      nextErrors.email = 'Enter a valid email address.';
-    }
-
-    if (!password) {
-      nextErrors.password = 'Please enter your password.';
-    }
-
-    setErrors(nextErrors);
-    setSubmitMessage('');
-
-    if (Object.keys(nextErrors).length > 0) {
-      return;
-    }
-
-    setIsSubmitting(true);
-    window.setTimeout(() => {
-      setIsSubmitting(false);
-      setSubmitMessage(
-        'Authentication is not connected yet. Your sign-in form is ready for the project’s auth provider.',
-      );
-    }, 700);
-  };
-
-  const clearFieldError = (field: keyof SignInErrors) => {
-    setErrors((current) => ({ ...current, [field]: undefined }));
-    setSubmitMessage('');
-  };
-
-  return (
-    <main className="min-h-[100dvh] bg-[hsl(210_40%_98%)] px-4 py-5 text-[hsl(215_32%_14%)] sm:px-8 sm:py-8 lg:px-12">
-      <div className="mx-auto flex min-h-[calc(100dvh-2.5rem)] w-full max-w-[1440px] flex-col">
-        <header className="flex items-center justify-between gap-5 pb-6 sm:pb-8">
-          <a
-            aria-label="RZ Home Appliances Care home"
-            className="group inline-flex items-center gap-3 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-4 focus-visible:ring-offset-[hsl(210_40%_98%)]"
-            data-testid="signin-brand-link"
-            href="/"
-          >
-            <BrandMark />
-            <span>
-              <span className="block text-[0.95rem] font-extrabold tracking-[-0.02em] text-[hsl(215_32%_19%)] transition-colors group-hover:text-[hsl(215_82%_38%)] sm:text-[1.02rem]">
-                RZ Home Appliances
-              </span>
-              <span className="mt-0.5 block text-[0.63rem] font-semibold uppercase tracking-[0.18em] text-[hsl(215_20%_48%)]">
-                Care
-              </span>
-            </span>
-          </a>
-          <a
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-[0.8rem] font-bold text-[hsl(215_74%_28%)] transition-colors hover:text-[hsl(215_82%_38%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-4 focus-visible:ring-offset-[hsl(210_40%_98%)] sm:px-4 sm:text-[0.86rem]"
-            data-testid="signin-back-home"
-            href="/"
-          >
-            <ArrowLeft aria-hidden="true" className="size-4" />
-            Back to home
-          </a>
-        </header>
-
-        <div className="grid flex-1 grid-cols-1 items-stretch gap-5 lg:grid-cols-[1.08fr_0.92fr] lg:gap-8 xl:gap-10">
-          <section
-            aria-labelledby="signin-visual-heading"
-            className="relative order-2 min-h-[25rem] overflow-hidden rounded-[2rem] bg-[hsl(215_82%_32%)] shadow-[0_30px_70px_-44px_hsl(215_53%_23%/0.75)] sm:min-h-[31rem] lg:order-1 lg:min-h-0 lg:rounded-[2.5rem]"
-          >
-            <img
-              alt="RZ Home Appliances Care technician repairing a home appliance"
-              className="absolute inset-0 size-full object-cover"
-              src={applianceCareImage}
-            />
-            <div className="absolute inset-0 bg-[linear-gradient(135deg,hsl(215_82%_25%/0.93)_0%,hsl(215_74%_34%/0.7)_45%,hsl(199_82%_38%/0.42)_100%)]" />
-            <div className="relative flex h-full flex-col justify-between p-7 text-white sm:p-10 lg:p-12">
-              <div>
-                <p className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-[0.67rem] font-extrabold uppercase tracking-[0.2em] text-[hsl(184_85%_84%)] backdrop-blur-sm">
-                  <span className="size-2 rounded-full bg-[hsl(184_85%_68%)]" />
-                  Trusted appliance care
-                </p>
-                <h1
-                  className="mt-8 max-w-[10ch] text-[clamp(3rem,6vw,6.1rem)] font-extrabold leading-[0.94] tracking-[-0.075em] sm:mt-10"
-                  data-testid="heading-signin-visual"
-                  id="signin-visual-heading"
-                >
-                  Reliable Appliance Care, Anytime.
-                </h1>
-                <p className="mt-7 max-w-[31rem] text-[1rem] leading-[1.75] text-white/80 sm:text-[1.08rem]">
-                  Practical repairs, clear communication, and dependable in-home service for the appliances your Bengaluru home relies on.
-                </p>
-              </div>
-              <div className="mt-12 grid gap-3 border-t border-white/20 pt-5 text-[0.8rem] font-semibold text-white/80 sm:flex sm:items-center sm:gap-6">
-                <span className="inline-flex items-center gap-2">
-                  <ShieldCheck aria-hidden="true" className="size-4 text-[hsl(184_85%_72%)]" />
-                  Care you can count on
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <MapPin aria-hidden="true" className="size-4 text-[hsl(184_85%_72%)]" />
-                  Serving Bengaluru
-                </span>
-              </div>
-            </div>
-          </section>
-
-          <section className="order-1 flex items-center lg:order-2">
-            <div className="w-full rounded-[2rem] border border-[hsl(215_35%_82%/0.85)] bg-white p-5 shadow-[0_30px_70px_-45px_hsl(215_53%_23%/0.55)] sm:rounded-[2.5rem] sm:p-8 lg:p-10 xl:p-12">
-              <div className="max-w-[31rem]">
-                <p className="text-[0.68rem] font-extrabold uppercase tracking-[0.22em] text-[hsl(188_75%_43%)]">
-                  YOUR RZ ACCOUNT
-                </p>
-                <h2
-                  className="mt-4 text-[clamp(2.4rem,5vw,4.3rem)] font-extrabold leading-[0.96] tracking-[-0.075em] text-[hsl(215_32%_14%)]"
-                  data-testid="heading-signin"
-                >
-                  Welcome Back
-                </h2>
-                <p className="mt-5 text-[0.98rem] leading-[1.7] text-[hsl(215_20%_45%)]">
-                  Sign in to continue to RZ Home Appliances Care and manage your repair requests.
-                </p>
-
-                <form className="mt-8 grid gap-5" onSubmit={handleSubmit} noValidate>
-                  <div>
-                    <label className="text-[0.86rem] font-extrabold text-[hsl(215_32%_28%)]" htmlFor="signin-email">
-                      Email address
-                    </label>
-                    <div className="relative mt-2">
-                      <Mail aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[hsl(215_20%_55%)]" />
-                      <input
-                        aria-describedby={errors.email ? 'signin-email-error' : undefined}
-                        aria-invalid={Boolean(errors.email)}
-                        autoComplete="email"
-                        className={`min-h-14 w-full rounded-2xl border bg-[hsl(210_40%_99%)] pl-11 pr-4 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition placeholder:text-[hsl(215_20%_61%)] focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)] ${
-                          errors.email ? 'border-red-400 ring-2 ring-red-100' : 'border-[hsl(215_35%_82%)]'
-                        }`}
-                        data-testid="input-signin-email"
-                        id="signin-email"
-                        onChange={(event) => {
-                          setEmail(event.target.value);
-                          clearFieldError('email');
-                        }}
-                        placeholder="you@example.com"
-                        required
-                        type="email"
-                        value={email}
-                      />
-                    </div>
-                    {errors.email ? (
-                      <p className="mt-2 text-[0.78rem] font-semibold text-red-600" id="signin-email-error">
-                        {errors.email}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div>
-                    <label className="text-[0.86rem] font-extrabold text-[hsl(215_32%_28%)]" htmlFor="signin-password">
-                      Password
-                    </label>
-                    <div className="relative mt-2">
-                      <LockKeyhole aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[hsl(215_20%_55%)]" />
-                      <input
-                        aria-describedby={errors.password ? 'signin-password-error' : undefined}
-                        aria-invalid={Boolean(errors.password)}
-                        autoComplete="current-password"
-                        className={`min-h-14 w-full rounded-2xl border bg-[hsl(210_40%_99%)] pl-11 pr-12 text-[0.95rem] text-[hsl(215_32%_19%)] outline-none transition placeholder:text-[hsl(215_20%_61%)] focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)] ${
-                          errors.password ? 'border-red-400 ring-2 ring-red-100' : 'border-[hsl(215_35%_82%)]'
-                        }`}
-                        data-testid="input-signin-password"
-                        id="signin-password"
-                        onChange={(event) => {
-                          setPassword(event.target.value);
-                          clearFieldError('password');
-                        }}
-                        placeholder="Enter your password"
-                        required
-                        type={showPassword ? 'text' : 'password'}
-                        value={password}
-                      />
-                      <button
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        className="absolute right-2 top-1/2 inline-flex size-10 -translate-y-1/2 items-center justify-center rounded-xl text-[hsl(215_74%_28%)] transition-colors hover:bg-[hsl(199_82%_94%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)]"
-                        data-testid="button-toggle-password"
-                        onClick={() => setShowPassword((visible) => !visible)}
-                        type="button"
-                      >
-                        {showPassword ? <EyeOff aria-hidden="true" className="size-4" /> : <Eye aria-hidden="true" className="size-4" />}
-                      </button>
-                    </div>
-                    {errors.password ? (
-                      <p className="mt-2 text-[0.78rem] font-semibold text-red-600" id="signin-password-error">
-                        {errors.password}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3 text-[0.82rem]">
-                    <label className="inline-flex cursor-pointer items-center gap-2 font-semibold text-[hsl(215_20%_45%)]">
-                      <input
-                        checked={rememberMe}
-                        className="size-4 accent-[hsl(215_82%_38%)]"
-                        data-testid="checkbox-remember-me"
-                        onChange={(event) => setRememberMe(event.target.checked)}
-                        type="checkbox"
-                      />
-                      Remember me
-                    </label>
-                    <a
-                      className="font-extrabold text-[hsl(215_82%_38%)] transition-colors hover:text-[hsl(215_82%_28%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2"
-                      data-testid="link-forgot-password"
-                      href="/forgot-password"
-                    >
-                      Forgot password?
-                    </a>
-                  </div>
-
-                  <button
-                    className="group inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl bg-[hsl(215_82%_38%)] px-6 text-[0.88rem] font-extrabold text-white shadow-[0_18px_28px_-18px_hsl(215_82%_30%/0.9)] transition duration-200 hover:-translate-y-0.5 hover:bg-[hsl(215_82%_32%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-4 disabled:cursor-not-allowed disabled:opacity-70"
-                    data-testid="button-signin"
-                    disabled={isSubmitting}
-                    type="submit"
-                  >
-                    {isSubmitting ? 'Signing in...' : 'Sign In'}
-                    {!isSubmitting ? <ArrowRight aria-hidden="true" className="size-4 transition-transform group-hover:translate-x-1" /> : null}
-                  </button>
-
-                  {submitMessage ? (
-                    <p className="rounded-2xl border border-[hsl(199_82%_72%/0.7)] bg-[hsl(199_82%_94%)] px-4 py-3 text-[0.8rem] font-semibold leading-[1.5] text-[hsl(215_74%_28%)]" data-testid="text-signin-status" role="status">
-                      {submitMessage}
-                    </p>
-                  ) : null}
-                </form>
-
-                <div className="my-7 flex items-center gap-4 text-[0.68rem] font-extrabold uppercase tracking-[0.18em] text-[hsl(215_20%_64%)]">
-                  <span className="h-px flex-1 bg-[hsl(215_35%_88%)]" />
-                  <span>OR</span>
-                  <span className="h-px flex-1 bg-[hsl(215_35%_88%)]" />
-                </div>
-
-                <p className="text-center text-[0.86rem] text-[hsl(215_20%_45%)]">
-                  Don&apos;t have an account?{' '}
-                  <a
-                    className="font-extrabold text-[hsl(215_82%_38%)] transition-colors hover:text-[hsl(215_82%_28%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-2"
-                    data-testid="link-create-account"
-                    href="/sign-up"
-                  >
-                    Create an account
-                  </a>
-                </p>
-              </div>
-            </div>
-          </section>
-        </div>
-      </div>
-    </main>
-  );
-}
-
-function AuthInfoPage({
-  mode,
-}: {
-  mode: 'forgot-password' | 'sign-up';
-}) {
-  const isForgotPassword = mode === 'forgot-password';
-  return (
-    <main className="flex min-h-[100dvh] items-center justify-center bg-[hsl(210_40%_98%)] px-5 py-10 sm:px-8">
-      <div className="w-full max-w-[32rem] rounded-[2rem] border border-[hsl(215_35%_82%/0.85)] bg-white p-7 text-center shadow-[0_30px_70px_-45px_hsl(215_53%_23%/0.55)] sm:rounded-[2.5rem] sm:p-10">
-        <a className="mx-auto inline-flex rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-4" href="/">
-          <BrandMark />
-        </a>
-        <p className="mt-6 text-[0.68rem] font-extrabold uppercase tracking-[0.2em] text-[hsl(188_75%_43%)]">
-          RZ HOME APPLIANCES CARE
-        </p>
-        <h1 className="mt-4 text-[2.3rem] font-extrabold tracking-[-0.07em] text-[hsl(215_32%_14%)]">
-          {isForgotPassword ? 'Password recovery' : 'Create your account'}
-        </h1>
-        <p className="mt-4 text-[0.96rem] leading-[1.7] text-[hsl(215_20%_45%)]">
-          {isForgotPassword
-            ? 'Password recovery will be available once an authentication provider is connected to this website.'
-            : 'Account creation will be available once an authentication provider is connected to this website.'}
-        </p>
-        <a
-          className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-xl bg-[hsl(215_82%_38%)] px-5 text-[0.84rem] font-extrabold text-white transition hover:bg-[hsl(215_82%_32%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)] focus-visible:ring-offset-4"
-          href="/sign-in"
-        >
-          <ArrowLeft aria-hidden="true" className="size-4" />
-          Back to sign in
-        </a>
-      </div>
-    </main>
-  );
-}
-
 function Home() {
   const [isServiceAreaDialogOpen, setIsServiceAreaDialogOpen] = useState(true);
 
@@ -1841,19 +1526,11 @@ function Router() {
     // survives a page crash.
     <RoutedErrorBoundary>
       <Switch>
-        <Route path="/sign-in" component={AccountPage} />
-        <Route path="/forgot-password" component={AccountPage} />
-        <Route path="/reset-password" component={AccountPage} />
-        <Route path="/sign-up" component={AccountPage} />
-        <Route path="/logout" component={AccountPage} />
-        <Route path="/customer-dashboard" component={AccountPage} />
         <Route path="/customer/review/:sourceType/:sourceId" component={ReviewPage} />
         <Route path="/customer/review" component={ReviewPage} />
         <Route path="/reviews" component={ReviewsPage} />
-        <Route path="/book-repair" component={BookingPage} />
         <Route path="/admin/login" component={AdminPage} />
         <Route path="/admin/dashboard" component={AdminPage} />
-        <Route path="/admin/bookings" component={AdminPage} />
         <Route path="/admin/reviews" component={AdminPage} />
         <Route path="/" component={Home} />
         <Route component={NotFound} />

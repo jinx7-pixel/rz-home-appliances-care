@@ -17,7 +17,6 @@ import {
   GetAdminReviewResponse,
   GetAdminReviewsQueryParams,
   GetAdminReviewsResponseItem,
-  GetCustomerReviewEligibleResponseItem,
   GetCustomerReviewTargetQueryParams,
   GetCustomerReviewTargetResponse,
   GetPublicReviewsQueryParams,
@@ -180,80 +179,6 @@ router.get("/reviews", async (request, response) => {
         applianceType: review.applianceType,
         isVerified: review.isVerified,
         createdAt: review.createdAt,
-      }),
-    ),
-  );
-});
-
-router.get("/customer/reviews/eligible", async (request, response) => {
-  const customer = await getAuthenticatedCustomer(request, response);
-  if (!customer) {
-    response.status(401).json({ error: "Authentication is required to view reviews." });
-    return;
-  }
-
-  const [requests, bookings, reviews] = await Promise.all([
-    db
-      .select({
-        sourceId: repairRequestsTable.requestId,
-        applianceType: repairRequestsTable.applianceType,
-        status: repairRequestsTable.status,
-        createdAt: repairRequestsTable.createdAt,
-      })
-      .from(repairRequestsTable)
-      .where(
-        and(
-          eq(repairRequestsTable.customerId, customer.id),
-          eq(repairRequestsTable.status, "completed"),
-        ),
-      ),
-    db
-      .select({
-        sourceId: bookingsTable.bookingId,
-        applianceType: bookingsTable.applianceType,
-        status: bookingsTable.status,
-        createdAt: bookingsTable.createdAt,
-      })
-      .from(bookingsTable)
-      .where(
-        and(
-          eq(bookingsTable.customerId, customer.id),
-          eq(bookingsTable.status, "completed"),
-        ),
-      ),
-    db
-      .select({
-        reviewId: reviewsTable.reviewId,
-        requestId: reviewsTable.requestId,
-        bookingId: reviewsTable.bookingId,
-        status: reviewsTable.status,
-      })
-      .from(reviewsTable)
-      .where(eq(reviewsTable.customerId, customer.id)),
-  ]);
-
-  const reviewBySource = new Map(
-    reviews.map((review) => [
-      review.requestId ?? review.bookingId,
-      review,
-    ]),
-  );
-  const eligible = [
-    ...requests.map((item) => ({ ...item, sourceType: "repair_request" as const })),
-    ...bookings.map((item) => ({ ...item, sourceType: "booking" as const })),
-  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
-  response.json(
-    eligible.map((item) =>
-      GetCustomerReviewEligibleResponseItem.parse({
-        sourceType: item.sourceType,
-        sourceId: item.sourceId,
-        applianceType: item.applianceType,
-        status: item.status,
-        createdAt: item.createdAt,
-        reviewSubmitted: reviewBySource.has(item.sourceId),
-        reviewStatus: reviewBySource.get(item.sourceId)?.status ?? null,
-        reviewId: reviewBySource.get(item.sourceId)?.reviewId ?? null,
       }),
     ),
   );

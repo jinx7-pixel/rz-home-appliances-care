@@ -2,8 +2,6 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
-  CalendarDays,
-  CheckCircle2,
   House,
   LockKeyhole,
   Mail,
@@ -50,94 +48,6 @@ function PageShell({ children }: { children: ReactNode }) {
         {children}
       </div>
     </main>
-  );
-}
-
-function FrontendOnlyNotice() {
-  return (
-    <div className="mt-8 flex items-start gap-3 rounded-2xl border border-[hsl(199_82%_72%)] bg-[hsl(199_82%_94%)] p-4 text-[0.82rem] font-semibold leading-[1.6] text-[hsl(215_74%_28%)]">
-      <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-[hsl(174_54%_40%)]" />
-      <p>This is a frontend-only preview. The server, database, email, and account features are not connected in this edition.</p>
-    </div>
-  );
-}
-
-function Field({ label, type = 'text', placeholder, autoComplete }: { label: string; type?: string; placeholder?: string; autoComplete?: string }) {
-  return (
-    <label className="grid gap-2 text-[0.84rem] font-extrabold text-[hsl(215_32%_28%)]">
-      {label}
-      <input autoComplete={autoComplete ?? (type === 'password' ? 'current-password' : undefined)} className="min-h-13 rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 text-[0.92rem] font-medium outline-none focus:border-[hsl(199_82%_52%)] focus:ring-2 focus:ring-[hsl(199_82%_62%/0.25)]" placeholder={placeholder} type={type} />
-    </label>
-  );
-}
-
-export function AccountPage() {
-  const [location] = useLocation();
-  const [message, setMessage] = useState('');
-  const isSignUp = location.includes('sign-up');
-  const isForgot = location.includes('forgot-password');
-  const isReset = location.includes('reset-password');
-  const title = isSignUp ? 'Create your account' : isForgot ? 'Reset your password' : isReset ? 'Set a new password' : 'Welcome back';
-
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setMessage('This form is ready for a future authentication provider, but no account data is sent or stored by this frontend-only edition.');
-  };
-
-  return (
-    <PageShell>
-      <section className="mx-auto max-w-[620px] py-14 sm:py-20">
-        <p className="text-[0.68rem] font-extrabold uppercase tracking-[0.22em] text-[hsl(188_75%_43%)]">RZ HOME APPLIANCES CARE</p>
-        <h1 className="mt-4 text-[clamp(2.7rem,7vw,5rem)] font-extrabold leading-[0.94] tracking-[-0.08em]">{title}</h1>
-        <p className="mt-5 max-w-[38rem] text-[0.98rem] leading-[1.7] text-[hsl(215_20%_45%)]">
-          {isForgot || isReset ? 'Password recovery will be available when an authentication provider is connected.' : 'Manage repair requests and bookings from one place.'}
-        </p>
-        <FrontendOnlyNotice />
-        <form className="mt-8 grid gap-5 rounded-[1.8rem] border border-[hsl(215_35%_82%)] bg-white p-6 shadow-[0_24px_58px_-42px_hsl(215_53%_23%/0.62)] sm:p-8" onSubmit={submit}>
-          {isSignUp ? <Field label="Full name" placeholder="Your name" /> : null}
-          {!isReset ? <Field autoComplete="email" label="Email address" placeholder="you@example.com" type="email" /> : null}
-          {!isForgot ? <Field autoComplete={isReset || isSignUp ? 'new-password' : 'current-password'} label={isReset ? 'New password' : 'Password'} placeholder="Enter a password" type="password" /> : null}
-          {isSignUp || isReset ? <Field autoComplete="new-password" label="Confirm password" placeholder="Repeat your password" type="password" /> : null}
-          {message ? <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[0.82rem] font-semibold leading-[1.6] text-amber-900" role="status">{message}</p> : null}
-          <button className="inline-flex min-h-13 items-center justify-center gap-3 rounded-2xl bg-[hsl(215_82%_38%)] px-5 text-[0.84rem] font-extrabold text-white hover:bg-[hsl(215_82%_32%)]" type="submit">
-            {isForgot ? 'Request reset link' : isSignUp ? 'Create account' : isReset ? 'Reset password' : 'Sign in'}
-            <ArrowRight className="size-4" />
-          </button>
-        </form>
-        <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-[0.82rem] font-bold text-[hsl(215_74%_28%)]">
-          <a href={appPath('/sign-in')}>Sign in</a>
-          <a href={appPath('/sign-up')}>Create account</a>
-          <a href={appPath('/forgot-password')}>Forgot password?</a>
-        </div>
-      </section>
-    </PageShell>
-  );
-}
-
-export function BookingPage() {
-  const [message, setMessage] = useState('');
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setMessage('Your booking details were captured in this preview only. Call +91 80738 48334 or use WhatsApp to arrange a real visit.');
-  };
-  return (
-    <PageShell>
-      <section className="py-14 sm:py-20">
-        <p className="text-[0.68rem] font-extrabold uppercase tracking-[0.22em] text-[hsl(188_75%_43%)]">SERVICE BOOKING</p>
-        <h1 className="mt-4 max-w-[12ch] text-[clamp(2.7rem,6vw,5.2rem)] font-extrabold leading-[0.94] tracking-[-0.08em]">Book a repair visit.</h1>
-        <p className="mt-5 max-w-[40rem] text-[1rem] leading-[1.7] text-[hsl(215_20%_45%)]">Choose a service and preferred time. This form demonstrates the customer experience without sending information anywhere.</p>
-        <FrontendOnlyNotice />
-        <form className="mt-9 grid gap-5 rounded-[1.8rem] border border-[hsl(215_35%_82%)] bg-white p-6 shadow-[0_24px_58px_-42px_hsl(215_53%_23%/0.62)] sm:grid-cols-2 sm:p-8" onSubmit={submit}>
-          <Field label="Phone number" placeholder="10-digit phone number" type="tel" />
-          <label className="grid gap-2 text-[0.84rem] font-extrabold text-[hsl(215_32%_28%)]">Appliance service<select className="min-h-13 rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] px-4 font-medium" defaultValue=""><option disabled value="">Choose a service</option><option>Washing Machine Repair</option><option>Refrigerator Repair</option><option>Micro Oven Repair</option><option>LED TV Repair</option></select></label>
-          <Field label="Preferred date" type="date" />
-          <Field label="Preferred time" placeholder="Morning or afternoon" />
-          <label className="grid gap-2 text-[0.84rem] font-extrabold text-[hsl(215_32%_28%)] sm:col-span-2">Address<textarea className="min-h-28 rounded-2xl border border-[hsl(215_35%_82%)] bg-[hsl(210_40%_99%)] p-4 font-medium outline-none focus:border-[hsl(199_82%_52%)]" placeholder="House number, street, area, Bengaluru" /></label>
-          {message ? <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[0.82rem] font-semibold leading-[1.6] text-emerald-900 sm:col-span-2" role="status">{message}</p> : null}
-          <button className="inline-flex min-h-13 items-center justify-center gap-3 rounded-2xl bg-[hsl(215_82%_38%)] px-5 text-[0.84rem] font-extrabold text-white hover:bg-[hsl(215_82%_32%)] sm:col-span-2 sm:w-fit" type="submit">Preview booking request <ArrowRight className="size-4" /></button>
-        </form>
-      </section>
-    </PageShell>
   );
 }
 

@@ -55,74 +55,6 @@ export interface RepairRequestSubmission {
   message: string;
 }
 
-export interface CustomerRepairRequest {
-  requestId: string;
-  applianceType: string;
-  problemDescription: string;
-  /** @nullable */
-  preferredDate: string | null;
-  /** @nullable */
-  preferredTime: string | null;
-  status: string;
-  createdAt: string;
-}
-
-export type CustomerBookingInputApplianceType = typeof CustomerBookingInputApplianceType[keyof typeof CustomerBookingInputApplianceType];
-
-
-export const CustomerBookingInputApplianceType = {
-  Washing_Machine_Repair: 'Washing Machine Repair',
-  Refrigerator_Repair: 'Refrigerator Repair',
-  Micro_Oven_Repair: 'Micro Oven Repair',
-  LED_TV_Repair: 'LED TV Repair',
-} as const;
-
-export interface CustomerBookingInput {
-  /** @pattern ^[0-9]{10}$ */
-  phone: string;
-  applianceType: CustomerBookingInputApplianceType;
-  /**
-     * @minLength 10
-     * @maxLength 2000
-     */
-  problemDescription: string;
-  preferredDate: string;
-  /**
-     * @minLength 1
-     * @maxLength 100
-     */
-  preferredTime: string;
-  /**
-     * @minLength 10
-     * @maxLength 500
-     */
-  address: string;
-  /**
-     * @maxLength 2000
-     * @nullable
-     */
-  additionalNotes?: string | null;
-}
-
-export interface CustomerBookingSubmission {
-  success: boolean;
-  bookingId: string;
-  message: string;
-}
-
-export interface CustomerBooking {
-  bookingId: string;
-  applianceType: string;
-  problemDescription: string;
-  preferredDate: string;
-  preferredTime: string;
-  status: string;
-  createdAt: string;
-  address: string;
-  /** @nullable */
-  additionalNotes: string | null;
-}
-
 export type ReviewStatus = typeof ReviewStatus[keyof typeof ReviewStatus];
 
 
@@ -132,27 +64,6 @@ export const ReviewStatus = {
   rejected: 'rejected',
   hidden: 'hidden',
 } as const;
-
-export type CustomerReviewEligibleSourceType = typeof CustomerReviewEligibleSourceType[keyof typeof CustomerReviewEligibleSourceType];
-
-
-export const CustomerReviewEligibleSourceType = {
-  repair_request: 'repair_request',
-  booking: 'booking',
-} as const;
-
-export interface CustomerReviewEligible {
-  sourceType: CustomerReviewEligibleSourceType;
-  sourceId: string;
-  applianceType: string;
-  status: string;
-  createdAt: string;
-  reviewSubmitted: boolean;
-  /** @nullable */
-  reviewStatus?: ReviewStatus | null;
-  /** @nullable */
-  reviewId?: string | null;
-}
 
 export type CustomerReviewTargetSourceType = typeof CustomerReviewTargetSourceType[keyof typeof CustomerReviewTargetSourceType];
 
@@ -239,76 +150,7 @@ export interface ApiError {
   error: string;
 }
 
-export interface AuthUser {
-  id: string;
-  fullName: string;
-  email: string;
-}
-
-export interface AuthSignupInput {
-  /**
-     * @minLength 2
-     * @maxLength 100
-     */
-  fullName: string;
-  /** @maxLength 254 */
-  email: string;
-  /**
-     * @minLength 8
-     * @maxLength 128
-     */
-  password: string;
-  /**
-     * @minLength 8
-     * @maxLength 128
-     */
-  confirmPassword: string;
-}
-
-export interface AuthLoginInput {
-  /** @maxLength 254 */
-  email: string;
-  /**
-     * @minLength 1
-     * @maxLength 128
-     */
-  password: string;
-  rememberMe?: boolean;
-}
-
-export interface AuthForgotPasswordInput {
-  /** @maxLength 254 */
-  email: string;
-}
-
-export interface AuthResetPasswordInput {
-  /**
-     * @minLength 32
-     * @maxLength 256
-     */
-  token: string;
-  /**
-     * @minLength 8
-     * @maxLength 128
-     */
-  password: string;
-  /**
-     * @minLength 8
-     * @maxLength 128
-     */
-  confirmPassword: string;
-}
-
-export interface AuthLoginResult {
-  user: AuthUser;
-}
-
-export interface AuthMeResult {
-  authenticated: boolean;
-  user: AuthUser | null;
-}
-
-export interface AuthMessageResult {
+export interface AdminMessageResult {
   message: string;
 }
 
@@ -386,65 +228,6 @@ export interface AdminRepairRequest {
 
 export interface AdminRepairRequestUpdate {
   status?: AdminRequestStatus;
-  /**
-     * @maxLength 5000
-     * @nullable
-     */
-  adminNotes?: string | null;
-  /**
-     * @maxLength 2000
-     * @nullable
-     */
-  cancellationReason?: string | null;
-}
-
-export type AdminBookingStatus = typeof AdminBookingStatus[keyof typeof AdminBookingStatus];
-
-
-export const AdminBookingStatus = {
-  pending: 'pending',
-  contacted: 'contacted',
-  confirmed: 'confirmed',
-  in_progress: 'in_progress',
-  completed: 'completed',
-  cancelled: 'cancelled',
-} as const;
-
-export type AdminBookingCustomerType = typeof AdminBookingCustomerType[keyof typeof AdminBookingCustomerType];
-
-
-export const AdminBookingCustomerType = {
-  guest: 'guest',
-  registered: 'registered',
-} as const;
-
-export interface AdminBooking {
-  bookingId: string;
-  customerName: string;
-  email: string;
-  phone: string;
-  /** @nullable */
-  customerId: string | null;
-  customerType: AdminBookingCustomerType;
-  applianceType: string;
-  problemDescription: string;
-  preferredDate: string;
-  preferredTime: string;
-  address: string;
-  /** @nullable */
-  additionalNotes: string | null;
-  status: AdminBookingStatus;
-  /** @nullable */
-  adminNotes: string | null;
-  /** @nullable */
-  cancellationReason: string | null;
-  emailStatus: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AdminBookingUpdate {
-  status?: AdminBookingStatus;
   /**
      * @maxLength 5000
      * @nullable
@@ -539,32 +322,6 @@ export type GetAdminRepairRequestsSort = typeof GetAdminRepairRequestsSort[keyof
 
 
 export const GetAdminRepairRequestsSort = {
-  newest: 'newest',
-  oldest: 'oldest',
-} as const;
-
-export type GetAdminBookingsParams = {
-/**
- * @maxLength 200
- */
-search?: string;
-status?: AdminBookingStatus;
-customerType?: GetAdminBookingsCustomerType;
-sort?: GetAdminBookingsSort;
-};
-
-export type GetAdminBookingsCustomerType = typeof GetAdminBookingsCustomerType[keyof typeof GetAdminBookingsCustomerType];
-
-
-export const GetAdminBookingsCustomerType = {
-  guest: 'guest',
-  registered: 'registered',
-} as const;
-
-export type GetAdminBookingsSort = typeof GetAdminBookingsSort[keyof typeof GetAdminBookingsSort];
-
-
-export const GetAdminBookingsSort = {
   newest: 'newest',
   oldest: 'oldest',
 } as const;

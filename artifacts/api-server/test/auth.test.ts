@@ -12,7 +12,6 @@ import {
   bookingsTable,
   customersTable,
   db,
-  passwordResetTokensTable,
   pool,
   repairRequestsTable,
   reviewInvitationsTable,
@@ -34,7 +33,6 @@ process.env.OWNER_EMAIL = "owner@example.test";
 
 const TEST_EMAIL_PREFIX = "auth-regression-";
 const TEST_ADMIN_PREFIX = "repair-status-admin-";
-const TEST_PASSWORD = "ValidPass1";
 const TEST_ADMIN_PASSWORD = "AdminPass1";
 const requireIpv6Loopback = process.env.REQUIRE_IPV6_LOOPBACK === "1";
 
@@ -200,10 +198,6 @@ async function remove(path: string, cookie?: string): Promise<JsonResponse> {
   };
 }
 
-function sessionCookie(response: Response): string {
-  return cookieNamed(response, "rz_session");
-}
-
 function cookieNamed(response: Response, name: string): string {
   const cookies =
     typeof response.headers.getSetCookie === "function"
@@ -212,26 +206,6 @@ function cookieNamed(response: Response, name: string): string {
   const cookie = cookies.find((value) => value.startsWith(`${name}=`));
   assert.ok(cookie, `expected the login response to set a ${name} cookie`);
   return cookie.split(";", 1)[0];
-}
-
-async function createAccount(email = testEmail("account")): Promise<void> {
-  const signup = await request("/api/auth/signup", {
-    fullName: "Regression Customer",
-    email,
-    password: TEST_PASSWORD,
-    confirmPassword: TEST_PASSWORD,
-  });
-  assert.equal(signup.response.status, 201);
-}
-
-async function customerForEmail(email: string) {
-  const [customer] = await db
-    .select()
-    .from(customersTable)
-    .where(eq(customersTable.email, email))
-    .limit(1);
-  assert.ok(customer, `expected a customer record for ${email}`);
-  return customer;
 }
 
 async function createAdminSession(): Promise<string> {
@@ -278,16 +252,6 @@ async function repairRequestForId(requestId: string) {
   return repairRequest;
 }
 
-async function bookingForId(bookingId: string) {
-  const [booking] = await db
-    .select()
-    .from(bookingsTable)
-    .where(eq(bookingsTable.bookingId, bookingId))
-    .limit(1);
-  assert.ok(booking, `expected booking ${bookingId}`);
-  return booking;
-}
-
 async function cleanupTestData(): Promise<void> {
   sentEmails.length = 0;
   emailDeliveryError = undefined;
@@ -299,10 +263,6 @@ async function cleanupTestData(): Promise<void> {
   await db
     .delete(adminUsersTable)
     .where(like(adminUsersTable.username, `${TEST_ADMIN_PREFIX}%`));
-
-  await db
-    .delete(customersTable)
-    .where(like(customersTable.email, `${TEST_EMAIL_PREFIX}%`));
 }
 
 before(async () => {
@@ -360,140 +320,20 @@ after(async () => {
   await pool.end();
 });
 
-test("signup validates input and rejects duplicate emails", async () => {
-  const invalid = await request("/api/auth/signup", {
-    fullName: "A",
-    email: "not-an-email",
-    password: "weak",
-    confirmPassword: "different",
-  });
-  assert.equal(invalid.response.status, 400);
-  assert.equal(invalid.body.error, "Enter a valid name, email, and password.");
-
-  const email = testEmail("duplicate");
-  await createAccount(email);
-
-  const duplicate = await request("/api/auth/signup", {
-    fullName: "Another Customer",
-    email: email.toUpperCase(),
-    password: TEST_PASSWORD,
-    confirmPassword: TEST_PASSWORD,
-  });
-  assert.equal(duplicate.response.status, 409);
-  assert.equal(
-    duplicate.body.error,
-    "An account with this email already exists.",
-  );
-});
-
-test("signup rate limit allows five attempts and returns a generic 429 on the sixth", async () => {
-  const invalidSignup = {
-    fullName: "A",
-    email: "not-an-email",
-    password: "weak",
-    confirmPassword: "different",
-  };
-
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const response = await request("/api/auth/signup", invalidSignup);
-    assert.equal(response.response.status, 400);
-    assert.equal(response.body.error, "Enter a valid name, email, and password.");
-  }
-
-  const limited = await request("/api/auth/signup", {
-    ...invalidSignup,
-    email: "signup-limit@example.test",
-  });
-  assert.equal(limited.response.status, 429);
-  assert.deepEqual(limited.body, {
-    error: "Too many signup attempts. Please try again later.",
-  });
-  assert.doesNotMatch(
-    JSON.stringify(limited.body),
-    /signup-limit@example\.test|weak|different/i,
-  );
-});
-
-test("login sets a secure session, /me reads it, and logout invalidates it", async () => {
-  const email = testEmail("login");
-  await createAccount(email);
-
-  const invalid = await request("/api/auth/login", {
-    email,
-    password: "WrongPass1",
-  });
-  assert.equal(invalid.response.status, 401);
-  assert.equal(invalid.body.error, "Invalid email or password.");
-
-  const login = await request("/api/auth/login", {
-    email: email.toUpperCase(),
-    password: TEST_PASSWORD,
-  });
-  assert.equal(login.response.status, 200);
-  const loginUser = login.body.user as {
-    id: string;
-    fullName: string;
-    email: string;
-  };
-  assert.ok(loginUser.id);
-  assert.equal(loginUser.fullName, "Regression Customer");
-  assert.equal(loginUser.email, email);
-
-  const cookie = sessionCookie(login.response);
-  const setCookie = login.response.headers.get("set-cookie") ?? "";
-  assert.match(setCookie, /HttpOnly/i);
-  assert.match(setCookie, /Secure/i);
-  assert.match(setCookie, /SameSite=Lax/i);
-  assert.match(setCookie, /Path=\//i);
-
-  const me = await get("/api/auth/me", cookie);
-  assert.equal(me.response.status, 200);
-  assert.equal(me.body.authenticated, true);
-  assert.equal((me.body.user as { email: string }).email, email);
-
-  const logout = await request("/api/auth/logout", undefined, cookie);
-  assert.equal(logout.response.status, 200);
-  assert.equal(logout.body.message, "Signed out successfully.");
-
-  const afterLogout = await get("/api/auth/me", cookie);
-  assert.deepEqual(afterLogout.body, { authenticated: false, user: null });
-});
-
-test("login rate limit allows ten attempts and returns a generic 429 on the eleventh", async () => {
-  const loginAttempt = {
-    email: "login-limit@example.test",
-    password: "WrongPass1",
-  };
-
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    const response = await request("/api/auth/login", loginAttempt);
-    assert.equal(response.response.status, 401);
-    assert.equal(response.body.error, "Invalid email or password.");
-  }
-
-  const limited = await request("/api/auth/login", loginAttempt);
-  assert.equal(limited.response.status, 429);
-  assert.deepEqual(limited.body, {
-    error: "Too many login attempts. Please try again later.",
-  });
-  assert.doesNotMatch(
-    JSON.stringify(limited.body),
-    /login-limit@example\.test|WrongPass1/i,
-  );
-});
-
 test("rate limits trust forwarded IPs only from the configured proxy addresses", async () => {
-  const invalidSignup = {
-    fullName: "A",
+  const invalidRepairRequest = {
+    customerName: "A",
+    phone: "not-a-phone",
     email: "not-an-email",
-    password: "weak",
-    confirmPassword: "different",
+    applianceType: "Repair",
+    problemDescription: "Broken",
+    address: "A",
   };
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const response = await request(
-      "/api/auth/signup",
-      invalidSignup,
+      "/api/repair-requests",
+      invalidRepairRequest,
       undefined,
       "198.51.100.50",
     );
@@ -501,16 +341,16 @@ test("rate limits trust forwarded IPs only from the configured proxy addresses",
   }
 
   const trustedProxyLimited = await request(
-    "/api/auth/signup",
-    invalidSignup,
+    "/api/repair-requests",
+    invalidRepairRequest,
     undefined,
     "198.51.100.50",
   );
   assert.equal(trustedProxyLimited.response.status, 429);
 
   const differentTrustedClient = await request(
-    "/api/auth/signup",
-    invalidSignup,
+    "/api/repair-requests",
+    invalidRepairRequest,
     undefined,
     "198.51.100.51",
   );
@@ -518,8 +358,8 @@ test("rate limits trust forwarded IPs only from the configured proxy addresses",
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const response = await requestFromSource(
-      "/api/auth/signup",
-      invalidSignup,
+      "/api/repair-requests",
+      invalidRepairRequest,
       "127.0.0.2",
       `203.0.113.${attempt + 1}`,
     );
@@ -527,8 +367,8 @@ test("rate limits trust forwarded IPs only from the configured proxy addresses",
   }
 
   const untrustedHeaderLimited = await requestFromSource(
-    "/api/auth/signup",
-    invalidSignup,
+    "/api/repair-requests",
+    invalidRepairRequest,
     "127.0.0.2",
     "203.0.113.6",
   );
@@ -546,17 +386,19 @@ test("rate limits trust forwarded IPs from the IPv6 loopback proxy path", async 
     return;
   }
 
-  const invalidSignup = {
-    fullName: "A",
-    email: "ipv6-trusted-limit@example.test",
-    password: "weak",
-    confirmPassword: "different",
+  const invalidRepairRequest = {
+    customerName: "A",
+    phone: "not-a-phone",
+    email: "not-an-email",
+    applianceType: "Repair",
+    problemDescription: "Broken",
+    address: "A",
   };
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const response = await requestFromSource(
-      "/api/auth/signup",
-      invalidSignup,
+      "/api/repair-requests",
+      invalidRepairRequest,
       "::1",
       "198.51.100.60",
       ipv6BaseUrl,
@@ -565,8 +407,8 @@ test("rate limits trust forwarded IPs from the IPv6 loopback proxy path", async 
   }
 
   const limited = await requestFromSource(
-    "/api/auth/signup",
-    invalidSignup,
+    "/api/repair-requests",
+    invalidRepairRequest,
     "::1",
     "198.51.100.60",
     ipv6BaseUrl,
@@ -574,8 +416,8 @@ test("rate limits trust forwarded IPs from the IPv6 loopback proxy path", async 
   assert.equal(limited.status, 429);
 
   const differentTrustedClient = await requestFromSource(
-    "/api/auth/signup",
-    invalidSignup,
+    "/api/repair-requests",
+    invalidRepairRequest,
     "::1",
     "198.51.100.61",
     ipv6BaseUrl,
@@ -594,19 +436,21 @@ test("rejects a forged forwarded IP from an untrusted IPv6 source", async (t) =>
     return;
   }
 
-  const invalidSignup = {
-    fullName: "A",
-    email: "ipv6-untrusted-limit@example.test",
-    password: "weak",
-    confirmPassword: "different",
+  const invalidRepairRequest = {
+    customerName: "A",
+    phone: "not-a-phone",
+    email: "not-an-email",
+    applianceType: "Repair",
+    problemDescription: "Broken",
+    address: "A",
   };
   const untrustedIpv6Source = "::ffff:127.0.0.2";
   assert.ok(ipv6MappedBaseUrl);
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const response = await requestFromSource(
-      "/api/auth/signup",
-      invalidSignup,
+      "/api/repair-requests",
+      invalidRepairRequest,
       untrustedIpv6Source,
       "203.0.113.60",
       ipv6MappedBaseUrl,
@@ -615,8 +459,8 @@ test("rejects a forged forwarded IP from an untrusted IPv6 source", async (t) =>
   }
 
   const limited = await requestFromSource(
-    "/api/auth/signup",
-    invalidSignup,
+    "/api/repair-requests",
+    invalidRepairRequest,
     untrustedIpv6Source,
     "203.0.113.61",
     ipv6MappedBaseUrl,
@@ -624,138 +468,63 @@ test("rejects a forged forwarded IP from an untrusted IPv6 source", async (t) =>
   assert.equal(limited.status, 429);
 });
 
-test("forgot password returns the same response for known and unknown emails", async () => {
-  const email = testEmail("forgot");
-  await createAccount(email);
-
-  const existing = await request("/api/auth/forgot-password", { email });
-  const unknown = await request("/api/auth/forgot-password", {
-    email: testEmail("unknown"),
-  });
-
-  assert.equal(existing.response.status, 202);
-  assert.equal(unknown.response.status, 202);
-  assert.deepEqual(existing.body, unknown.body);
-  assert.equal(
-    existing.body.message,
-    "If an account exists for this email, a password reset link has been sent.",
-  );
-});
-
-test("forgot-password rate limit allows five attempts and returns a generic 429 on the sixth", async () => {
-  const forgotAttempt = { email: "forgot-limit@example.test" };
-
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const response = await request("/api/auth/forgot-password", forgotAttempt);
-    assert.equal(response.response.status, 202);
-    assert.equal(
-      response.body.message,
-      "If an account exists for this email, a password reset link has been sent.",
-    );
-  }
-
-  const limited = await request("/api/auth/forgot-password", forgotAttempt);
-  assert.equal(limited.response.status, 429);
-  assert.deepEqual(limited.body, {
-    error: "Too many reset attempts. Please try again later.",
-  });
-  assert.doesNotMatch(
-    JSON.stringify(limited.body),
-    /forgot-limit@example\.test|password|credentials/i,
-  );
-});
-
-test("reset password enforces expiry, is single-use, replaces the password, and invalidates sessions", async () => {
-  const email = testEmail("reset");
-  await createAccount(email);
-
-  const login = await request("/api/auth/login", {
-    email,
-    password: TEST_PASSWORD,
-  });
-  const oldCookie = sessionCookie(login.response);
-  const customer = await customerForEmail(email);
-
-  const expiredToken = `expired-${randomUUID()}`;
-  await db.insert(passwordResetTokensTable).values({
-    customerId: customer.id,
-    tokenHash: hashToken(expiredToken),
-    expiresAt: new Date(Date.now() - 1_000),
-  });
-  const expired = await request("/api/auth/reset-password", {
-    token: expiredToken,
-    password: "NewValid2",
-    confirmPassword: "NewValid2",
-  });
-  assert.equal(expired.response.status, 400);
-  assert.equal(expired.body.error, "This reset link is invalid or has expired.");
-
-  const token = `valid-${randomUUID()}`;
-  await db.insert(passwordResetTokensTable).values({
-    customerId: customer.id,
-    tokenHash: hashToken(token),
-    expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
-  });
-
-  const reset = await request("/api/auth/reset-password", {
-    token,
-    password: "NewValid2",
-    confirmPassword: "NewValid2",
-  });
-  assert.equal(reset.response.status, 200);
-  assert.equal(reset.body.message, "Your password has been reset. You can now sign in.");
-
-  const invalidatedSession = await get("/api/auth/me", oldCookie);
-  assert.deepEqual(invalidatedSession.body, { authenticated: false, user: null });
-
-  const reused = await request("/api/auth/reset-password", {
-    token,
-    password: "AnotherValid3",
-    confirmPassword: "AnotherValid3",
-  });
-  assert.equal(reused.response.status, 400);
-  assert.equal(reused.body.error, "This reset link is invalid or has expired.");
-
-  const oldPassword = await request("/api/auth/login", {
-    email,
-    password: TEST_PASSWORD,
-  });
-  assert.equal(oldPassword.response.status, 401);
-
-  const newPassword = await request("/api/auth/login", {
-    email,
-    password: "NewValid2",
-  });
-  assert.equal(newPassword.response.status, 200);
-});
-
-test("reset-password rate limit allows eight attempts and returns a generic 429 on the ninth", async () => {
-  const resetAttempt = {
-    token: `invalid-${randomUUID()}`,
-    password: TEST_PASSWORD,
-    confirmPassword: TEST_PASSWORD,
+test("removed customer auth, history, and booking routes stay unavailable", async () => {
+  const statusOnly = async (
+    path: string,
+    method: "GET" | "POST" | "PATCH",
+    body?: Record<string, unknown>,
+  ) => {
+    const response = await fetch(`${baseUrl}${path}`, {
+      method,
+      headers: {
+        "content-type": "application/json",
+        "x-forwarded-for": clientIp,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    return response.status;
   };
 
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const response = await request("/api/auth/reset-password", resetAttempt);
-    assert.equal(response.response.status, 400);
-    assert.equal(response.body.error, "This reset link is invalid or has expired.");
+  for (const path of [
+    "/api/auth/signup",
+    "/api/auth/login",
+    "/api/auth/logout",
+    "/api/auth/forgot-password",
+    "/api/auth/reset-password",
+    "/api/customer/bookings",
+  ]) {
+    assert.equal(await statusOnly(path, "POST", {}), 404, path);
   }
 
-  const limited = await request("/api/auth/reset-password", resetAttempt);
-  assert.equal(limited.response.status, 429);
-  assert.deepEqual(limited.body, {
-    error: "Too many reset attempts. Please try again later.",
-  });
-  assert.doesNotMatch(
-    JSON.stringify(limited.body),
-    /invalid-|ValidPass1|credentials/i,
+  for (const path of [
+    "/api/auth/me",
+    "/api/customer/repair-requests",
+    "/api/customer/reviews/eligible",
+  ]) {
+    assert.equal(await statusOnly(path, "GET"), 404, path);
+  }
+
+  assert.equal(
+    await statusOnly("/api/admin/bookings/RZ-removed", "PATCH", {
+      status: "confirmed",
+    }),
+    404,
   );
 });
 
 test("admin repair status saves stay silent for pending, contacted, and unchanged statuses", async () => {
   const requestId = await createRepairRequest();
   const adminCookie = await createAdminSession();
+  const listed = await get(
+    `/api/admin/repair-requests?search=${encodeURIComponent(requestId)}`,
+    adminCookie,
+  );
+  assert.equal(listed.response.status, 200);
+  assert.ok(
+    (listed.body as unknown[]).some(
+      (item) => (item as { requestId?: string }).requestId === requestId,
+    ),
+  );
 
   const pending = await patch(
     `/api/admin/repair-requests/${requestId}`,
@@ -1000,148 +769,6 @@ test("guest repair emails go only to the owner and current form email", async ()
   assert.ok(sentEmails.every((message) => message.to !== previousEmail));
 });
 
-test("authenticated contact submissions keep form contact details and attach to the session customer", async () => {
-  const email = testEmail("contact-authenticated");
-  const otherEmail = testEmail("contact-other-customer");
-  await createAccount(email);
-  await createAccount(otherEmail);
-
-  const login = await request("/api/auth/login", {
-    email,
-    password: TEST_PASSWORD,
-    rememberMe: true,
-  });
-  assert.equal(login.response.status, 200);
-  const cookie = sessionCookie(login.response);
-
-  const submission = await request(
-    "/api/repair-requests",
-    {
-      customerName: "Untrusted Form Name",
-      phone: "9876543210",
-      email: otherEmail,
-      applianceType: "Washing Machine Repair",
-      problemDescription: "The appliance does not start.",
-      address: "123 Test Street",
-    },
-    cookie,
-  );
-    assert.equal(submission.response.status, 201);
-
-    const savedRequest = await repairRequestForId(
-      String(submission.body.requestId),
-    );
-    const customer = await customerForEmail(email);
-    assert.equal(savedRequest.customerId, customer.id);
-    assert.equal(savedRequest.customerName, "Untrusted Form Name");
-    assert.equal(savedRequest.email, otherEmail);
-    assert.equal(savedRequest.emailStatus, "sent");
-    assert.ok(
-      sentEmails.some((message) =>
-        message.text.includes("Customer type: Registered Customer"),
-      ),
-    );
-    assert.deepEqual(
-      new Set(sentEmails.map((message) => message.to)),
-      new Set(["owner@example.test", otherEmail]),
-    );
-    assert.ok(sentEmails.every((message) => message.to !== email));
-
-    const ownRequests = await get("/api/customer/repair-requests", cookie);
-    assert.equal(ownRequests.response.status, 200);
-    assert.ok(
-      (ownRequests.body as unknown[]).some(
-        (item) =>
-          (item as { requestId?: string }).requestId ===
-          submission.body.requestId,
-      ),
-    );
-
-    const otherLogin = await request("/api/auth/login", {
-      email: otherEmail,
-      password: TEST_PASSWORD,
-      rememberMe: true,
-    });
-    assert.equal(otherLogin.response.status, 200);
-    const otherRequests = await get(
-      "/api/customer/repair-requests",
-      sessionCookie(otherLogin.response),
-    );
-    assert.equal(otherRequests.response.status, 200);
-    assert.equal((otherRequests.body as unknown[]).length, 0);
-});
-
-test("booking creation and status emails use the exact booking customer", async () => {
-  const email = testEmail("booking-current");
-  const previousEmail = testEmail("booking-previous");
-  await createAccount(email);
-
-  const login = await request("/api/auth/login", {
-    email,
-    password: TEST_PASSWORD,
-    rememberMe: true,
-  });
-  assert.equal(login.response.status, 200);
-  const customerCookie = sessionCookie(login.response);
-
-  const submission = await request(
-    "/api/customer/bookings",
-    {
-      phone: "9876543210",
-      applianceType: "LED TV Repair",
-      problemDescription: "The television powers on but shows no picture.",
-      preferredDate: "2026-10-20",
-      preferredTime: "10:00 AM - 12:00 PM",
-      address: "123 Booking Test Street",
-      additionalNotes: "Please call before arrival.",
-    },
-    customerCookie,
-  );
-  assert.equal(submission.response.status, 201);
-
-  const booking = await bookingForId(String(submission.body.bookingId));
-  const customer = await customerForEmail(email);
-  assert.equal(booking.customerId, customer.id);
-  assert.equal(booking.email, email);
-  assert.deepEqual(
-    new Set(sentEmails.map((message) => message.to)),
-    new Set(["owner@example.test", email]),
-  );
-  assert.ok(sentEmails.every((message) => message.to !== previousEmail));
-
-  sentEmails.length = 0;
-  const adminCookie = await createAdminSession();
-  const updated = await patch(
-    `/api/admin/bookings/${booking.bookingId}`,
-    { status: "confirmed" },
-    adminCookie,
-  );
-  assert.equal(updated.response.status, 200);
-  assert.equal(sentEmails.length, 1);
-  assert.equal(sentEmails[0].to, booking.email);
-  assert.equal(sentEmails[0].replyTo, "owner@example.test");
-  assert.ok(sentEmails[0].to !== previousEmail);
-
-  process.env.APP_BASE_URL = "https://care.example.test";
-  sentEmails.length = 0;
-  const completed = await patch(
-    `/api/admin/bookings/${booking.bookingId}`,
-    { status: "completed" },
-    adminCookie,
-  );
-  assert.equal(completed.response.status, 200);
-  assert.equal(sentEmails.length, 1);
-  assert.equal(sentEmails[0].to, booking.email);
-  const bookingToken = sentEmails[0].text.match(/token=([a-f0-9]{64})/)?.[1];
-  assert.ok(bookingToken);
-  const bookingTarget = await get(
-    `/api/customer/review-target?token=${bookingToken}`,
-  );
-  assert.equal(bookingTarget.response.status, 200);
-  assert.equal(bookingTarget.body.sourceType, "booking");
-  process.env.APP_BASE_URL = "";
-});
-
 test("public reviews expose only approved reviews and review APIs enforce authentication", async () => {
   const publicReviews = await get("/api/reviews?limit=100");
   assert.equal(publicReviews.response.status, 200);
@@ -1156,9 +783,6 @@ test("public reviews expose only approved reviews and review APIs enforce authen
     assert.ok(approvedIds.has(review.reviewId));
   }
 
-  const eligible = await get("/api/customer/reviews/eligible");
-  assert.equal(eligible.response.status, 401);
-
   const target = await get("/api/customer/review-target?requestId=RZ-not-owned");
   assert.equal(target.response.status, 401);
 
@@ -1172,6 +796,88 @@ test("public reviews expose only approved reviews and review APIs enforce authen
 
   const adminReviews = await get("/api/admin/reviews");
   assert.equal(adminReviews.response.status, 403);
+});
+
+test("legacy booking review invitations and admin review details remain available", async () => {
+  const customerEmail = testEmail("legacy-booking");
+  const bookingId = `RZB-${randomUUID().replaceAll("-", "").slice(0, 12).toUpperCase()}`;
+  const token = `${randomUUID().replaceAll("-", "")}${randomUUID().replaceAll("-", "")}`;
+  const [customer] = await db
+    .insert(customersTable)
+    .values({
+      fullName: "Legacy Booking Customer",
+      email: customerEmail,
+      passwordHash: "unused-review-test-hash",
+    })
+    .returning({ id: customersTable.id });
+  assert.ok(customer);
+
+  try {
+    await db.insert(bookingsTable).values({
+      bookingId,
+      customerId: customer.id,
+      customerName: "Legacy Booking Customer",
+      email: customerEmail,
+      phone: "9876543210",
+      applianceType: "LED TV Repair",
+      problemDescription: "The television powers on but shows no picture.",
+      preferredDate: "2025-01-15",
+      preferredTime: "10:00 AM - 12:00 PM",
+      address: "456 Legacy Booking Street",
+      status: "completed",
+    });
+    await db.insert(reviewInvitationsTable).values({
+      tokenHash: hashToken(token),
+      customerId: customer.id,
+      customerEmail,
+      requestId: null,
+      bookingId,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
+
+    const target = await get(`/api/customer/review-target?token=${token}`);
+    assert.equal(target.response.status, 200);
+    assert.equal(target.body.sourceType, "booking");
+    assert.equal(target.body.sourceId, bookingId);
+    assert.equal(target.body.existingReview, null);
+
+    const submitted = await request("/api/customer/reviews", {
+      token,
+      rating: 5,
+      reviewMessage: "The old booking review link still works as expected.",
+      showFirstName: false,
+    });
+    assert.equal(submitted.response.status, 201);
+    assert.equal(submitted.body.sourceType, "booking");
+    assert.equal(submitted.body.sourceId, bookingId);
+
+    const adminCookie = await createAdminSession();
+    const adminReviews = await get(
+      `/api/admin/reviews?search=${encodeURIComponent(bookingId)}`,
+      adminCookie,
+    );
+    assert.equal(adminReviews.response.status, 200);
+    const review = (adminReviews.body as unknown[]).find(
+      (item) => (item as { sourceId?: string }).sourceId === bookingId,
+    ) as
+      | {
+          sourceType: string;
+          relatedStatus: string;
+          relatedAddress: string | null;
+        }
+      | undefined;
+    assert.ok(review);
+    assert.equal(review.sourceType, "booking");
+    assert.equal(review.relatedStatus, "completed");
+    assert.equal(review.relatedAddress, "456 Legacy Booking Street");
+  } finally {
+    await db.delete(reviewsTable).where(eq(reviewsTable.bookingId, bookingId));
+    await db
+      .delete(reviewInvitationsTable)
+      .where(eq(reviewInvitationsTable.bookingId, bookingId));
+    await db.delete(bookingsTable).where(eq(bookingsTable.bookingId, bookingId));
+    await db.delete(customersTable).where(eq(customersTable.id, customer.id));
+  }
 });
 
 test("guest completion emails contain a secure review link and guest reviews are moderated once", async () => {
