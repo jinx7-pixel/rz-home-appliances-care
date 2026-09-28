@@ -801,6 +801,7 @@ function ContactSection() {
   const [successMessage, setSuccessMessage] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submissionInFlight = useRef(false);
 
   const updateField = (field: keyof RepairFormValues, value: string) => {
     setFormValues((current) => ({ ...current, [field]: value }));
@@ -811,6 +812,7 @@ function ContactSection() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (submissionInFlight.current) return;
 
     const errors: RepairFormErrors = {};
     if (formValues.name.trim().length < 2) errors.name = 'Please enter your full name.';
@@ -835,6 +837,7 @@ function ContactSection() {
     setSubmitError('');
     if (Object.keys(errors).length > 0) return;
 
+    submissionInFlight.current = true;
     setIsSubmitting(true);
     try {
       const response = await fetch('/api/repair-requests', {
@@ -871,6 +874,7 @@ function ContactSection() {
     } catch (error) {
       setSubmitError(getRepairRequestErrorMessage(error));
     } finally {
+      submissionInFlight.current = false;
       setIsSubmitting(false);
     }
   };

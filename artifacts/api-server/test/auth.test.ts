@@ -934,35 +934,36 @@ test("repeated and concurrent attempts for one repair transition send only one c
   assert.equal((await repairRequestForId(requestId)).status, "in_progress");
 });
 
-test("anonymous repair requests are accepted without an auth cookie", async () => {
+test("guest repair requests remain successful when notification email fails", async () => {
   const email = testEmail("repair");
-  delete process.env.OWNER_EMAIL;
-  const submission = await request(
-    "/api/repair-requests",
-    {
+  emailDeliveryError = new Error("simulated SMTP failure");
+  let submission: JsonResponse;
+  try {
+    submission = await request("/api/repair-requests", {
       customerName: "Anonymous Customer",
       phone: "9876543210",
       email,
       applianceType: "Washing Machine Repair",
       problemDescription: "The appliance does not start.",
       address: "123 Test Street",
-    },
-  ).finally(() => {
-    process.env.OWNER_EMAIL = "owner@example.test";
-  });
+    });
+  } finally {
+    emailDeliveryError = undefined;
+  }
 
-  assert.equal(submission.response.status, 502);
+  assert.equal(submission.response.status, 201);
+  assert.equal(submission.body.success, true);
+  assert.match(String(submission.body.requestId), /^RZ-[A-F0-9]{12}$/);
   assert.match(
-    String(submission.body.error),
-    /request was saved, but we could not send the confirmation email/i,
+    String(submission.body.message),
+    /request is saved.*no need to submit again/i,
   );
 
-  const [savedRequest] = await db
-    .select()
-    .from(repairRequestsTable)
-    .where(eq(repairRequestsTable.email, email))
-    .limit(1);
-  assert.ok(savedRequest);
+  const savedRequest = await repairRequestForId(
+    String(submission.body.requestId),
+  );
+  assert.equal(savedRequest.email, email);
+  assert.equal(savedRequest.customerId, null);
   assert.equal(savedRequest.emailStatus, "failed");
 });
 

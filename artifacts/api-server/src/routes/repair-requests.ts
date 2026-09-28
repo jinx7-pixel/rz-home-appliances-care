@@ -99,6 +99,7 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
     return;
   }
 
+  let emailStatus: "sent" | "failed" = "sent";
   try {
     await sendRepairRequestEmails({
       requestId: savedRequest.requestId,
@@ -116,39 +117,33 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
         : "Guest",
       notificationType: "repair-request",
     });
-
-    await db
-      .update(repairRequestsTable)
-      .set({ emailStatus: "sent", updatedAt: new Date() })
-      .where(eq(repairRequestsTable.requestId, savedRequest.requestId));
   } catch (error) {
+    emailStatus = "failed";
     req.log.error(
       { err: error, requestId: savedRequest.requestId },
       "Failed to send repair request emails",
     );
-    await db
-      .update(repairRequestsTable)
-      .set({ emailStatus: "failed", updatedAt: new Date() })
-      .where(eq(repairRequestsTable.requestId, savedRequest.requestId))
-      .catch((updateError) => {
-        req.log.error(
-          { err: updateError, requestId: savedRequest.requestId },
-          "Failed to record repair request email failure",
-        );
-      });
-    res.status(502).json({
-      error:
-        "Your repair request was saved, but we could not send the confirmation email. Please call us at +91 80738 48334.",
-    });
-    return;
   }
+
+  await db
+    .update(repairRequestsTable)
+    .set({ emailStatus, updatedAt: new Date() })
+    .where(eq(repairRequestsTable.requestId, savedRequest.requestId))
+    .catch((error) => {
+      req.log.error(
+        { err: error, requestId: savedRequest.requestId, emailStatus },
+        "Failed to record repair request email status",
+      );
+    });
 
   res.status(201).json(
     CreateRepairRequestResponse.parse({
       success: true,
       requestId,
       message:
-        "Your repair request was submitted successfully.",
+        emailStatus === "failed"
+          ? "Your request is saved. We couldn't send the confirmation email, so there is no need to submit again."
+          : "Your repair request was submitted successfully.",
     }),
   );
 });
