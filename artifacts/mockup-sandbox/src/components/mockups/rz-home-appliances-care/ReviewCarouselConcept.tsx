@@ -64,6 +64,12 @@ export function ReviewCarouselConcept() {
     }
     return result;
   }, [visibleCount]);
+  const paginationPages = useMemo(() => {
+    const dotLimit = visibleCount === 1 ? 3 : visibleCount === 2 ? 5 : 7;
+    if (pages.length <= dotLimit) return Array.from({ length: pages.length }, (_, index) => index);
+    const firstPage = Math.max(0, Math.min(activePage - Math.floor(dotLimit / 2), pages.length - dotLimit));
+    return Array.from({ length: dotLimit }, (_, index) => firstPage + index);
+  }, [activePage, pages.length, visibleCount]);
 
   useEffect(() => {
     const handleResize = () => setVisibleCount(getVisibleCount());
@@ -142,7 +148,7 @@ export function ReviewCarouselConcept() {
                   <ChevronLeft aria-hidden="true" className="size-5" />
                 </button>
                 <div className="flex items-center gap-1.5">
-                  {pages.map((page, pageIndex) => (
+                  {paginationPages.map((pageIndex) => (
                     <button
                       aria-current={activePage === pageIndex ? 'page' : undefined}
                       aria-label={`Show reviews ${pageIndex * visibleCount + 1}–${Math.min((pageIndex + 1) * visibleCount, reviews.length)}`}

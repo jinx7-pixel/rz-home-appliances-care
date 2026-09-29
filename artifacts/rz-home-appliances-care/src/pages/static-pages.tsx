@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { ReviewCarousel } from '@/components/review-carousel';
 import {
   ArrowLeft,
   ArrowRight,
@@ -61,24 +62,20 @@ type PublicReview = {
   createdAt: string;
 };
 
-function ReviewCards({ reviews, dark = false }: { reviews: PublicReview[]; dark?: boolean }) {
+function ReviewCard({ review, dark = false }: { review: PublicReview; dark?: boolean }) {
   return (
-    <div className={`grid gap-5 ${dark ? 'md:grid-cols-2 xl:grid-cols-3' : 'md:grid-cols-2'}`}>
-      {reviews.map((review) => (
-        <article className={`rounded-[1.7rem] border p-6 shadow-[0_18px_48px_-38px_hsl(215_53%_23%/0.5)] sm:p-7 ${dark ? 'flex min-h-[16rem] flex-col border-[hsl(215_25%_30%)] bg-[hsl(215_42%_19%)] shadow-none' : 'bg-white border-[hsl(215_35%_86%)]'}`} key={review.reviewId}>
-          <div className="flex items-center justify-between gap-4">
-            <span aria-label={`${review.rating} out of 5 stars`} className="flex gap-1 text-[hsl(39_92%_53%)]">
-              {[1, 2, 3, 4, 5].map((star) => <Star className={`size-4 ${star <= review.rating ? 'fill-current' : ''}`} key={star} />)}
-            </span>
-            {review.isVerified ? <span className={`text-[0.64rem] font-extrabold uppercase tracking-[0.08em] ${dark ? 'text-[hsl(174_54%_76%)]' : 'text-[hsl(150_55%_28%)]'}`}>Verified service</span> : null}
-          </div>
-          <blockquote className={`mt-6 text-[1.05rem] font-semibold leading-[1.65] ${dark ? 'text-white' : ''}`}>“{review.reviewMessage}”</blockquote>
-          <footer className={`mt-7 border-t pt-5 text-[0.76rem] font-bold ${dark ? 'mt-auto border-[hsl(215_25%_30%)] text-[hsl(215_24%_72%)]' : 'border-[hsl(215_35%_91%)] text-[hsl(215_20%_48%)]'}`}>
-            <span className={dark ? 'text-[hsl(184_85%_72%)]' : 'text-[hsl(215_74%_28%)]'}>{review.customerLabel}</span> · {review.applianceType ?? 'Appliance service'}
-          </footer>
-        </article>
-      ))}
-    </div>
+    <article className={`min-w-0 rounded-[1.7rem] border p-6 shadow-[0_18px_48px_-38px_hsl(215_53%_23%/0.5)] sm:p-7 ${dark ? 'flex min-h-[16rem] flex-col border-[hsl(215_25%_30%)] bg-[hsl(215_42%_19%)] shadow-none' : 'border-[hsl(215_35%_86%)] bg-white'}`}>
+      <div className="flex items-center justify-between gap-4">
+        <span aria-label={`${review.rating} out of 5 stars`} className="flex gap-1 text-[hsl(39_92%_53%)]">
+          {[1, 2, 3, 4, 5].map((star) => <Star aria-hidden="true" className={`size-4 ${star <= review.rating ? 'fill-current' : ''}`} key={star} />)}
+        </span>
+        {review.isVerified ? <span className={`text-[0.64rem] font-extrabold uppercase tracking-[0.08em] ${dark ? 'text-[hsl(174_54%_76%)]' : 'text-[hsl(150_55%_28%)]'}`}>Verified service</span> : null}
+      </div>
+      <blockquote className={`mt-6 break-words text-[1.05rem] font-semibold leading-[1.65] ${dark ? 'text-white' : ''}`}>“{review.reviewMessage}”</blockquote>
+      <footer className={`mt-7 border-t pt-5 text-[0.76rem] font-bold ${dark ? 'mt-auto border-[hsl(215_25%_30%)] text-[hsl(215_24%_72%)]' : 'border-[hsl(215_35%_91%)] text-[hsl(215_20%_48%)]'}`}>
+        <span className={dark ? 'text-[hsl(184_85%_72%)]' : 'text-[hsl(215_74%_28%)]'}>{review.customerLabel}</span> · {review.applianceType ?? 'Appliance service'}
+      </footer>
+    </article>
   );
 }
 
@@ -113,8 +110,15 @@ export function ReviewsPage() {
         {error ? <p className="mt-8 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-900" role="alert">{error}</p> : null}
         {isLoading ? <p className="mt-12 rounded-2xl border border-[hsl(215_35%_86%)] bg-white p-8 text-center font-semibold text-[hsl(215_20%_48%)]">Loading approved reviews…</p> : null}
         {!isLoading && !error && reviews.length === 0 ? <p className="mt-12 rounded-2xl border border-dashed border-[hsl(215_35%_78%)] bg-white p-10 text-center font-semibold text-[hsl(215_20%_48%)]">No approved reviews yet. Check back after your service.</p> : null}
-        <div className="mt-12 grid gap-5 md:grid-cols-2">
-          {!isLoading && !error ? <ReviewCards reviews={reviews} /> : null}
+        <div className="mt-12 min-w-0">
+          {!isLoading && !error ? (
+            <ReviewCarousel
+              ariaLabel="Approved customer reviews"
+              items={reviews}
+              renderItem={(review) => <ReviewCard review={review} />}
+              testId="carousel-public-reviews-page"
+            />
+          ) : null}
         </div>
       </section>
     </PageShell>
