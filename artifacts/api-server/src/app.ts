@@ -85,9 +85,8 @@ app.use((_request, response, next) => {
   );
   response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
 
-  if (process.env.NODE_ENV === "production") {
-    response.setHeader("Strict-Transport-Security", "max-age=31536000");
-  }
+  // The HTTPS deployment edge adds HSTS to both the static site and API.
+  // Do not emit a second application-level Strict-Transport-Security header.
 
   next();
 });

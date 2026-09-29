@@ -567,7 +567,7 @@ test("API responses include security headers and exact proxy trust settings", as
   );
   assert.equal(
     response.response.headers.get("strict-transport-security"),
-    "max-age=31536000",
+    null,
   );
   assert.deepEqual(app.get("trust proxy"), ["127.0.0.1/32", "::1/128"]);
 });
