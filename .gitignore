@@ -61,6 +61,8 @@ logs/
 build/
 screenshots/
 attached_assets/Pasted-*.txt
+attached_assets/Screenshot_*
+attached_assets/image_*.png
 
 # Operating system files
 .DS_Store

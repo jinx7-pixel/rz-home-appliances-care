@@ -8,3 +8,4 @@
 - [Development schema push conflicts](development-schema-push-conflicts.md) — Drizzle pushes can partially apply before a stale index-name conflict; inspect the live schema before retrying.
 - [Deployment-edge HSTS](deployment-edge-hsts.md) — the HTTPS edge supplies the intended HSTS policy; the API must not emit a duplicate.
 - [Workspace Git checkpoints](workspace-git-checkpoints.md) — file edits may appear as local Replit Agent commits; inspect status and recent history before reporting commit state.
+- [Shared environment storage](shared-environment-storage.md) — shared values set through the environment tool are written into tracked `.replit` userenv config in this workspace.
