@@ -1109,6 +1109,54 @@ test("repair submissions are idempotent for the same key and payload", async () 
   assert.equal(rowsAfterConflict.length, 1);
 });
 
+test("repair submissions require a valid idempotency key", async () => {
+  const email = testEmail("idempotency-required");
+  const body = {
+    customerName: "Anonymous Customer",
+    phone: "9876543210",
+    email,
+    applianceType: "Washing Machine Repair",
+    problemDescription: "The appliance does not start.",
+    address: "123 Test Street",
+  };
+
+  const missingKey = await request(
+    "/api/repair-requests",
+    body,
+    undefined,
+    undefined,
+    {},
+  );
+  const shortKey = await request(
+    "/api/repair-requests",
+    body,
+    undefined,
+    undefined,
+    { "Idempotency-Key": "too-short" },
+  );
+  const oversizedKey = await request(
+    "/api/repair-requests",
+    body,
+    undefined,
+    undefined,
+    { "Idempotency-Key": "a".repeat(129) },
+  );
+
+  for (const rejected of [missingKey, shortKey, oversizedKey]) {
+    assert.equal(rejected.response.status, 400);
+    assert.deepEqual(rejected.body, {
+      error: "A valid request retry key is required.",
+    });
+  }
+
+  const savedRows = await db
+    .select()
+    .from(repairRequestsTable)
+    .where(eq(repairRequestsTable.email, email));
+  assert.equal(savedRows.length, 0);
+  assert.equal(sentEmails.length, 0);
+});
+
 test("guest repair requests remain successful when notification email fails", async () => {
   const email = testEmail("repair");
   emailDeliveryError = new Error("simulated SMTP failure");
@@ -1121,6 +1169,8 @@ test("guest repair requests remain successful when notification email fails", as
       applianceType: "Washing Machine Repair",
       problemDescription: "The appliance does not start.",
       address: "123 Test Street",
+    }, undefined, undefined, {
+      "Idempotency-Key": "guest-email-failure-0001",
     });
   } finally {
     emailDeliveryError = undefined;
@@ -1128,7 +1178,7 @@ test("guest repair requests remain successful when notification email fails", as
 
   assert.equal(submission.response.status, 201);
   assert.equal(submission.body.success, true);
-  assert.match(String(submission.body.requestId), /^RZ-[A-F0-9]{12}$/);
+  assert.match(String(submission.body.requestId), /^RZ-[A-F0-9]{21}$/);
   assert.match(
     String(submission.body.message),
     /request is saved.*no need to submit again/i,
@@ -1152,6 +1202,8 @@ test("guest repair emails go only to the owner and current form email", async ()
     applianceType: "Refrigerator Repair",
     problemDescription: "The refrigerator is no longer cooling.",
     address: "123 Current Guest Street",
+  }, undefined, undefined, {
+    "Idempotency-Key": "guest-email-routing-0001",
   });
 
   assert.equal(submission.response.status, 201);

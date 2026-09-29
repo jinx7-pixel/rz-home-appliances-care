@@ -1,7 +1,6 @@
-import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { createHash } from "node:crypto";
 import { CreateRepairRequestBody, CreateRepairRequestResponse } from "@workspace/api-zod";
 import { db, repairRequestsTable } from "@workspace/db";
 import { getAuthenticatedCustomer } from "../lib/auth-session";
@@ -11,11 +10,13 @@ import { sendRepairRequestEmails } from "../lib/repair-request-email";
 const router: IRouter = Router();
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 5;
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{16,128}$/;
 
-function createPublicRequestId(idempotencyKey?: string): string {
-  const suffix = idempotencyKey
-    ? createHash("sha256").update(idempotencyKey).digest("hex").slice(0, 21)
-    : randomUUID().replaceAll("-", "").slice(0, 12);
+function createPublicRequestId(idempotencyKey: string): string {
+  const suffix = createHash("sha256")
+    .update(idempotencyKey)
+    .digest("hex")
+    .slice(0, 21);
   return `RZ-${suffix.toUpperCase()}`;
 }
 
@@ -92,18 +93,18 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
     return;
   }
 
-  const input = parsed.data;
   const idempotencyKey = req.get("Idempotency-Key");
   if (
-    idempotencyKey !== undefined &&
-    !/^[A-Za-z0-9._:-]{16,128}$/.test(idempotencyKey)
+    idempotencyKey === undefined ||
+    !IDEMPOTENCY_KEY_PATTERN.test(idempotencyKey)
   ) {
     res.status(400).json({
-      error: "The request retry key is invalid. Please submit again.",
+      error: "A valid request retry key is required.",
     });
     return;
   }
 
+  const input = parsed.data;
   const requestId = createPublicRequestId(idempotencyKey);
   const submittedAt = new Date();
   const customerName = input.customerName.trim();
@@ -138,13 +139,11 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
         updatedAt: submittedAt,
       });
 
-    [savedRequest] = idempotencyKey
-      ? await insert
-          .onConflictDoNothing({ target: repairRequestsTable.requestId })
-          .returning()
-      : await insert.returning();
+    [savedRequest] = await insert
+      .onConflictDoNothing({ target: repairRequestsTable.requestId })
+      .returning();
 
-    if (!savedRequest && idempotencyKey) {
+    if (!savedRequest) {
       const [existingRequest] = await db
         .select()
         .from(repairRequestsTable)
