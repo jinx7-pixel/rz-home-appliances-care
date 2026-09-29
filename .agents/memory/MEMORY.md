@@ -6,3 +6,4 @@
 - [Dynamic admin API caching](dynamic-admin-api-caching.md) — authenticated dashboard JSON must bypass conditional 304 responses so fetch callers always receive a body.
 - [Website availability control](website-availability-control.md) — public availability is persisted and admin routes remain reachable while the customer-facing site is offline.
 - [Development schema push conflicts](development-schema-push-conflicts.md) — Drizzle pushes can partially apply before a stale index-name conflict; inspect the live schema before retrying.
+- [Deployment-edge HSTS](deployment-edge-hsts.md) — the HTTPS edge supplies the intended HSTS policy; the API must not emit a duplicate.
