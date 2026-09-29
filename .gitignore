@@ -47,3 +47,21 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+.upm/
+.config/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs and generated artifacts
+*.log
+logs/
+build/
+screenshots/
+attached_assets/Pasted-*.txt
+
+# Operating system files
+.DS_Store
+Thumbs.db
