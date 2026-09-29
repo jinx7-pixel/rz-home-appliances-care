@@ -1,40 +1,77 @@
 import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
+import { createHash } from "node:crypto";
 import { CreateRepairRequestBody, CreateRepairRequestResponse } from "@workspace/api-zod";
 import { db, repairRequestsTable } from "@workspace/db";
 import { getAuthenticatedCustomer } from "../lib/auth-session";
+import { isRateLimited } from "../lib/rate-limit";
 import { sendRepairRequestEmails } from "../lib/repair-request-email";
 
 const router: IRouter = Router();
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 5;
-const requestAttempts = new Map<string, number[]>();
 
-function isRateLimited(clientKey: string): boolean {
-  const now = Date.now();
-  const recentAttempts = (requestAttempts.get(clientKey) ?? []).filter(
-    (timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS,
-  );
-
-  if (recentAttempts.length >= RATE_LIMIT_MAX_REQUESTS) {
-    requestAttempts.set(clientKey, recentAttempts);
-    return true;
-  }
-
-  recentAttempts.push(now);
-  requestAttempts.set(clientKey, recentAttempts);
-  return false;
+function createPublicRequestId(idempotencyKey?: string): string {
+  const suffix = idempotencyKey
+    ? createHash("sha256").update(idempotencyKey).digest("hex").slice(0, 21)
+    : randomUUID().replaceAll("-", "").slice(0, 12);
+  return `RZ-${suffix.toUpperCase()}`;
 }
 
-function createPublicRequestId(): string {
-  return `RZ-${randomUUID().replaceAll("-", "").slice(0, 12).toUpperCase()}`;
+function isSameSubmission(
+  savedRequest: typeof repairRequestsTable.$inferSelect,
+  input: Pick<
+    typeof repairRequestsTable.$inferSelect,
+    | "customerName"
+    | "phone"
+    | "email"
+    | "applianceType"
+    | "problemDescription"
+    | "address"
+    | "customerId"
+    | "preferredDate"
+    | "preferredTime"
+  >,
+): boolean {
+  return (
+    savedRequest.customerName === input.customerName &&
+    savedRequest.phone === input.phone &&
+    savedRequest.email === input.email &&
+    savedRequest.applianceType === input.applianceType &&
+    savedRequest.problemDescription === input.problemDescription &&
+    savedRequest.address === input.address &&
+    savedRequest.customerId === input.customerId &&
+    savedRequest.preferredDate === input.preferredDate &&
+    savedRequest.preferredTime === input.preferredTime
+  );
+}
+
+function createSubmissionResponse(
+  requestId: string,
+  emailStatus: string,
+) {
+  return CreateRepairRequestResponse.parse({
+    success: true,
+    requestId,
+    message:
+      emailStatus === "failed"
+        ? "Your request is saved. We couldn't send the confirmation email, so there is no need to submit again."
+        : "Your repair request was submitted successfully.",
+  });
 }
 
 router.post("/repair-requests", async (req, res): Promise<void> => {
   const clientKey = req.ip ?? req.socket.remoteAddress ?? "unknown";
 
-  if (isRateLimited(clientKey)) {
+  if (
+    await isRateLimited({
+      scope: "guest-repair-request",
+      clientKey,
+      maxAttempts: RATE_LIMIT_MAX_REQUESTS,
+      windowMs: RATE_LIMIT_WINDOW_MS,
+    })
+  ) {
     res.status(429).json({
       error: "Too many repair requests. Please wait a few minutes and try again.",
     });
@@ -56,7 +93,18 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
   }
 
   const input = parsed.data;
-  const requestId = createPublicRequestId();
+  const idempotencyKey = req.get("Idempotency-Key");
+  if (
+    idempotencyKey !== undefined &&
+    !/^[A-Za-z0-9._:-]{16,128}$/.test(idempotencyKey)
+  ) {
+    res.status(400).json({
+      error: "The request retry key is invalid. Please submit again.",
+    });
+    return;
+  }
+
+  const requestId = createPublicRequestId(idempotencyKey);
   const submittedAt = new Date();
   const customerName = input.customerName.trim();
   const email = input.email.trim().toLowerCase();
@@ -65,28 +113,61 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
     ? input.preferredDate.toISOString().slice(0, 10)
     : null;
   const preferredTime = input.preferredTime?.trim() || null;
+  const requestValues = {
+    customerName,
+    phone: input.phone,
+    email,
+    applianceType: input.applianceType,
+    problemDescription: input.problemDescription.trim(),
+    address: input.address.trim(),
+    customerId: authenticatedCustomer?.id ?? null,
+    preferredDate,
+    preferredTime,
+  };
 
   let savedRequest: typeof repairRequestsTable.$inferSelect | undefined;
   try {
-    [savedRequest] = await db
+    const insert = db
       .insert(repairRequestsTable)
       .values({
         requestId,
-        customerName,
-        phone: input.phone,
-        email,
-        applianceType: input.applianceType,
-        problemDescription: input.problemDescription.trim(),
-        address: input.address.trim(),
-        customerId: authenticatedCustomer?.id ?? null,
-        preferredDate,
-        preferredTime,
+        ...requestValues,
         status: "pending",
         emailStatus: "pending",
         createdAt: submittedAt,
         updatedAt: submittedAt,
-      })
-      .returning();
+      });
+
+    [savedRequest] = idempotencyKey
+      ? await insert
+          .onConflictDoNothing({ target: repairRequestsTable.requestId })
+          .returning()
+      : await insert.returning();
+
+    if (!savedRequest && idempotencyKey) {
+      const [existingRequest] = await db
+        .select()
+        .from(repairRequestsTable)
+        .where(eq(repairRequestsTable.requestId, requestId))
+        .limit(1);
+
+      if (!existingRequest) {
+        throw new Error("Idempotent repair request conflict had no saved row");
+      }
+
+      if (!isSameSubmission(existingRequest, requestValues)) {
+        res.status(409).json({
+          error: "This retry key was already used for a different request.",
+        });
+        return;
+      }
+
+      req.log.info({ requestId }, "Replayed idempotent repair request");
+      res.status(201).json(
+        createSubmissionResponse(existingRequest.requestId, existingRequest.emailStatus),
+      );
+      return;
+    }
 
     if (!savedRequest) throw new Error("Repair request insert returned no saved row");
 
@@ -137,14 +218,7 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
     });
 
   res.status(201).json(
-    CreateRepairRequestResponse.parse({
-      success: true,
-      requestId,
-      message:
-        emailStatus === "failed"
-          ? "Your request is saved. We couldn't send the confirmation email, so there is no need to submit again."
-          : "Your repair request was submitted successfully.",
-    }),
+    createSubmissionResponse(requestId, emailStatus),
   );
 });
 

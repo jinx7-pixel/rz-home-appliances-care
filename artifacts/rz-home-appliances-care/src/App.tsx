@@ -791,6 +791,10 @@ function ContactSection() {
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submissionInFlight = useRef(false);
+  const pendingSubmission = useRef<{
+    serializedBody: string;
+    idempotencyKey: string;
+  } | null>(null);
 
   const updateField = (field: keyof RepairFormValues, value: string) => {
     setFormValues((current) => ({ ...current, [field]: value }));
@@ -828,18 +832,29 @@ function ContactSection() {
 
     submissionInFlight.current = true;
     setIsSubmitting(true);
+    const requestBody = {
+      customerName: formValues.name.trim(),
+      phone: formValues.phone,
+      email: formValues.email.trim(),
+      applianceType: formValues.service,
+      problemDescription: formValues.issue.trim(),
+      address: formValues.address.trim(),
+    };
+    const serializedBody = JSON.stringify(requestBody);
+    const idempotencyKey =
+      pendingSubmission.current?.serializedBody === serializedBody
+        ? pendingSubmission.current.idempotencyKey
+        : crypto.randomUUID();
+    pendingSubmission.current = { serializedBody, idempotencyKey };
+
     try {
       const response = await fetch('/api/repair-requests', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerName: formValues.name.trim(),
-          phone: formValues.phone,
-          email: formValues.email.trim(),
-          applianceType: formValues.service,
-          problemDescription: formValues.issue.trim(),
-          address: formValues.address.trim(),
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
+        body: serializedBody,
       });
       const payload = (await response.json().catch(() => null)) as
         | { requestId?: string; message?: string; error?: string }
@@ -860,6 +875,7 @@ function ContactSection() {
         issue: '',
         address: '',
       });
+      pendingSubmission.current = null;
     } catch (error) {
       setSubmitError(getRepairRequestErrorMessage(error));
     } finally {

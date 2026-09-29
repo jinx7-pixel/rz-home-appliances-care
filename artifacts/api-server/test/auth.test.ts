@@ -8,6 +8,7 @@ import nodemailer, { type Transporter } from "nodemailer";
 import type { AddressInfo } from "node:net";
 import app from "../src/app.ts";
 import { isInitialAdminBootstrapEligible } from "../src/routes/admin-auth.ts";
+import router from "../src/routes/index.ts";
 import {
   adminUsersTable,
   bookingsTable,
@@ -43,8 +44,7 @@ let baseUrl: string;
 let ipv6BaseUrl: string | undefined;
 let ipv6MappedBaseUrl: string | undefined;
 let ipv6UnavailableReason: string | undefined;
-let clientIp = "198.51.100.1";
-let nextClientIpOctet = 1;
+let clientIp = uniqueClientAddress();
 
 type CapturedEmail = {
   from: string;
@@ -70,6 +70,10 @@ const fakeTransport = {
 
 mock.method(nodemailer, "createTransport", () => fakeTransport);
 
+router.get("/__test/unexpected-error", (_request, _response, next) => {
+  next(new Error("Sensitive database diagnostic"));
+});
+
 type JsonResponse = {
   response: Response;
   body: Record<string, unknown>;
@@ -87,11 +91,25 @@ function testEmail(label: string): string {
   return `${TEST_EMAIL_PREFIX}${label}-${randomUUID()}@example.test`;
 }
 
+function uniqueClientAddress(): string {
+  const token = randomUUID().replaceAll("-", "");
+  const tail = Number.parseInt(token.slice(12, 16), 16) || 1;
+  return `2001:db8:${token.slice(0, 4)}:${token.slice(4, 8)}:${token.slice(8, 12)}::${tail.toString(16)}`;
+}
+
+function uniqueLoopbackIpv4(): string {
+  const token = randomUUID().replaceAll("-", "");
+  const octet = (start: number) =>
+    Number.parseInt(token.slice(start, start + 2), 16);
+  return `127.${octet(0)}.${octet(2)}.${(octet(4) % 254) + 1}`;
+}
+
 async function request(
   path: string,
   body?: Record<string, unknown>,
   cookie?: string,
   requestClientIp = clientIp,
+  extraHeaders: Record<string, string> = {},
 ): Promise<JsonResponse> {
   const response = await fetch(`${baseUrl}${path}`, {
     method: "POST",
@@ -100,6 +118,7 @@ async function request(
       origin: originFor(),
       "x-forwarded-for": requestClientIp,
       ...(cookie ? { cookie } : {}),
+      ...extraHeaders,
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -207,14 +226,18 @@ async function remove(path: string, cookie?: string): Promise<JsonResponse> {
   };
 }
 
-function cookieNamed(response: Response, name: string): string {
+function setCookieNamed(response: Response, name: string): string {
   const cookies =
     typeof response.headers.getSetCookie === "function"
       ? response.headers.getSetCookie()
       : [response.headers.get("set-cookie") ?? ""];
   const cookie = cookies.find((value) => value.startsWith(`${name}=`));
   assert.ok(cookie, `expected the login response to set a ${name} cookie`);
-  return cookie.split(";", 1)[0];
+  return cookie;
+}
+
+function cookieNamed(response: Response, name: string): string {
+  return setCookieNamed(response, name).split(";", 1)[0];
 }
 
 async function createAdminSession(): Promise<string> {
@@ -313,7 +336,7 @@ before(async () => {
 
 beforeEach(async () => {
   await cleanupTestData();
-  clientIp = `198.51.100.${nextClientIpOctet++}`;
+  clientIp = uniqueClientAddress();
 });
 
 after(async () => {
@@ -407,7 +430,7 @@ test("CORS is origin-restricted and admin mutations reject cross-origin requests
         headers: {
           origin: productionOrigin,
           "access-control-request-method": "PATCH",
-          "access-control-request-headers": "content-type",
+          "access-control-request-headers": "content-type,idempotency-key",
         },
       },
     );
@@ -426,6 +449,15 @@ test("CORS is origin-restricted and admin mutations reject cross-origin requests
         ?.split(",")
         .map((method) => method.trim()),
       ["GET", "HEAD", "POST", "PATCH", "DELETE"],
+    );
+    assert.deepEqual(
+      allowedPreflight.headers
+        .get("access-control-allow-headers")
+        ?.toLowerCase()
+        .split(",")
+        .map((header) => header.trim())
+        .sort(),
+      ["content-type", "idempotency-key"],
     );
 
     const untrustedPreflight = await fetch(
@@ -514,7 +546,112 @@ test("CORS is origin-restricted and admin mutations reject cross-origin requests
   }
 });
 
+test("API responses include security headers and exact proxy trust settings", async () => {
+  const response = await get("/api/healthz");
+  assert.equal(response.response.status, 200);
+  assert.equal(response.response.headers.get("x-powered-by"), null);
+  assert.equal(
+    response.response.headers.get("content-security-policy"),
+    "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+  );
+  assert.equal(response.response.headers.get("x-frame-options"), "DENY");
+  assert.equal(response.response.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(response.response.headers.get("referrer-policy"), "no-referrer");
+  assert.equal(
+    response.response.headers.get("permissions-policy"),
+    "camera=(), microphone=(), geolocation=()",
+  );
+  assert.equal(
+    response.response.headers.get("cross-origin-resource-policy"),
+    "same-origin",
+  );
+  assert.equal(
+    response.response.headers.get("strict-transport-security"),
+    "max-age=31536000",
+  );
+  assert.deepEqual(app.get("trust proxy"), ["127.0.0.1/32", "::1/128"]);
+});
+
+test("request body limits and the error handler return safe JSON responses", async () => {
+  const oversized = await request("/api/repair-requests", {
+    customerName: "Anonymous Customer",
+    phone: "9876543210",
+    email: testEmail("oversized"),
+    applianceType: "Washing Machine Repair",
+    problemDescription: "x".repeat(40_000),
+    address: "123 Test Street",
+  });
+  assert.equal(oversized.response.status, 413);
+  assert.deepEqual(oversized.body, { error: "Request body is too large." });
+
+  const malformed = await fetch(`${baseUrl}/api/repair-requests`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin: originFor(),
+    },
+    body: "{",
+  });
+  assert.equal(malformed.status, 400);
+  assert.deepEqual(await malformed.json(), { error: "Invalid request body." });
+
+  const unexpected = await get("/api/__test/unexpected-error");
+  assert.equal(unexpected.response.status, 500);
+  assert.deepEqual(unexpected.body, {
+    error: "An unexpected server error occurred.",
+  });
+  assert.equal(
+    JSON.stringify(unexpected.body).includes("Sensitive database diagnostic"),
+    false,
+  );
+});
+
+test("admin session cookies are Secure in production and non-Secure in development", async () => {
+  const username = `${TEST_ADMIN_PREFIX}${randomUUID()}`;
+  await db.insert(adminUsersTable).values({
+    username,
+    displayName: "Cookie Configuration Admin",
+    passwordHash: await bcrypt.hash(TEST_ADMIN_PASSWORD, 4),
+  });
+
+  const originalNodeEnv = process.env.NODE_ENV;
+  try {
+    process.env.NODE_ENV = "production";
+    const productionLogin = await request("/api/admin/auth/login", {
+      username,
+      password: TEST_ADMIN_PASSWORD,
+    });
+    assert.equal(productionLogin.response.status, 200);
+    const productionCookie = setCookieNamed(
+      productionLogin.response,
+      "rz_admin_session",
+    );
+    assert.match(productionCookie, /;\s*HttpOnly(?:;|$)/i);
+    assert.match(productionCookie, /;\s*Secure(?:;|$)/i);
+    assert.match(productionCookie, /;\s*SameSite=Lax(?:;|$)/i);
+
+    process.env.NODE_ENV = "development";
+    const developmentLogin = await request("/api/admin/auth/login", {
+      username,
+      password: TEST_ADMIN_PASSWORD,
+    });
+    assert.equal(developmentLogin.response.status, 200);
+    const developmentCookie = setCookieNamed(
+      developmentLogin.response,
+      "rz_admin_session",
+    );
+    assert.match(developmentCookie, /;\s*HttpOnly(?:;|$)/i);
+    assert.doesNotMatch(developmentCookie, /;\s*Secure(?:;|$)/i);
+    assert.match(developmentCookie, /;\s*SameSite=Lax(?:;|$)/i);
+  } finally {
+    process.env.NODE_ENV = originalNodeEnv;
+  }
+});
+
 test("rate limits trust forwarded IPs only from the configured proxy addresses", async () => {
+  const trustedClient = uniqueClientAddress();
+  const differentTrustedClient = uniqueClientAddress();
+  const untrustedSource = uniqueLoopbackIpv4();
   const invalidRepairRequest = {
     customerName: "A",
     phone: "not-a-phone",
@@ -529,7 +666,7 @@ test("rate limits trust forwarded IPs only from the configured proxy addresses",
       "/api/repair-requests",
       invalidRepairRequest,
       undefined,
-      "198.51.100.50",
+      trustedClient,
     );
     assert.equal(response.response.status, 400);
   }
@@ -538,24 +675,24 @@ test("rate limits trust forwarded IPs only from the configured proxy addresses",
     "/api/repair-requests",
     invalidRepairRequest,
     undefined,
-    "198.51.100.50",
+    trustedClient,
   );
   assert.equal(trustedProxyLimited.response.status, 429);
 
-  const differentTrustedClient = await request(
+  const differentClientResponse = await request(
     "/api/repair-requests",
     invalidRepairRequest,
     undefined,
-    "198.51.100.51",
+    differentTrustedClient,
   );
-  assert.equal(differentTrustedClient.response.status, 400);
+  assert.equal(differentClientResponse.response.status, 400);
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const response = await requestFromSource(
       "/api/repair-requests",
       invalidRepairRequest,
-      "127.0.0.2",
-      `203.0.113.${attempt + 1}`,
+      untrustedSource,
+      uniqueClientAddress(),
     );
     assert.equal(response.status, 400);
   }
@@ -563,8 +700,8 @@ test("rate limits trust forwarded IPs only from the configured proxy addresses",
   const untrustedHeaderLimited = await requestFromSource(
     "/api/repair-requests",
     invalidRepairRequest,
-    "127.0.0.2",
-    "203.0.113.6",
+    untrustedSource,
+    uniqueClientAddress(),
   );
   assert.equal(untrustedHeaderLimited.status, 429);
 });
@@ -588,13 +725,15 @@ test("rate limits trust forwarded IPs from the IPv6 loopback proxy path", async 
     problemDescription: "Broken",
     address: "A",
   };
+  const trustedClient = uniqueClientAddress();
+  const differentTrustedClient = uniqueClientAddress();
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const response = await requestFromSource(
       "/api/repair-requests",
       invalidRepairRequest,
       "::1",
-      "198.51.100.60",
+      trustedClient,
       ipv6BaseUrl,
     );
     assert.equal(response.status, 400);
@@ -604,19 +743,19 @@ test("rate limits trust forwarded IPs from the IPv6 loopback proxy path", async 
     "/api/repair-requests",
     invalidRepairRequest,
     "::1",
-    "198.51.100.60",
+    trustedClient,
     ipv6BaseUrl,
   );
   assert.equal(limited.status, 429);
 
-  const differentTrustedClient = await requestFromSource(
+  const differentClientResponse = await requestFromSource(
     "/api/repair-requests",
     invalidRepairRequest,
     "::1",
-    "198.51.100.61",
+    differentTrustedClient,
     ipv6BaseUrl,
   );
-  assert.equal(differentTrustedClient.status, 400);
+  assert.equal(differentClientResponse.status, 400);
 });
 
 test("rejects a forged forwarded IP from an untrusted IPv6 source", async (t) => {
@@ -638,7 +777,8 @@ test("rejects a forged forwarded IP from an untrusted IPv6 source", async (t) =>
     problemDescription: "Broken",
     address: "A",
   };
-  const untrustedIpv6Source = "::ffff:127.0.0.2";
+  const untrustedIpv6Source = `::ffff:${uniqueLoopbackIpv4()}`;
+  const forwardedClient = uniqueClientAddress();
   assert.ok(ipv6MappedBaseUrl);
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -646,7 +786,7 @@ test("rejects a forged forwarded IP from an untrusted IPv6 source", async (t) =>
       "/api/repair-requests",
       invalidRepairRequest,
       untrustedIpv6Source,
-      "203.0.113.60",
+      forwardedClient,
       ipv6MappedBaseUrl,
     );
     assert.equal(response.status, 400);
@@ -656,10 +796,26 @@ test("rejects a forged forwarded IP from an untrusted IPv6 source", async (t) =>
     "/api/repair-requests",
     invalidRepairRequest,
     untrustedIpv6Source,
-    "203.0.113.61",
+    uniqueClientAddress(),
     ipv6MappedBaseUrl,
   );
   assert.equal(limited.status, 429);
+});
+
+test("admin login attempts are rate limited through the shared database bucket", async () => {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const response = await request("/api/admin/auth/login", {
+      username: "missing-admin-account",
+      password: "incorrect-password",
+    });
+    assert.equal(response.response.status, 401);
+  }
+
+  const limited = await request("/api/admin/auth/login", {
+    username: "missing-admin-account",
+    password: "incorrect-password",
+  });
+  assert.equal(limited.response.status, 429);
 });
 
 test("removed customer auth, history, and booking routes stay unavailable", async () => {
@@ -896,6 +1052,61 @@ test("repeated and concurrent attempts for one repair transition send only one c
   assert.equal(repeated.response.status, 200);
   assert.equal(sentEmails.length, 1);
   assert.equal((await repairRequestForId(requestId)).status, "in_progress");
+});
+
+test("repair submissions are idempotent for the same key and payload", async () => {
+  const email = testEmail("idempotent");
+  const body = {
+    customerName: "Anonymous Customer",
+    phone: "9876543210",
+    email,
+    applianceType: "Washing Machine Repair",
+    problemDescription: "The appliance does not start.",
+    address: "123 Test Street",
+  };
+  const headers = { "Idempotency-Key": "repair-form-submit-0001" };
+
+  const first = await request(
+    "/api/repair-requests",
+    body,
+    undefined,
+    undefined,
+    headers,
+  );
+  assert.equal(first.response.status, 201);
+  const emailsAfterFirstSubmission = sentEmails.length;
+
+  const replay = await request(
+    "/api/repair-requests",
+    body,
+    undefined,
+    undefined,
+    headers,
+  );
+  assert.equal(replay.response.status, 201);
+  assert.equal(replay.body.requestId, first.body.requestId);
+  assert.equal(sentEmails.length, emailsAfterFirstSubmission);
+
+  const savedRows = await db
+    .select()
+    .from(repairRequestsTable)
+    .where(eq(repairRequestsTable.email, email));
+  assert.equal(savedRows.length, 1);
+
+  const changedPayload = await request(
+    "/api/repair-requests",
+    { ...body, customerName: "Different Customer" },
+    undefined,
+    undefined,
+    headers,
+  );
+  assert.equal(changedPayload.response.status, 409);
+  assert.equal(sentEmails.length, emailsAfterFirstSubmission);
+  const rowsAfterConflict = await db
+    .select()
+    .from(repairRequestsTable)
+    .where(eq(repairRequestsTable.email, email));
+  assert.equal(rowsAfterConflict.length, 1);
 });
 
 test("guest repair requests remain successful when notification email fails", async () => {

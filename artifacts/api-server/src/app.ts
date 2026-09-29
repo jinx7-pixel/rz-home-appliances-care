@@ -1,4 +1,8 @@
-import express, { type Express, type Request } from "express";
+import express, {
+  type ErrorRequestHandler,
+  type Express,
+  type Request,
+} from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
@@ -6,6 +10,7 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+app.disable("x-powered-by");
 
 // API responses are dynamic and several authenticated dashboard reads must
 // always include their JSON body. Avoid conditional 304 responses being
@@ -65,6 +70,27 @@ function reportProductionProxyConfiguration(): void {
 }
 
 reportProductionProxyConfiguration();
+
+app.use((_request, response, next) => {
+  response.setHeader(
+    "Content-Security-Policy",
+    "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+  );
+  response.setHeader("X-Frame-Options", "DENY");
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setHeader("Referrer-Policy", "no-referrer");
+  response.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=()",
+  );
+  response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+
+  if (process.env.NODE_ENV === "production") {
+    response.setHeader("Strict-Transport-Security", "max-age=31536000");
+  }
+
+  next();
+});
 
 function getConfiguredFrontendOrigin(): string | undefined {
   const configuredBaseUrl = process.env.APP_BASE_URL?.trim();
@@ -152,7 +178,7 @@ app.use(
       );
     },
     methods: ["GET", "HEAD", "POST", "PATCH", "DELETE"],
-    allowedHeaders: ["Content-Type"],
+    allowedHeaders: ["Content-Type", "Idempotency-Key"],
   }),
 );
 app.use("/api/admin", (request, response, next) => {
@@ -170,10 +196,65 @@ app.use("/api/admin", (request, response, next) => {
 
   next();
 });
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "32kb" }));
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: "32kb",
+    parameterLimit: 100,
+  }),
+);
 app.use(cookieParser());
 
 app.use("/api", router);
+
+export const apiErrorHandler: ErrorRequestHandler = (
+  error,
+  request,
+  response,
+  next,
+) => {
+  if (response.headersSent) {
+    next(error);
+    return;
+  }
+
+  const errorType =
+    typeof error === "object" &&
+    error !== null &&
+    "type" in error &&
+    typeof error.type === "string"
+      ? error.type
+      : undefined;
+  const errorStatus =
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    typeof error.status === "number"
+      ? error.status
+      : undefined;
+
+  if (errorType === "entity.too.large" || errorStatus === 413) {
+    response.status(413).json({ error: "Request body is too large." });
+    return;
+  }
+
+  if (errorType === "entity.parse.failed") {
+    response.status(400).json({ error: "Invalid request body." });
+    return;
+  }
+
+  if (errorStatus && errorStatus >= 400 && errorStatus < 500) {
+    response.status(errorStatus).json({ error: "Invalid request." });
+    return;
+  }
+
+  request.log.error({ err: error }, "Unhandled API error");
+  response
+    .status(500)
+    .json({ error: "An unexpected server error occurred." });
+};
+
+app.use(apiErrorHandler);
 
 export default app;

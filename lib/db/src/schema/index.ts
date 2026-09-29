@@ -26,4 +26,5 @@ export * from "./admin-users";
 export * from "./admin-sessions";
 export * from "./reviews";
 export * from "./review-invitations";
+export * from "./rate-limit-buckets";
 export * from "./site-settings";

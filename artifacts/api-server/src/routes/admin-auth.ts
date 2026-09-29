@@ -15,11 +15,11 @@ import {
   hashSessionToken,
   setAdminSessionCookie,
 } from "../lib/admin-auth";
+import { isRateLimited } from "../lib/rate-limit";
 
 const router = Router();
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_ATTEMPTS = 10;
-const loginAttempts = new Map<string, number[]>();
 
 export function isInitialAdminBootstrapEligible(
   username: string,
@@ -46,29 +46,19 @@ function clientKey(request: Request): string {
   return request.ip || request.socket.remoteAddress || "unknown";
 }
 
-function isRateLimited(request: Request): boolean {
-  const now = Date.now();
-  const key = clientKey(request);
-  const recentAttempts = (loginAttempts.get(key) ?? []).filter(
-    (timestamp) => now - timestamp < LOGIN_WINDOW_MS,
-  );
-
-  if (recentAttempts.length >= LOGIN_MAX_ATTEMPTS) {
-    loginAttempts.set(key, recentAttempts);
-    return true;
-  }
-
-  recentAttempts.push(now);
-  loginAttempts.set(key, recentAttempts);
-  return false;
-}
-
 function setAdminCookie(response: Response, token: string): void {
   setAdminSessionCookie(response, token);
 }
 
 router.post("/auth/login", async (request, response) => {
-  if (isRateLimited(request)) {
+  if (
+    await isRateLimited({
+      scope: "admin-login",
+      clientKey: clientKey(request),
+      maxAttempts: LOGIN_MAX_ATTEMPTS,
+      windowMs: LOGIN_WINDOW_MS,
+    })
+  ) {
     return response.status(429).json({
       error: "Too many admin login attempts. Please try again later.",
     });
