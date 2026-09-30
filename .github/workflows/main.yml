@@ -12,6 +12,7 @@ jobs:
     
     env:
      PORT: 23672
+     BASE_PATH: /
     
     steps:
       - name: Checkout
