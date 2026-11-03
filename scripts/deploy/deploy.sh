@@ -436,6 +436,13 @@ public_health_checks() {
 # ---------------------------------------------------------------------------
 loopback_health_checks() {
   local base="http://127.0.0.1:${WEB_PORT}"
+  # The API derives the request origin from the Host header, so a loopback
+  # probe must carry the public Host exactly as the browser sends it through
+  # the two proxy layers. Without it the API compares the Origin header
+  # against "https://127.0.0.1:8080" and correctly rejects the request.
+  local public_host
+  public_host="$(printf '%s' "${PUBLIC_ORIGIN}" | sed -E 's#^[a-z]+://##; s#/.*$##; s#:[0-9]+$##')"
+  [ -n "$public_host" ] || die "cannot derive the public host from ${PUBLIC_ORIGIN}"
   log "Loopback health checks (public traffic is NOT switched)"
 
   curl -fsS --max-time 20 "${base}/" -o /dev/null || die "the frontend container is not serving on ${base}"
@@ -458,7 +465,8 @@ loopback_health_checks() {
   # regression and must fail the deployment.
   local code
   code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -X POST "${base}/api/admin/auth/login" \
-        -H "Origin: ${PUBLIC_ORIGIN}" -H 'X-Forwarded-Proto: https' -H 'X-Forwarded-For: 203.0.113.9' \
+        -H "Host: ${public_host}" -H "Origin: ${PUBLIC_ORIGIN}" \
+        -H 'X-Forwarded-Proto: https' -H 'X-Forwarded-For: 203.0.113.9' \
         -H 'Content-Type: application/json' --data '{}')"
   case "$code" in
     403) die "admin origin validation rejected a same-origin request (403) - X-Forwarded-Proto is wrong" ;;
@@ -467,7 +475,8 @@ loopback_health_checks() {
   esac
 
   code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -X POST "${base}/api/admin/auth/login" \
-        -H "Origin: https://evil.example" -H 'X-Forwarded-Proto: https' -H 'X-Forwarded-For: 203.0.113.9' \
+        -H "Host: ${public_host}" -H 'Origin: https://evil.example' \
+        -H 'X-Forwarded-Proto: https' -H 'X-Forwarded-For: 203.0.113.9' \
         -H 'Content-Type: application/json' --data '{}')"
   case "$code" in
     403) ok "admin origin validation rejects a cross-origin request (403)" ;;
@@ -475,7 +484,7 @@ loopback_health_checks() {
   esac
 
   code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -X POST "${base}/api/repair-requests" \
-        -H 'Content-Type: application/json' --data '{"customerName":"x"}')"
+        -H "Host: ${public_host}" -H 'Content-Type: application/json' --data '{"customerName":"x"}')"
   case "$code" in
     400) ok "repair-request validation is active (HTTP 400 for an invalid body)" ;;
     429) warn "repair-request rate limit is already exhausted" ;;

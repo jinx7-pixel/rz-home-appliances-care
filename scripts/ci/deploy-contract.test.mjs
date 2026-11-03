@@ -169,6 +169,38 @@ test("Bug C: container health is checked through the resolved container ID", () 
   );
 });
 
+test("the loopback checks send the public Host header", () => {
+  // The API derives the request origin from the Host header. A loopback
+  // probe that omits it is compared against "https://127.0.0.1:8080" and is
+  // rejected with 403 even though the request is same-origin.
+  assert.match(
+    deployScript,
+    /public_host="\$\(printf '%s' "\$\{PUBLIC_ORIGIN\}" \| sed -E/,
+    "the public host must be derived from the public origin",
+  );
+  const loopbackBody = deployScript.slice(
+    deployScript.indexOf("loopback_health_checks() {"),
+    deployScript.indexOf("rollback_restore() {"),
+  );
+  assert.ok(loopbackBody.length > 0, "the loopback health checks must exist");
+  assert.match(
+    loopbackBody,
+    /-H "Host: \$\{public_host\}"/,
+    "the loopback admin check must carry the public Host header",
+  );
+  assert.match(
+    loopbackBody,
+    /-H "Origin: \$\{PUBLIC_ORIGIN\}"/,
+  );
+  // The cross-origin control must keep the public Host so it proves the
+  // rejection comes from the Origin and not from the Host.
+  assert.match(
+    loopbackBody,
+    /Origin: https:\/\/evil\.example/,
+    "the cross-origin control must still be exercised",
+  );
+});
+
 test("the deployment exit trap behaves correctly", () => {
   const bash = findBash();
   if (!bash) return;
