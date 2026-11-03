@@ -137,9 +137,29 @@ configure_postgres() {
     warn "added a broad 'host all all ${BRIDGE_SUBNET}' rule so that every container in the bridge subnet is reachable; tighten it if other roles are added later"
   fi
 
-  log "reloading postgres"
-  systemctl reload postgresql || systemctl restart postgresql
-  ok "postgres reloaded; a short restart is expected only if listen_addresses was not yet live"
+  log "applying the new PostgreSQL configuration"
+  # listen_addresses is a postmaster setting: a reload cannot change it, only a
+  # restart can. Read the value that is actually live and restart only when it
+  # does not yet contain the bridge gateway.
+  live="$(su - postgres -c "psql -tAc 'SHOW listen_addresses'" 2>/dev/null | tr -d '[:space:]' || true)"
+  needs_restart=0
+  case ",${live}," in
+    *",${BRIDGE_GW},"*) : ;;
+    *) needs_restart=1 ;;
+  esac
+  if [ "$needs_restart" -eq 1 ]; then
+    log "restarting postgresql so that listen_addresses takes effect (a brief interruption)"
+    systemctl restart postgresql
+    ok "postgresql restarted; the bridge gateway is now accepted"
+  else
+    systemctl reload postgresql
+    ok "postgresql reloaded; listen_addresses already included ${BRIDGE_GW}"
+  fi
+  applied="$(su - postgres -c "psql -tAc 'SHOW listen_addresses'" 2>/dev/null | tr -d '[:space:]' || true)"
+  case ",${applied}," in
+    *",${BRIDGE_GW},"*) ok "runtime listen_addresses = ${applied}" ;;
+    *) die "listen_addresses does not include ${BRIDGE_GW} after the change (got '${applied}')" ;;
+  esac
 }
 
 # ---------------------------------------------------------------------------
@@ -265,7 +285,7 @@ main() {
   log "summary (no secret values are printed):"
   printf '  docker          : %s\n' "$(docker --version 2>/dev/null || echo 'missing')"
   printf '  compose         : %s\n' "$(docker compose version 2>/dev/null || echo 'missing')"
-  printf '  postgres listen : %s\n' "$(grep -E "^[[:space:]]*listen_addresses" "${PG_CONF_DIR}/postgresql.conf" 2>/dev/null | tail -1 | sed 's/^[[:space:]]*//' || echo 'unknown')"
+  printf '  postgres listen : %s (runtime)\n' "$(su - postgres -c "psql -tAc 'SHOW listen_addresses'" 2>/dev/null | tr -d '[:space:]' || echo 'unknown')"
   printf '  env file        : %s\n' "$([ -f "$ENV_FILE" ] && echo "$ENV_FILE (mode $(stat -c '%a' "$ENV_FILE"))" || echo 'missing')"
   printf '  env keys        : %s\n' "$([ -f "$ENV_FILE" ] && sed 's/=.*/=<set>/' "$ENV_FILE" | tr '\n' ' ' || echo 'n/a')"
   printf '  backups         : %s\n' "$BACKUP_DIR"

@@ -312,6 +312,26 @@ test("the bootstrap script never exposes a secret on stdout or in the log", () =
   assert.match(bootstrapScript, /install -d -m 750 "\$ENV_DIR"/);
 });
 
+test("the bootstrap script restarts PostgreSQL when listen_addresses must change", () => {
+  // listen_addresses is a postmaster setting: a reload cannot change it, so a
+  // script that only reloads would leave the containers unable to connect.
+  assert.match(
+    bootstrapScript,
+    /systemctl restart postgresql/,
+    "PostgreSQL must be restarted so that listen_addresses takes effect",
+  );
+  assert.match(
+    bootstrapScript,
+    /SHOW listen_addresses/,
+    "the live value must be read before deciding to restart",
+  );
+  assert.match(
+    bootstrapScript,
+    /needs_restart/,
+    "the restart must be conditional on the gateway not already being live",
+  );
+});
+
 test("the bootstrap script never migrates, switches traffic or stops PM2", () => {
   for (const forbidden of [
     /migrate\.mjs/,
