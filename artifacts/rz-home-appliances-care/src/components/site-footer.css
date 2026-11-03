@@ -1,0 +1,53 @@
+.rz-footer { padding: 0 32px; background: var(--rz-bg); }
+.rz-footer-inner { width: 100%; max-width: var(--rz-page-width); margin: 0 auto; padding-top: 56px; border-top: 1px solid rgb(255 255 255 / 10%); }
+.rz-footer-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .7fr) minmax(0, .9fr) minmax(0, 1.1fr); gap: 40px; }
+.rz-footer-grid > * { min-width: 0; }
+.rz-footer-brand { display: inline-flex; align-items: center; gap: 10px; max-width: 100%; border-radius: 5px; color: #e4e4e7; font-size: 16px; font-weight: 500; line-height: 1.25; letter-spacing: -.03em; text-decoration: none; }
+.rz-footer-brand > span:last-child > span { display: block; margin-top: 3px; color: var(--rz-muted); font-size: 12px; font-weight: 400; letter-spacing: .02em; }
+.rz-footer-mark { position: relative; flex-shrink: 0; width: 30px; height: 32px; color: var(--rz-violet-bright); }
+.rz-footer-mark > svg:first-child { width: 28px; height: 28px; stroke-width: 1.5; }
+.rz-footer-mark > svg:last-child { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; stroke-width: 1.8; background: var(--rz-bg); }
+.rz-footer-about > p { max-width: 32ch; margin: 24px 0 0; color: var(--rz-muted); font-size: 13px; line-height: 1.8; }
+.rz-footer-grid h2 { margin: 3px 0 18px; color: var(--rz-text); font-size: 13px; font-weight: 500; line-height: 1.5; }
+.rz-footer-grid ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.rz-footer-grid nav a { display: inline-flex; align-items: center; min-height: 34px; padding-block: 5px; color: var(--rz-muted); font-size: 13px; line-height: 1.6; text-decoration: none; }
+.rz-footer a { transition: color .2s; }
+.rz-footer a:hover { color: var(--rz-lavender); }
+.rz-footer-contact { display: flex; flex-direction: column; align-items: flex-start; }
+.rz-footer-owner { margin: 4px 0 12px; color: #d4d4d8; font-size: 13px; line-height: 1.5; }
+.rz-footer-contact > a, .rz-footer-location { display: flex; align-items: flex-start; gap: 10px; width: 100%; margin: 0; padding-block: 9px; color: var(--rz-muted); font-size: 12px; line-height: 1.6; text-decoration: none; }
+.rz-footer-contact svg { flex-shrink: 0; margin-top: 2px; color: var(--rz-violet-bright); }
+.rz-footer-contact > a > span { min-width: 0; overflow-wrap: anywhere; }
+.rz-footer-bottom { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 48px; padding-top: 24px; border-top: 1px solid rgb(255 255 255 / 8%); }
+.rz-footer-copyright { margin: 0; color: #a1a1aa; font-size: 11px; line-height: 1.6; }
+.rz-footer-credit { text-align: right; }
+.rz-footer-credit p { margin: 0; color: #a1a1aa; font-size: 11px; line-height: 1.8; }
+.rz-footer-credit p + p { margin-top: 3px; }
+.rz-footer-credit a { display: inline-flex; align-items: center; gap: 3px; min-height: 28px; margin-left: 3px; border-radius: 3px; color: var(--rz-lavender); font-weight: 500; text-decoration: none; }
+.rz-footer-credit a:hover { color: #e3dcff; }
+.rz-footer-wordmark { display: block; width: 100%; height: auto; margin-top: 28px; pointer-events: none; user-select: none; }
+.rz-footer-wordmark text { font-family: inherit; font-size: 185px; font-weight: 600; letter-spacing: -.06em; }
+@media (max-width: 1023px) {
+  .rz-footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px 48px; }
+  .rz-footer-about { grid-column: 1 / -1; }
+  .rz-footer-about > p { max-width: 60ch; }
+  .rz-footer-contact { grid-column: 1 / -1; }
+  .rz-footer-grid nav a { min-height: 40px; }
+  .rz-footer-contact > a { min-height: 44px; align-items: center; }
+  .rz-footer-credit a { min-height: 36px; }
+}
+@media (max-width: 639px) {
+  .rz-footer { padding-inline: 24px; }
+  .rz-footer-inner { padding-top: 36px; }
+  .rz-footer-grid { gap: 28px 20px; }
+  .rz-footer-about > p { margin-top: 20px; font-size: 12px; }
+  .rz-footer-grid h2 { margin-bottom: 12px; font-size: 12px; }
+  .rz-footer-grid nav a { min-height: 44px; font-size: 12px; }
+  .rz-footer-contact > a { width: auto; max-width: 100%; }
+  .rz-footer-bottom { flex-direction: column; align-items: flex-start; gap: 12px; margin-top: 28px; padding-top: 20px; }
+  .rz-footer-credit { text-align: left; }
+  .rz-footer-credit a { min-height: 44px; }
+  .rz-footer-credit p + p { margin-top: 0; }
+  .rz-footer-wordmark { margin-top: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .rz-footer a { transition: none; } }

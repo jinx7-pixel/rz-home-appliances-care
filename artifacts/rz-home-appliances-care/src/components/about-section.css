@@ -1,0 +1,78 @@
+.rz-about { scroll-margin-top: calc(var(--rz-nav-height) + 24px); padding: 0 32px 112px; background: var(--rz-bg); }
+.rz-about-panel { position: relative; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); grid-template-rows: auto auto; align-items: end; column-gap: 48px; row-gap: 28px; width: 100%; max-width: var(--rz-page-width); margin: 0 auto; padding: 48px 48px 88px; border: 1px solid transparent; border-radius: 32px; background: radial-gradient(ellipse at 55% 115%, rgb(111 90 246 / 25%), transparent 65%), linear-gradient(180deg, var(--rz-bg), #0c0b12 40%, #171329); }
+.rz-about-panel::before { content: ''; position: absolute; inset: 45% -1px -1px; border: 1px solid rgb(180 169 255 / 14%); border-top: 0; border-radius: 0 0 32px 32px; pointer-events: none; -webkit-mask-image: linear-gradient(180deg, transparent, #000 68%); mask-image: linear-gradient(180deg, transparent, #000 68%); }
+/* Keep the bottom gradient from tiling into the transparent top border. */
+.rz-about-panel { background-origin: border-box; background-repeat: no-repeat; }
+.rz-about-copy { min-width: 0; }
+.rz-about-eyebrow { display: flex; align-items: center; gap: 10px; margin: 0 0 20px; color: var(--rz-lavender); font-size: 13px; font-weight: 500; line-height: 1.5; }
+.rz-about-eyebrow > span { width: 6px; height: 6px; border-radius: 50%; background: var(--rz-violet-bright); }
+.rz-about-copy h2 { margin: 0; color: var(--rz-text); font-size: clamp(38px, 4vw, 52px); font-weight: 600; line-height: 1.06; letter-spacing: -.045em; }
+.rz-about-copy h2 > span { color: transparent; background: linear-gradient(110deg, #d8d0ff, var(--rz-lavender) 35%, var(--rz-violet-bright) 70%, var(--rz-violet)); background-clip: text; -webkit-background-clip: text; }
+.rz-about-intro { margin: 24px 0 0; color: #d4d4d8; font-size: 16px; line-height: 1.65; }
+.rz-about-more p { margin: 16px 0 0; color: var(--rz-muted); font-size: 14px; line-height: 1.65; }
+.rz-about-read-more { display: none; }
+.rz-about-actions { grid-column: 1; align-self: start; }
+.rz-about-gallery { grid-column: 2; grid-row: 1 / span 2; align-self: center; min-width: 0; }
+.rz-about-viewport { overflow: hidden; border-radius: 14px; }
+.rz-about-photo-track { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.rz-about-photo { min-width: 0; margin: 0; overflow: hidden; border: 1px solid rgb(255 255 255 / 12%); border-radius: 14px; background: #111017; }
+.rz-about-photo-open { position: relative; display: block; width: 100%; height: 176px; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+.rz-about-photo img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.rz-about-photo-expand { position: absolute; right: 8px; bottom: 8px; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid rgb(255 255 255 / 16%); border-radius: 8px; background: rgb(9 9 11 / 70%); color: #f4f4f5; transition: background-color .2s; }
+.rz-about-photo-open:hover .rz-about-photo-expand { background: var(--rz-violet); }
+.rz-about-photo figcaption { padding: 9px 12px; border-top: 1px solid rgb(255 255 255 / 7%); color: #c4c1d2; font-size: 11px; line-height: 1.5; }
+.rz-about-gallery-controls { display: none; }
+.rz-about-lightbox { width: min(100% - 32px, 1000px); max-width: none; max-height: calc(100dvh - 32px); margin: auto; padding: 16px; border: 1px solid rgb(180 169 255 / 25%); border-radius: 20px; background: #111017; color: #f4f4f5; }
+.rz-about-lightbox[open] { display: flex; flex-direction: column; gap: 12px; }
+.rz-about-lightbox::backdrop { background: rgb(0 0 0 / 86%); backdrop-filter: blur(6px); }
+.rz-about-lightbox-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 13px; }
+.rz-about-lightbox img { display: block; width: 100%; min-height: 0; height: min(70dvh, 720px); object-fit: contain; }
+.rz-about-lightbox button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; padding: 0 10px; border: 1px solid rgb(255 255 255 / 12%); border-radius: 10px; background: rgb(255 255 255 / 4%); color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+.rz-about-lightbox button:hover { background: rgb(111 90 246 / 20%); }
+.rz-about-lightbox-controls { display: flex; justify-content: space-between; }
+@media (max-width: 1023px) {
+  .rz-about-panel { display: flex; flex-direction: column; align-items: stretch; gap: 32px; padding: 40px 40px 72px; }
+  .rz-about-copy { max-width: 600px; }
+  .rz-about-actions { align-self: stretch; }
+  .rz-about-gallery { width: 100%; }
+  .rz-about-photo-track { display: flex; gap: 16px; touch-action: pan-y pinch-zoom; }
+  .rz-about-photo { flex: 0 0 calc((100% - 16px) / 2); }
+  .rz-about-photo-open { height: 240px; }
+  .rz-about-gallery-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+  .rz-about-photo-count { min-width: 48px; color: var(--rz-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .rz-about-gallery-dots { display: flex; align-items: center; }
+  .rz-about-gallery-dots button { display: flex; align-items: center; justify-content: center; width: 24px; height: 44px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+  .rz-about-gallery-dots span { width: 5px; height: 5px; border-radius: 50%; background: #5b566e; transition: width .2s, background-color .2s; }
+  .rz-about-gallery-dots [aria-current='true'] span { width: 16px; border-radius: 4px; background: var(--rz-violet-bright); }
+  .rz-about-gallery-arrows { display: flex; gap: 6px; }
+  .rz-about-gallery-arrows button { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 1px solid rgb(180 169 255 / 20%); border-radius: 10px; background: rgb(255 255 255 / 4%); color: var(--rz-lavender); cursor: pointer; }
+  .rz-about-gallery-arrows button:disabled { opacity: .3; cursor: default; }
+  .rz-about-gallery-arrows button:hover:not(:disabled) { background: rgb(111 90 246 / 15%); }
+}
+@media (max-width: 639px) {
+  .rz-about { padding: 0 16px 72px; }
+  .rz-about-panel { gap: 24px; padding: 24px 20px 48px; border-radius: 24px; }
+  .rz-about-panel::before { border-radius: 0 0 24px 24px; }
+  .rz-about-eyebrow { margin-bottom: 16px; font-size: 12px; }
+  .rz-about-copy h2 { font-size: clamp(32px, 8.5vw, 42px); }
+  .rz-about-intro { margin-top: 20px; font-size: 14px; }
+  .rz-about-more { display: none; }
+  .rz-about-more[data-expanded='true'] { display: block; }
+  .rz-about-more p { margin-top: 12px; font-size: 13px; }
+  .rz-about-read-more { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin-top: 4px; padding: 0; border: 0; background: transparent; color: var(--rz-lavender); font: inherit; font-size: 12px; cursor: pointer; }
+  .rz-about-read-more svg { transition: transform .2s; }
+  .rz-about-read-more[aria-expanded='true'] svg { transform: rotate(180deg); }
+  .rz-about-photo { flex-basis: calc(100% - 24px); }
+  .rz-about-photo-open { height: 210px; }
+  .rz-about-photo figcaption { padding: 8px 10px; }
+  .rz-about-gallery-controls { gap: 8px; margin-top: 8px; }
+  .rz-about-photo-count { min-width: 36px; }
+  .rz-about-gallery-dots button { width: 20px; }
+  .rz-about-gallery-arrows { gap: 4px; }
+  .rz-about-actions .rz-button { width: 100%; }
+  .rz-about-lightbox { padding: 12px; border-radius: 16px; }
+  .rz-about-lightbox-header { gap: 8px; font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rz-about-photo-expand, .rz-about-gallery-dots span, .rz-about-read-more svg { transition: none; }
+}

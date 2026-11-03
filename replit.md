@@ -1,4 +1,4 @@
-# RZ Home Appliances Care
+# RZ Fixer
 
 Customer-facing appliance repair website with a public guest repair-request form. Customers can submit a request without creating an account; the API validates and saves each request to PostgreSQL and returns a unique Request ID.
 
@@ -29,7 +29,7 @@ Customer-facing appliance repair website with a public guest repair-request form
 
 ## Product
 
-RZ Home Appliances Care provides appliance repair services in Bengaluru. The site presents washing machine, refrigerator, microwave, and LED TV services, contact details, customer information, and a public repair-request flow.
+RZ Fixer provides appliance repair services in Bengaluru. The site presents washing machine, refrigerator, microwave, and LED TV services, contact details, customer information, and a public repair-request flow.
 
 ## Pointers
 

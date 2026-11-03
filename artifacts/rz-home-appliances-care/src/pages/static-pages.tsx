@@ -38,7 +38,7 @@ function PageShell({ children }: { children: ReactNode }) {
           <a className="inline-flex items-center gap-3 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(211_100%_73%)]" href={appPath('/')}>
             <BrandMark />
             <span>
-              <span className="block text-[0.92rem] font-extrabold tracking-[-0.02em]">RZ Home Appliances</span>
+              <span className="block text-[0.92rem] font-extrabold tracking-[-0.02em]">RZ Fixer</span>
               <span className="mt-0.5 block text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-[hsl(215_20%_48%)]">Care</span>
             </span>
           </a>

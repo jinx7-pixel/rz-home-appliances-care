@@ -1,6 +1,6 @@
-# RZ Home Appliances Care
+# RZ Fixer
 
-RZ Home Appliances Care is a home appliance repair service website with a customer repair-request form and an admin dashboard for managing service requests.
+RZ Fixer is a home appliance repair service website with a customer repair-request form and an admin dashboard for managing service requests.
 
 ## Features
 

@@ -1,0 +1,116 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap');
+
+/* Shared by the landing header, hero and services; other pages keep their theme. */
+.rz-landing-theme {
+  --rz-bg: #09090b;
+  --rz-panel: #111114;
+  --rz-text: #f4f4f5;
+  --rz-muted: #a1a1aa;
+  --rz-violet: #6f5af6;
+  --rz-violet-bright: #9787fc;
+  --rz-lavender: #b4a9ff;
+  --rz-border: rgb(255 255 255 / 10%);
+  --rz-radius: 12px;
+  --rz-page-width: 1180px;
+  --rz-nav-height: 72px;
+  font-family: 'Geist', 'Geist Sans', ui-sans-serif, system-ui, sans-serif;
+  color: var(--rz-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.rz-navbar { position: fixed; inset: 0 0 auto; z-index: 50; background: linear-gradient(180deg, rgb(9 9 11 / 38%), rgb(9 9 11 / 8%)); backdrop-filter: blur(16px) saturate(120%); -webkit-backdrop-filter: blur(16px) saturate(120%); border-bottom: 1px solid transparent; transition: background-color .2s, border-color .2s, box-shadow .2s; }
+.rz-navbar-scrolled { background: linear-gradient(180deg, rgb(9 9 11 / 78%), rgb(9 9 11 / 62%)); border-bottom-color: rgb(255 255 255 / 10%); box-shadow: 0 8px 24px rgb(0 0 0 / 10%); }
+.rz-navbar-scrolled .rz-nav-links a { color: #e4e4e7; }
+.rz-nav-inner { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 100%; max-width: var(--rz-page-width); height: 72px; margin: 0 auto; }
+.rz-brand { display: inline-flex; align-items: center; gap: 10px; flex-shrink: 0; text-decoration: none; border-radius: 6px; }
+.rz-brand-mark { position: relative; width: 30px; height: 32px; color: var(--rz-violet-bright); }
+.rz-brand-mark > svg:first-child { width: 28px; height: 28px; stroke-width: 1.5; }
+.rz-brand-mark > svg:last-child { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; stroke-width: 1.8; }
+.rz-brand-name { color: #e4e4e7; font-size: 16px; font-weight: 500; letter-spacing: -.03em; line-height: 1.2; }
+.rz-brand-name > span { display: block; color: var(--rz-muted); font-size: 12px; letter-spacing: .02em; margin-top: 2px; }
+.rz-nav-links { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; padding: 4px 6px; border: 1px solid rgb(255 255 255 / 8%); border-radius: 999px; background: rgb(255 255 255 / 4%); }
+.rz-nav-links a { padding: 10px 12px; border-radius: 999px; color: var(--rz-muted); font-size: 14px; font-weight: 500; line-height: 20px; white-space: nowrap; transition: color .2s, background-color .2s; text-decoration: none; }
+.rz-nav-links a:hover { color: var(--rz-text); background: rgb(255 255 255 / 5%); }
+.rz-nav-actions { display: flex; gap: 10px; align-items: center; }
+.rz-button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex-shrink: 0; min-height: 50px; padding: 0 20px; border: 1px solid transparent; border-radius: var(--rz-radius); color: var(--rz-text); font-size: 15px; font-weight: 600; line-height: 1.4; text-decoration: none; transition: filter .2s, transform .2s, box-shadow .2s, border-color .2s; }
+.rz-button-primary { overflow: hidden; background: linear-gradient(180deg, #9787fc 0%, #7860fa 42%, #5c40e8 100%); border-color: #8e7aff; box-shadow: inset 0 1px 0 rgb(255 255 255 / 40%), 0 0 0 1px rgb(111 90 246 / 35%); color: #fff; }
+.rz-button-primary::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 35%) 50%, transparent 65%); transform: translateX(-120%); animation: rz-button-sheen 3.5s ease-in-out 2s infinite; pointer-events: none; }
+.rz-button-primary:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: inset 0 1px 0 rgb(255 255 255 / 40%), 0 6px 24px rgb(111 90 246 / 30%); }
+.rz-button-secondary { color: var(--rz-text); font-weight: 500; background: linear-gradient(180deg, #ffffff12, #ffffff08); border-color: rgb(255 255 255 / 12%); box-shadow: inset 0 1px #ffffff1a; backdrop-filter: blur(6px); transition: background-color .2s ease, border-color .2s ease; }
+.rz-button-secondary > svg { color: inherit; }
+.rz-button-secondary:is(:hover, :focus-visible) { background: #ffffff17; border-color: #fff3; transform: none; }
+.rz-button:active { transform: translateY(0); }
+.rz-nav-cta { min-height: 40px; font-size: 14px; padding: 0 16px; }
+.rz-landing-theme :is(a, button):focus-visible { outline: 2px solid var(--rz-lavender); outline-offset: 4px; }
+.rz-menu-toggle { display: none; align-items: center; justify-content: center; width: 44px; height: 44px; color: var(--rz-text); background: rgb(255 255 255 / 4%); border: 1px solid var(--rz-border); border-radius: var(--rz-radius); cursor: pointer; transition: background-color .2s; }
+.rz-menu-toggle:hover { background: rgb(255 255 255 / 9%); }
+.rz-mobile-nav { max-width: var(--rz-page-width); margin: 0 auto; padding: 8px 20px 20px; background: var(--rz-panel); border-top: 1px solid var(--rz-border); }
+.rz-mobile-nav[hidden] { display: none; }
+.rz-mobile-nav > a:not(.rz-button) { display: flex; align-items: center; justify-content: space-between; min-height: 48px; padding: 10px 12px; color: var(--rz-muted); border-radius: 8px; text-decoration: none; }
+.rz-mobile-nav > a:not(.rz-button):hover { background: rgb(255 255 255 / 5%); color: var(--rz-text); }
+.rz-mobile-nav > .rz-button { width: 100%; margin-top: 8px; }
+.rz-hero-main { position: relative; isolation: isolate; display: flex; flex-direction: column; overflow: clip; padding-top: var(--rz-nav-height); background: var(--rz-bg); }
+.rz-service-area, .rz-service-area-space { flex-shrink: 0; }
+.rz-service-area { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 48px; min-height: 38px; border-bottom: 1px solid rgb(180 169 255 / 8%); background: #100e1a; color: var(--rz-muted); font-size: 12px; line-height: 18px; text-align: center; }
+.rz-service-area svg { color: var(--rz-lavender); flex-shrink: 0; }
+.rz-service-area strong { color: #d4d4d8; font-weight: 500; }
+.rz-service-area-close { position: absolute; right: 12px; top: 50%; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 6px; transform: translateY(-50%); color: var(--rz-muted); background: transparent; cursor: pointer; transition: color .2s, background-color .2s; }
+.rz-service-area-close > svg { color: inherit; }
+.rz-service-area-close:hover { color: var(--rz-text); background: rgb(255 255 255 / 7%); }
+.rz-hero { position: relative; isolation: isolate; overflow: hidden; padding-bottom: 104px; }
+.rz-hero-dots { position: absolute; z-index: -1; inset: 0 0 auto; height: 600px; pointer-events: none; background-image: radial-gradient(rgb(201 192 255 / 42%) .8px, transparent 1.1px); background-size: 30px 30px; background-position: calc(50% + 15px) 15px; mask-image: radial-gradient(ellipse 720px 420px at 50% 260px, transparent 55%, #000 110%), linear-gradient(#000 60%, transparent); mask-composite: intersect; }
+.rz-hero-light { position: absolute; z-index: -1; top: 0; left: 50%; width: 1440px; height: 100%; transform: translateX(-50%); pointer-events: none; -webkit-mask-image: linear-gradient(180deg, #000 60%, transparent); mask-image: linear-gradient(180deg, #000 60%, transparent); }
+.rz-hero-light > span:nth-child(1) { position: absolute; left: 230px; top: -110px; width: 980px; height: 420px; border-radius: 50%; background: var(--rz-violet); opacity: .3; filter: blur(85px); }
+.rz-hero-light > span:nth-child(2) { position: absolute; left: 460px; top: -50px; width: 520px; height: 220px; border-radius: 50%; background: var(--rz-lavender); opacity: .18; filter: blur(55px); }
+/* Blur the beam containers, then clip their children so the edges stay feathered. */
+.rz-hero-beams { position: absolute; inset: 0; animation: rz-breathe 8s ease-in-out infinite alternate; }
+.rz-hero-beams > i { position: absolute; top: -20px; width: 330px; height: 820px; opacity: .55; filter: blur(14px); }
+.rz-hero-beams > i::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(201 192 255 / 55%) 0%, rgb(139 123 255 / 18%) 45%, rgb(111 90 246 / 0%) 100%); }
+.rz-hero-beams > i:nth-child(1) { left: 560px; }
+.rz-hero-beams > i:nth-child(1)::before { clip-path: polygon(0 0, 21.2% 0, 100% 100%, 51.5% 100%); }
+.rz-hero-beams > i:nth-child(2) { left: 550px; }
+.rz-hero-beams > i:nth-child(2)::before { clip-path: polygon(78.8% 0, 100% 0, 48.5% 100%, 0 100%); }
+.rz-hero-beams > i:nth-child(3) { left: 672px; width: 96px; height: 760px; opacity: .35; }
+.rz-hero-beams > i:nth-child(3)::before { clip-path: polygon(37.5% 0, 62.5% 0, 100% 100%, 0 100%); }
+.rz-hero-content { position: relative; width: 100%; max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; padding: 48px 32px 0; text-align: center; }
+.rz-hero-badge { display: inline-flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px; border: 1px solid var(--rz-border); border-radius: 999px; background: rgb(255 255 255 / 3%); color: #d8d8d8; font-size: 16px; line-height: 20px; }
+.rz-hero-badge > span { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: rgb(111 90 246 / 40%); color: #d8d0ff; border-radius: 50%; }
+.rz-hero-heading { margin: 30px 0 0; font-family: inherit; font-size: clamp(44px, 7vw, 100px); font-weight: 600; line-height: 1.04; letter-spacing: -.05em; }
+.rz-heading-mask { display: block; overflow: hidden; padding-bottom: .12em; margin-bottom: -.12em; }
+.rz-heading-line { display: block; color: transparent; background: linear-gradient(180deg, #fff 20%, #d4d4d8 100%); background-clip: text; animation: rz-heading-in .9s cubic-bezier(.22, 1, .36, 1) .18s both; }
+.rz-heading-mask:nth-child(2) .rz-heading-line { animation-delay: .29s; }
+.rz-gradient-text { color: transparent; background: linear-gradient(135deg, #e3dcff 0%, #b4a9ff 36%, #6f5af6 100%); background-clip: text; }
+.rz-hero-description { max-width: 640px; margin: 30px 0 0; color: var(--rz-muted); font-size: 20px; line-height: 1.5; letter-spacing: -.02em; animation-delay: .45s; }
+.rz-hero-description > span { color: var(--rz-text); }
+.rz-hero-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 40px; animation-delay: .56s; }
+.rz-enter { animation: rz-fade-in .7s cubic-bezier(.2, .7, .2, 1) both; }
+.rz-hero-badge { animation-delay: .1s; }
+.rz-hero-description { animation-delay: .45s; }
+.rz-hero-actions { animation-delay: .56s; }
+@keyframes rz-fade-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes rz-heading-in { from { opacity: 0; transform: translateY(110%); } to { opacity: 1; transform: translateY(0); } }
+@keyframes rz-breathe { from { opacity: .45; } to { opacity: .8; } }
+@keyframes rz-button-sheen { 0% { transform: translateX(-120%); } 30%, 100% { transform: translateX(120%); } }
+@media (max-width: 1279px) { .rz-nav-inner { padding: 0 32px; } }
+@media (max-width: 1199px) { .rz-nav-links { display: none; } .rz-menu-toggle { display: flex; } }
+@media (min-width: 1200px) { .rz-mobile-nav { display: none; } .rz-heading-line { white-space: nowrap; } }
+@media (max-width: 639px) {
+  .rz-landing-theme { --rz-nav-height: 64px; }
+  .rz-nav-inner { height: 64px; gap: 12px; padding: 0 20px; }
+  .rz-brand-name { font-size: 14px; }
+  .rz-nav-cta { display: none; }
+  .rz-service-area { font-size: 11px; padding: 8px 48px; }
+  .rz-hero { padding-bottom: 80px; }
+  .rz-hero-content { padding: 72px 20px 0; }
+  .rz-hero-badge { font-size: 14px; }
+  .rz-hero-heading { font-size: clamp(40px, 9vw, 56px); }
+  .rz-hero-description { font-size: 17px; }
+  .rz-hero-light { opacity: .75; }
+  .rz-hero-actions { width: 100%; }
+}
+@media (max-width: 359px) { .rz-hero-actions { flex-direction: column; } .rz-hero-actions .rz-button { width: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .rz-landing-theme *, .rz-landing-theme *::before, .rz-landing-theme *::after { animation: none !important; transition: none !important; }
+  .rz-landing-theme .rz-button:hover { transform: none; }
+  .rz-button-primary::after { display: none; }
+}

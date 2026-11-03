@@ -39,7 +39,7 @@ const navItems = [
 
 function BrandLockup() {
   return (
-    <a className="rz-brand" href="#top" aria-label="RZ Home Appliances Care home">
+    <a className="rz-brand" href="#top" aria-label="RZ Fixer Care home">
       <span className="rz-mark" aria-hidden="true">
         <House size={18} strokeWidth={1.8} />
         <span className="rz-mark-badge">
@@ -47,7 +47,7 @@ function BrandLockup() {
         </span>
       </span>
       <span className="rz-brand-copy">
-        <strong>RZ Home Appliances</strong>
+        <strong>RZ Fixer</strong>
         <small>Care</small>
       </span>
     </a>
