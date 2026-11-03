@@ -18,14 +18,3 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
-
-[userenv]
-
-[userenv.shared]
-SMTP_HOST = "smtp.gmail.com"
-SMTP_PORT = "587"
-SMTP_REQUIRE_TLS = "true"
-SMTP_SECURE = "false"
-
-[userenv.production]
-APP_BASE_URL = "https://navbar-builder.replit.app"
