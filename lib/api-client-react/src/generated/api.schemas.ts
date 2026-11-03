@@ -17,6 +17,7 @@ export const RepairRequestInputApplianceType = {
   Refrigerator_Repair: 'Refrigerator Repair',
   Micro_Oven_Repair: 'Micro Oven Repair',
   LED_TV_Repair: 'LED TV Repair',
+  AC_Repair: 'AC Repair',
 } as const;
 
 export interface RepairRequestInput {

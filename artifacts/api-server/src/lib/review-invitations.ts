@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import {
   db,
   reviewInvitationsTable,
@@ -47,6 +47,8 @@ export async function getReviewInvitation(token: string) {
       and(
         eq(reviewInvitationsTable.tokenHash, hashReviewToken(token)),
         gt(reviewInvitationsTable.expiresAt, new Date()),
+        isNull(reviewInvitationsTable.usedAt),
+        isNull(reviewInvitationsTable.reviewId),
       ),
     )
     .limit(1);
@@ -65,14 +67,17 @@ export async function getReviewInvitationRecord(token: string) {
 export async function markReviewInvitationUsed(
   invitationId: string,
   reviewId: string,
+  executor: Pick<typeof db, "update"> = db,
 ): Promise<boolean> {
-  const [updated] = await db
+  const [updated] = await executor
     .update(reviewInvitationsTable)
     .set({ usedAt: new Date(), reviewId })
     .where(
       and(
         eq(reviewInvitationsTable.id, invitationId),
         isNull(reviewInvitationsTable.usedAt),
+        isNull(reviewInvitationsTable.reviewId),
+        gt(reviewInvitationsTable.expiresAt, sql`clock_timestamp()`),
       ),
     )
     .returning({ id: reviewInvitationsTable.id });

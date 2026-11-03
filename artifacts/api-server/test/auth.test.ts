@@ -9,6 +9,8 @@ import type { AddressInfo } from "node:net";
 import app from "../src/app.ts";
 import { isInitialAdminBootstrapEligible } from "../src/routes/admin-auth.ts";
 import router from "../src/routes/index.ts";
+import { preferredDateError } from "../src/lib/repair-request-validation.ts";
+import { createReviewInvitation, markReviewInvitationUsed } from "../src/lib/review-invitations.ts";
 import {
   adminUsersTable,
   bookingsTable,
@@ -942,11 +944,11 @@ test("admin repair status emails contain the exact customer update for each noti
       "",
       "Service type: Washing Machine",
       `Request ID: ${requestId}`,
-      "For support, contact RZ Home Appliances Care at +91 80738 48334.",
+      "For support, contact RZ Fixer at +91 80738 48334.",
       "Support email: owner@example.test",
       "",
       "Thank you,",
-      "RZ Home Appliances Care",
+      "RZ Fixer",
     ].join("\n"),
   );
   assert.match(inProgress.html, /Your repair request is now in progress/);
@@ -961,15 +963,15 @@ test("admin repair status emails contain the exact customer update for each noti
     [
       "Hi Jane Customer,",
       "",
-      `Your repair request ${requestId} has been completed. Thank you for choosing RZ Home Appliances Care.`,
+      `Your repair request ${requestId} has been completed. Thank you for choosing RZ Fixer.`,
       "",
       "Service type: Washing Machine",
       `Request ID: ${requestId}`,
-      "For support, contact RZ Home Appliances Care at +91 80738 48334.",
+      "For support, contact RZ Fixer at +91 80738 48334.",
       "Support email: owner@example.test",
       "",
       "Thank you,",
-      "RZ Home Appliances Care",
+      "RZ Fixer",
     ].join("\n"),
   );
   assert.match(completed.html, /Your repair request has been completed/);
@@ -989,11 +991,11 @@ test("admin repair status emails contain the exact customer update for each noti
       "",
       "Service type: Washing Machine",
       `Request ID: ${requestId}`,
-      "For support, contact RZ Home Appliances Care at +91 80738 48334.",
+      "For support, contact RZ Fixer at +91 80738 48334.",
       "Support email: owner@example.test",
       "",
       "Thank you,",
-      "RZ Home Appliances Care",
+      "RZ Fixer",
     ].join("\n"),
   );
   assert.match(cancelledEmail.html, /Your repair request has been cancelled/);
@@ -1052,6 +1054,116 @@ test("repeated and concurrent attempts for one repair transition send only one c
   assert.equal(repeated.response.status, 200);
   assert.equal(sentEmails.length, 1);
   assert.equal((await repairRequestForId(requestId)).status, "in_progress");
+});
+
+function visitDate(daysFromToday = 0): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date(Date.now() + daysFromToday * 86_400_000));
+  const part = (name: string) => parts.find((entry) => entry.type === name)?.value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
+function validVisitRequest() {
+  return {
+    customerName: "Visit Customer", phone: "9876543210", email: testEmail("validation"),
+    applianceType: "AC Repair", problemDescription: "The appliance does not start.",
+    address: "123 Test Street, Bengaluru", preferredDate: visitDate(), preferredTime: "Morning",
+  };
+}
+
+async function submitVisit(body: Record<string, unknown>, key = randomUUID()) {
+  return request("/api/repair-requests", body, undefined, undefined, { "Idempotency-Key": key });
+}
+
+for (const field of ["customerName", "problemDescription", "address"] as const) {
+  test(`repair validation: rejects whitespace-only ${field}`, async () => {
+    const body = validVisitRequest();
+    for (const value of ["", " \t\n          ", " a "]) {
+      const rejected = await submitVisit({ ...body, [field]: value });
+      assert.equal(rejected.response.status, 400);
+      assert.equal(typeof rejected.body.error, "string");
+      assert.ok((rejected.body.fieldErrors as Record<string, string[]>)[field]?.length);
+    }
+    const rows = await db.select().from(repairRequestsTable).where(eq(repairRequestsTable.email, body.email));
+    assert.equal(rows.length, 0);
+    assert.equal(sentEmails.length, 0);
+  });
+}
+
+test("repair validation: rejects past dates and invalid calendar dates", async () => {
+  const body = validVisitRequest();
+  for (const date of [visitDate(-1), "2099-02-30", "2099-04-31", 0]) {
+    const rejected = await submitVisit({ ...body, preferredDate: date });
+    assert.equal(rejected.response.status, 400);
+    assert.ok((rejected.body.fieldErrors as Record<string, string[]>).preferredDate?.length);
+  }
+  const rows = await db.select().from(repairRequestsTable).where(eq(repairRequestsTable.email, body.email));
+  assert.equal(rows.length, 0);
+});
+
+test("repair validation: rejects unsupported time slots", async () => {
+  const body = validVisitRequest();
+  for (const slot of ["Midnight", "", "morning"]) {
+    const rejected = await submitVisit({ ...body, preferredTime: slot });
+    assert.equal(rejected.response.status, 400);
+    assert.ok((rejected.body.fieldErrors as Record<string, string[]>).preferredTime?.length);
+  }
+});
+
+test("repair validation: accepts normalized today/future visits and an idempotent retry", async () => {
+  const body = validVisitRequest();
+  const key = randomUUID();
+  const padded = { ...body, customerName: `  ${body.customerName}  `, email: ` ${body.email.toUpperCase()} `,
+    problemDescription: ` \n${body.problemDescription}\n `, address: ` ${body.address} `, preferredTime: " Morning " };
+  const first = await submitVisit(padded, key);
+  assert.equal(first.response.status, 201);
+  const saved = await repairRequestForId(String(first.body.requestId));
+  assert.equal(saved.customerName, body.customerName);
+  assert.equal(saved.email, body.email);
+  assert.equal(saved.problemDescription, body.problemDescription);
+  assert.equal(saved.address, body.address);
+  assert.equal(saved.preferredDate, body.preferredDate);
+  assert.equal(saved.preferredTime, "Morning");
+  const emailCount = sentEmails.length;
+  const replay = await submitVisit(body, key);
+  assert.equal(replay.response.status, 201);
+  assert.equal(replay.body.requestId, first.body.requestId);
+  assert.equal(sentEmails.length, emailCount);
+  for (const slot of ["Afternoon", "Evening"]) {
+    assert.equal((await submitVisit({ ...body, preferredDate: visitDate(1), preferredTime: slot })).response.status, 201);
+  }
+});
+
+test("repair validation: preserves optional and nullable visit preferences", async () => {
+  const { preferredDate: _date, preferredTime: _time, ...body } = validVisitRequest();
+  for (const preferences of [{}, { preferredDate: null, preferredTime: null }]) {
+    const result = await submitVisit({ ...body, ...preferences });
+    assert.equal(result.response.status, 201);
+    const saved = await repairRequestForId(String(result.body.requestId));
+    assert.equal(saved.preferredDate, null);
+    assert.equal(saved.preferredTime, null);
+  }
+});
+
+test("repair validation: uses Bengaluru midnight for preferred dates", () => {
+  const date = new Date("2030-01-01T00:00:00Z");
+  assert.equal(preferredDateError(date, new Date("2030-01-01T18:29:59Z")), null);
+  assert.ok(preferredDateError(date, new Date("2030-01-01T18:30:00Z")));
+  assert.equal(preferredDateError(new Date("2030-01-02T00:00:00Z"), new Date("2030-01-01T18:30:00Z")), null);
+});
+
+test("repair validation: saved past-date requests remain idempotent without allowing new past visits", async () => {
+  const body = { ...validVisitRequest(), preferredDate: visitDate(-1) };
+  const key = randomUUID();
+  const requestId = `RZ-${createHash("sha256").update(key).digest("hex").slice(0, 21).toUpperCase()}`;
+  await db.insert(repairRequestsTable).values({ ...body, requestId, customerId: null, emailStatus: "sent" });
+  const replay = await submitVisit(body, key);
+  assert.equal(replay.response.status, 201);
+  assert.equal(replay.body.requestId, requestId);
+  assert.equal(sentEmails.length, 0);
+  assert.equal((await submitVisit(body)).response.status, 400);
+  assert.equal((await submitVisit({ ...body, customerName: "Changed Customer" }, key)).response.status, 409);
 });
 
 test("repair submissions are idempotent for the same key and payload", async () => {
@@ -1336,6 +1448,90 @@ test("legacy booking review invitations and admin review details remain availabl
     await db.delete(bookingsTable).where(eq(bookingsTable.bookingId, bookingId));
     await db.delete(customersTable).where(eq(customersTable.id, customer.id));
   }
+});
+
+async function unusedGuestReviewInvitation() {
+  const requestId = await createRepairRequest();
+  await db.update(repairRequestsTable).set({ status: "completed" })
+    .where(eq(repairRequestsTable.requestId, requestId));
+  const repair = await repairRequestForId(requestId);
+  const token = await createReviewInvitation({ sourceType: "request", sourceId: requestId,
+    customerId: null, customerEmail: repair.email });
+  const [invitation] = await db.select().from(reviewInvitationsTable)
+    .where(eq(reviewInvitationsTable.tokenHash, hashToken(token))).limit(1);
+  assert.ok(invitation);
+  return { requestId, token, invitation };
+}
+
+async function submitInvitedReview(token: string) {
+  return request("/api/customer/reviews", { token, rating: 5,
+    reviewMessage: "A careful repair with helpful communication.", showFirstName: false });
+}
+
+test("review invitations: consumption survives admin review deletion", async () => {
+  const { requestId, token, invitation } = await unusedGuestReviewInvitation();
+  assert.equal((await get(`/api/customer/review-target?token=${token}`)).response.status, 200);
+  const submitted = await submitInvitedReview(token);
+  assert.equal(submitted.response.status, 201);
+  assert.equal(submitted.body.status, "pending");
+  assert.equal((await submitInvitedReview(token)).response.status, 409);
+  const [consumed] = await db.select().from(reviewInvitationsTable).where(eq(reviewInvitationsTable.id, invitation.id));
+  assert.ok(consumed.usedAt);
+  assert.equal(consumed.reviewId, submitted.body.reviewId);
+  const adminCookie = await createAdminSession();
+  assert.equal((await remove(`/api/admin/reviews/${submitted.body.reviewId}`, adminCookie)).response.status, 204);
+  assert.equal((await get(`/api/customer/review-target?token=${token}`)).response.status, 409);
+  assert.equal((await submitInvitedReview(token)).response.status, 409);
+  const [afterDeletion] = await db.select().from(reviewInvitationsTable).where(eq(reviewInvitationsTable.id, invitation.id));
+  assert.equal(afterDeletion.usedAt?.getTime(), consumed.usedAt.getTime());
+  assert.equal(afterDeletion.reviewId, consumed.reviewId);
+  const rows = await db.select().from(reviewsTable).where(eq(reviewsTable.requestId, requestId));
+  assert.equal(rows.length, 0);
+});
+
+test("review invitations: expired tokens cannot be submitted or consumed", async () => {
+  const { requestId, token, invitation } = await unusedGuestReviewInvitation();
+  await db.update(reviewInvitationsTable).set({ expiresAt: new Date(0) })
+    .where(eq(reviewInvitationsTable.id, invitation.id));
+  assert.equal((await get(`/api/customer/review-target?token=${token}`)).response.status, 404);
+  assert.equal((await submitInvitedReview(token)).response.status, 404);
+  const claimed = await db.transaction(transaction =>
+    markReviewInvitationUsed(invitation.id, "RZR-EXPIRED-TEST", transaction));
+  assert.equal(claimed, false);
+  const rows = await db.select().from(reviewsTable).where(eq(reviewsTable.requestId, requestId));
+  assert.equal(rows.length, 0);
+});
+
+test("review invitations: concurrent submissions consume a token only once", async () => {
+  const { requestId, token, invitation } = await unusedGuestReviewInvitation();
+  const responses = await Promise.all([submitInvitedReview(token), submitInvitedReview(token)]);
+  assert.deepEqual(responses.map(result => result.response.status).sort(), [201, 409]);
+  const rows = await db.select().from(reviewsTable).where(eq(reviewsTable.requestId, requestId));
+  assert.equal(rows.length, 1);
+  const [consumed] = await db.select().from(reviewInvitationsTable).where(eq(reviewInvitationsTable.id, invitation.id));
+  assert.ok(consumed.usedAt);
+  assert.equal(consumed.reviewId, rows[0].reviewId);
+});
+
+test("review invitations: a rolled-back transaction does not consume the token", async () => {
+  const { token, invitation } = await unusedGuestReviewInvitation();
+  await assert.rejects(db.transaction(async transaction => {
+    assert.equal(await markReviewInvitationUsed(invitation.id, "RZR-ROLLBACK-TEST", transaction), true);
+    throw new Error("Simulated submission transaction failure");
+  }), /Simulated submission transaction failure/);
+  const [unused] = await db.select().from(reviewInvitationsTable).where(eq(reviewInvitationsTable.id, invitation.id));
+  assert.equal(unused.usedAt, null);
+  assert.equal(unused.reviewId, null);
+  assert.equal((await get(`/api/customer/review-target?token=${token}`)).response.status, 200);
+  assert.equal((await submitInvitedReview(token)).response.status, 201);
+});
+
+test("review invitations: legacy consumed review pointers also remain invalid", async () => {
+  const { token, invitation } = await unusedGuestReviewInvitation();
+  await db.update(reviewInvitationsTable).set({ reviewId: "RZR-DELETED-LEGACY" })
+    .where(eq(reviewInvitationsTable.id, invitation.id));
+  assert.equal((await get(`/api/customer/review-target?token=${token}`)).response.status, 409);
+  assert.equal((await submitInvitedReview(token)).response.status, 409);
 });
 
 test("guest completion emails contain a secure review link and guest reviews are moderated once", async () => {

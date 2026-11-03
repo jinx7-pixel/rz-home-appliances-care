@@ -190,14 +190,14 @@ export async function sendRepairRequestEmails(
         "Our team will review your details and contact you soon to confirm the appointment.",
         "",
         "Thank you,",
-        "RZ Home Appliances Care",
+        "RZ Fixer",
       ].join("\n")
     : [
         `Hello ${data.customerName},`,
         "",
         `We received your ${data.applianceType} request.`,
         `Request ID: ${data.requestId}`,
-        "The RZ Home Appliances Care team will contact you shortly.",
+        "The RZ Fixer team will contact you shortly.",
         "This is a request acknowledgement, not a confirmed appointment.",
         "",
         "Phone: +91 80738 48334",
@@ -249,7 +249,7 @@ export async function sendRepairRequestEmails(
         <p><strong>Additional notes:</strong><br>${escapeHtml(additionalNotes).replace(/\n/g, "<br>")}</p>
         <p><strong>Current status:</strong> Pending</p>
         <p>Our team will review your details and contact you soon to confirm the appointment.</p>
-        <p>Thank you,<br>RZ Home Appliances Care</p>
+        <p>Thank you,<br>RZ Fixer</p>
       `
     : `
         <h2>We received your repair request</h2>
@@ -342,8 +342,8 @@ export async function sendRepairStatusEmail(
     completed: {
       subject: `Your Repair Request Has Been Completed – ${data.requestId}`,
       heading: "Your repair request has been completed",
-      text: `Your repair request ${data.requestId} has been completed. Thank you for choosing RZ Home Appliances Care.`,
-      html: "Your repair request has been completed. Thank you for choosing RZ Home Appliances Care.",
+      text: `Your repair request ${data.requestId} has been completed. Thank you for choosing RZ Fixer.`,
+      html: "Your repair request has been completed. Thank you for choosing RZ Fixer.",
     },
     cancelled: {
       subject: `Update About Your Repair Request – ${data.requestId}`,
@@ -354,10 +354,10 @@ export async function sendRepairStatusEmail(
   }[data.status];
 
   const supportText = [
-    "For support, contact RZ Home Appliances Care at +91 80738 48334.",
+    "For support, contact RZ Fixer at +91 80738 48334.",
     ...(supportEmail ? [`Support email: ${supportEmail}`] : []),
   ].join("\n");
-  const supportHtml = `For support, contact RZ Home Appliances Care at +91 80738 48334.${supportEmail ? `<br>Support email: ${escapeHtml(supportEmail)}` : ""}`;
+  const supportHtml = `For support, contact RZ Fixer at +91 80738 48334.${supportEmail ? `<br>Support email: ${escapeHtml(supportEmail)}` : ""}`;
   const reviewText =
     data.status === "completed" && data.reviewLink
       ? `\n\nLeave a review: ${data.reviewLink}`
@@ -382,7 +382,7 @@ export async function sendRepairStatusEmail(
       supportText,
       "",
       "Thank you,",
-      "RZ Home Appliances Care",
+      "RZ Fixer",
     ].join("\n"),
     html: `
       <h2>${statusContent.heading}</h2>
@@ -391,7 +391,7 @@ export async function sendRepairStatusEmail(
       <p><strong>Service type:</strong> ${escapeHtml(data.applianceType)}<br><strong>Request ID:</strong> ${escapeHtml(data.requestId)}</p>
       ${reviewHtml}
       <p>${supportHtml}</p>
-      <p>Thank you,<br>RZ Home Appliances Care</p>
+      <p>Thank you,<br>RZ Fixer</p>
     `,
   });
 }

@@ -196,7 +196,7 @@ router.get("/customer/review-target", async (request, response) => {
   const invitation = token ? await getReviewInvitation(token) : null;
   if (token && !invitation) {
     const record = await getReviewInvitationRecord(token);
-    if (record?.reviewId) {
+    if (record?.usedAt || record?.reviewId) {
       response.status(409).json({ error: "A review has already been submitted for this service." });
       return;
     }
@@ -272,7 +272,7 @@ router.post("/customer/reviews", async (request, response) => {
   const invitation = token ? await getReviewInvitation(token) : null;
   if (token && !invitation) {
     const record = await getReviewInvitationRecord(token);
-    if (record?.reviewId) {
+    if (record?.usedAt || record?.reviewId) {
       response.status(409).json({ error: "A review has already been submitted for this service." });
       return;
     }
@@ -317,32 +317,42 @@ router.post("/customer/reviews", async (request, response) => {
   }
 
   try {
-    const [review] = await db
-      .insert(reviewsTable)
-      .values({
-        reviewId: createReviewId(),
-         customerId: target.customerId,
-         requestId: resolvedRequestId ?? null,
-         bookingId: resolvedBookingId ?? null,
-         customerName: target.customerName,
-         customerEmail: target.customerEmail,
+    const review = await db.transaction(async (transaction) => {
+      const reviewId = createReviewId();
+      // Conditional UPDATE locks the invitation until commit. A concurrent
+      // submission must recheck the unused/expiry conditions after waiting.
+      // Any insert failure rolls this claim back with the transaction.
+      if (invitation && !(await markReviewInvitationUsed(invitation.id, reviewId, transaction))) {
+        return null;
+      }
+      const [created] = await transaction.insert(reviewsTable).values({
+        reviewId,
+        customerId: target.customerId,
+        requestId: resolvedRequestId ?? null,
+        bookingId: resolvedBookingId ?? null,
+        customerName: target.customerName,
+        customerEmail: target.customerEmail,
         applianceType: target.applianceType,
         rating: parsed.data.rating,
         reviewMessage: parsed.data.reviewMessage.trim(),
         showFirstName: parsed.data.showFirstName,
         isVerified: true,
         status: "pending",
-      })
-      .returning();
+      }).returning();
+      return created;
+    });
 
-     if (invitation) {
-       await markReviewInvitationUsed(invitation.id, review.reviewId);
-     }
-     response.status(201).json(
-       CreateCustomerReviewResponse.parse(await serializeAdminReview(review)),
-     );
+    if (!review) {
+      response.status(409).json({ error: "This review link has already been used or has expired." });
+      return;
+    }
+    response.status(201).json(
+      CreateCustomerReviewResponse.parse(await serializeAdminReview(review)),
+    );
   } catch (error) {
-    if (typeof error === "object" && error !== null && "code" in error && error.code === "23505") {
+    // Drizzle can wrap PostgreSQL's unique violation in a cause.
+    const databaseError = error instanceof Error && error.cause ? error.cause : error;
+    if (typeof databaseError === "object" && databaseError !== null && "code" in databaseError && databaseError.code === "23505") {
       response.status(409).json({ error: "A review has already been submitted for this work." });
       return;
     }

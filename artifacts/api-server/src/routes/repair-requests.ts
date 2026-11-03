@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { CreateRepairRequestBody, CreateRepairRequestResponse } from "@workspace/api-zod";
+import { CreateRepairRequestResponse } from "@workspace/api-zod";
 import { db, repairRequestsTable } from "@workspace/db";
 import { getAuthenticatedCustomer } from "../lib/auth-session";
 import { isRateLimited } from "../lib/rate-limit";
 import { sendRepairRequestEmails } from "../lib/repair-request-email";
+import { preferredDateError, validateRepairRequestBody } from "../lib/repair-request-validation";
 
 const router: IRouter = Router();
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
@@ -79,16 +80,17 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
     return;
   }
 
-  const parsed = CreateRepairRequestBody.safeParse(req.body);
+  const parsed = validateRepairRequestBody(req.body);
   if (!parsed.success) {
     req.log.warn(
-      { validationIssueCount: parsed.error.issues.length },
+      { validationIssueCount: parsed.formErrors.length + Object.values(parsed.fieldErrors).flat().length },
       "Rejected invalid repair request",
     );
     res.status(400).json({
-      error: parsed.error.issues.some((issue) => issue.path[0] === "phone")
+      error: parsed.fieldErrors.phone
         ? "Please enter a valid 10-digit phone number."
         : "Please check the form details and try again.",
+      fieldErrors: parsed.fieldErrors,
     });
     return;
   }
@@ -128,6 +130,27 @@ router.post("/repair-requests", async (req, res): Promise<void> => {
 
   let savedRequest: typeof repairRequestsTable.$inferSelect | undefined;
   try {
+    const dateError = preferredDateError(input.preferredDate);
+    if (dateError) {
+      // An unchanged retry of an already saved request must still work after
+      // its preferred day passes. It does not create another visit or email.
+      const [existingRequest] = await db.select().from(repairRequestsTable)
+        .where(eq(repairRequestsTable.requestId, requestId)).limit(1);
+      if (existingRequest) {
+        if (!isSameSubmission(existingRequest, requestValues)) {
+          res.status(409).json({ error: "This retry key was already used for a different request." });
+          return;
+        }
+        res.status(201).json(createSubmissionResponse(existingRequest.requestId, existingRequest.emailStatus));
+        return;
+      }
+      res.status(400).json({
+        error: "Please check the form details and try again.",
+        fieldErrors: { preferredDate: [dateError] },
+      });
+      return;
+    }
+
     const insert = db
       .insert(repairRequestsTable)
       .values({

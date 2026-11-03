@@ -546,6 +546,7 @@ components:
             - Refrigerator Repair
             - Micro Oven Repair
             - LED TV Repair
+            - AC Repair
         problemDescription:
           type: string
           minLength: 10
