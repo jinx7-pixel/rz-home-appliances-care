@@ -75,8 +75,12 @@ services:
       # Must mirror the API's hard-coded trusted peer list exactly.
       PRODUCTION_PROXY_PEERS: 127.0.0.1/32,::1/128
       LOG_LEVEL: ${LOG_LEVEL:-info}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    # No extra_hosts here on purpose. This service shares another container's
+    # network namespace (network_mode: service:network), and the Docker daemon
+    # rejects a custom host-to-IP mapping together with that network mode
+    # ("conflicting options: custom host-to-IP mapping and the network mode").
+    # The API therefore reaches the host database through the bridge gateway
+    # address that /etc/rzfixer/production.env carries literally in DATABASE_URL.
     network_mode: service:network
     depends_on:
       network:

@@ -28,6 +28,10 @@ PG_VERSION="${PG_VERSION:-16}"
 PG_CONF_DIR="${PG_CONF_DIR:-/etc/postgresql/${PG_VERSION}/main}"
 BACKUP_ROOT="${BACKUP_ROOT:-/var/backups/rzfixer}"
 DEPLOY_COMMIT="${DEPLOY_COMMIT:-}"
+# Docker allocates the user-defined Compose networks from its private bridge
+# pool. The default pool is 172.16.0.0/12; override it when the daemon is
+# configured with explicit address pools.
+DOCKER_BRIDGE_RANGE="${DOCKER_BRIDGE_RANGE:-172.16.0.0/12}"
 
 CHECK_ONLY=0
 [ "${1:-}" = "--check" ] && CHECK_ONLY=1
@@ -125,16 +129,27 @@ configure_postgres() {
   printf "\nlisten_addresses = 'localhost, %s'\n" "$BRIDGE_GW" >> "${PG_CONF_DIR}/postgresql.conf"
   ok "listen_addresses now includes ${BRIDGE_GW} (previous file backed up)"
 
-  if ! grep -qE "^[[:space:]]*host[[:space:]]+${DB_NAME}[[:space:]]+${DB_ROLE}[[:space:]]+${BRIDGE_SUBNET}[[:space:]]" "${PG_CONF_DIR}/pg_hba.conf"; then
-    printf "host\t%s\t%s\t%s\t%s\n" "$DB_NAME" "$DB_ROLE" "$BRIDGE_SUBNET" "$AUTH_METHOD" >> "${PG_CONF_DIR}/pg_hba.conf"
-    ok "pg_hba rule added for ${DB_ROLE}@${DB_NAME} from ${BRIDGE_SUBNET}"
-  else
-    ok "pg_hba rule already present for ${BRIDGE_SUBNET}"
+  # An earlier version of this script added a blanket rule for every role and
+  # database. It is wider than the application role needs, so it is removed
+  # again here. Only the exact rule this script wrote is touched.
+  if grep -qE "^host[[:space:]]+all[[:space:]]+all[[:space:]]+${BRIDGE_SUBNET}[[:space:]]+${AUTH_METHOD}$" "${PG_CONF_DIR}/pg_hba.conf"; then
+    tmp="$(mktemp)"
+    grep -vE "^host[[:space:]]+all[[:space:]]+all[[:space:]]+${BRIDGE_SUBNET}[[:space:]]+${AUTH_METHOD}$" "${PG_CONF_DIR}/pg_hba.conf" > "$tmp"
+    cat "$tmp" > "${PG_CONF_DIR}/pg_hba.conf"
+    rm -f "$tmp"
+    ok "removed the blanket 'all all ${BRIDGE_SUBNET}' rule; only ${DB_ROLE}@${DB_NAME} is allowed"
   fi
 
-  if ! grep -qE "^[[:space:]]*host[[:space:]]+all[[:space:]]+all[[:space:]]+${BRIDGE_SUBNET}[[:space:]]" "${PG_CONF_DIR}/pg_hba.conf"; then
-    printf "host\tall\tall\t%s\t%s\n" "$BRIDGE_SUBNET" "$AUTH_METHOD" >> "${PG_CONF_DIR}/pg_hba.conf"
-    warn "added a broad 'host all all ${BRIDGE_SUBNET}' rule so that every container in the bridge subnet is reachable; tighten it if other roles are added later"
+  # The container's source address is the address it holds on its own Compose
+  # network, not the gateway address it dials. Docker allocates those networks
+  # from its private bridge pool, so the rule covers that whole range for the
+  # application role only. The database and the role are never exposed to any
+  # other network or role.
+  if ! grep -qE "^[[:space:]]*host[[:space:]]+${DB_NAME}[[:space:]]+${DB_ROLE}[[:space:]]+${DOCKER_BRIDGE_RANGE}[[:space:]]" "${PG_CONF_DIR}/pg_hba.conf"; then
+    printf "host\t%s\t%s\t%s\t%s\n" "$DB_NAME" "$DB_ROLE" "$DOCKER_BRIDGE_RANGE" "$AUTH_METHOD" >> "${PG_CONF_DIR}/pg_hba.conf"
+    ok "pg_hba rule added for ${DB_ROLE}@${DB_NAME} from ${DOCKER_BRIDGE_RANGE}"
+  else
+    ok "pg_hba rule already present for ${DOCKER_BRIDGE_RANGE}"
   fi
 
   log "applying the new PostgreSQL configuration"
@@ -179,10 +194,17 @@ write_env_file() {
 
   DB_URL="$(pm2_env DATABASE_URL)"
   [ -n "$DB_URL" ] || die "could not read DATABASE_URL from the running pm2 process; create ${ENV_FILE} manually"
-  # Containers must reach the host database through the bridge gateway, never
-  # through their own loopback interface.
-  DB_URL="${DB_URL/127.0.0.1/host.docker.internal}"
-  DB_URL="${DB_URL/localhost/host.docker.internal}"
+  # Containers must reach the host database through the Docker bridge gateway,
+  # never through their own loopback interface. The gateway address is written
+  # literally rather than as the hostname host.docker.internal: the api
+  # container shares another container's network namespace, and the Docker
+  # daemon refuses a custom host-to-IP mapping together with that network mode.
+  DB_URL="${DB_URL/127.0.0.1/${BRIDGE_GW}}"
+  DB_URL="${DB_URL/localhost/${BRIDGE_GW}}"
+  case "$DB_URL" in
+    *"${BRIDGE_GW}"*) : ;;
+    *) die "the database URL does not point at the bridge gateway ${BRIDGE_GW}" ;;
+  esac
 
   ADMIN_PW="$(pm2_env ADMIN_PASSWORD)"
   EMAIL_FROM="$(pm2_env EMAIL_FROM)"

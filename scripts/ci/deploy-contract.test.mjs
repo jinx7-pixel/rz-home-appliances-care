@@ -111,8 +111,16 @@ test("the production Compose stack exposes no database and no public port", () =
   );
   assert.match(
     prodCompose,
-    /host\.docker\.internal:host-gateway/,
-    "the container must reach the native host database through the bridge gateway",
+    /network_mode:\s*service:network/,
+    "the api and frontend must share one network namespace",
+  );
+  // The Docker daemon refuses a custom host-to-IP mapping together with
+  // network_mode: service:<name> ("conflicting options: custom host-to-IP
+  // mapping and the network mode"), so extra_hosts must not be used here.
+  assert.doesNotMatch(
+    prodCompose,
+    /extra_hosts:/,
+    "extra_hosts cannot be combined with a shared network namespace",
   );
   assert.match(prodCompose, /PRODUCTION_PROXY_PEERS:\s*127\.0\.0\.1\/32,::1\/128/);
   assert.match(prodCompose, /NODE_ENV:\s*production/);
@@ -235,7 +243,7 @@ test("the bootstrap script installs and enables Docker with Compose v2", () => {
 test("the bootstrap script points containers at the host bridge gateway", () => {
   assert.match(
     bootstrapScript,
-    /DB_URL="\$\{DB_URL\/127\.0\.0\.1\/host\.docker\.internal\}"/,
+    /DB_URL="\$\{DB_URL\/127\.0\.0\.1\/\$\{BRIDGE_GW\}\}"/,
     "the database URL host must be rewritten to the bridge gateway",
   );
   assert.match(
@@ -252,6 +260,37 @@ test("the bootstrap script points containers at the host bridge gateway", () => 
     bootstrapScript,
     /DATABASE_URL=postgresql:\/\/[^"\n]*127\.0\.0\.1/,
     "a loopback database URL would be unreachable from a container",
+  );
+  assert.doesNotMatch(
+    bootstrapScript,
+    /host\.docker\.internal:host-gateway/,
+    "the api container shares a network namespace, so a host-to-IP mapping is not available",
+  );
+  assert.doesNotMatch(
+    bootstrapScript,
+    /DB_URL\/[^}\n]*host\.docker\.internal/,
+    "the database URL must not be rewritten to a hostname the container cannot resolve",
+  );
+});
+
+test("the bootstrap script lets the application role in from the Docker bridge pool", () => {
+  // The container's source address is the address it holds on its own Compose
+  // network, not the gateway it dials. Restricting pg_hba to the gateway
+  // subnet would refuse every container connection.
+  assert.match(
+    bootstrapScript,
+    /DOCKER_BRIDGE_RANGE="\$\{DOCKER_BRIDGE_RANGE:-172\.16\.0\.0\/12\}"/,
+    "the Docker private bridge pool must be the allowed source range",
+  );
+  assert.match(
+    bootstrapScript,
+    /printf "host\\t%s\\t%s\\t%s\\t%s\\n" "\$DB_NAME" "\$DB_ROLE" "\$DOCKER_BRIDGE_RANGE" "\$AUTH_METHOD"/,
+    "the pg_hba rule must cover the bridge pool for the application role",
+  );
+  assert.doesNotMatch(
+    bootstrapScript,
+    /printf "host\\tall\\tall/,
+    "a blanket rule for every role and database must never be added",
   );
 });
 
