@@ -1,0 +1,13 @@
+{
+  "schemaSha256": "469696206546b03ce25d53573d5f1c6e64e285d39265f334447ac0f52715f517",
+  "files": [
+    {
+      "file": "baseline/20261101_baseline.sql",
+      "sha256": "68f3d3b0f592aa9f76190c76faf962379ce2c869d0dd62ae65306a4207d72ea4"
+    },
+    {
+      "file": "20260929_add_rate_limit_buckets.sql",
+      "sha256": "091e24451504c4c2486b9b3cad85077f882b6700c3f6d714d30d240700e5880b"
+    }
+  ]
+}

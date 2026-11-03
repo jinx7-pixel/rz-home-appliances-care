@@ -1,0 +1,1279 @@
+[
+  {
+    "name": "admin_sessions",
+    "kind": "r",
+    "row_security": false,
+    "force_row_security": false,
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "not_null": true,
+        "default": "gen_random_uuid()",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "admin_user_id",
+        "type": "uuid",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "session_hash",
+        "type": "character varying(64)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "expires_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": "now()",
+        "identity": "",
+        "generated": ""
+      }
+    ],
+    "constraints": [
+      {
+        "name": "admin_sessions_admin_user_id_admin_users_id_fk",
+        "definition": "FOREIGN KEY (admin_user_id) REFERENCES admin_users(id) ON DELETE CASCADE",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      },
+      {
+        "name": "admin_sessions_pkey",
+        "definition": "PRIMARY KEY (id)",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      },
+      {
+        "name": "admin_sessions_session_hash_unique",
+        "definition": "UNIQUE (session_hash)",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      }
+    ],
+    "indexes": [
+      {
+        "definition": "CREATE INDEX admin_sessions_admin_user_id_idx ON public.admin_sessions USING btree (admin_user_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE INDEX admin_sessions_expires_at_idx ON public.admin_sessions USING btree (expires_at)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX admin_sessions_pkey ON public.admin_sessions USING btree (id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX admin_sessions_session_hash_unique ON public.admin_sessions USING btree (session_hash)",
+        "valid": true,
+        "ready": true
+      }
+    ]
+  },
+  {
+    "name": "admin_users",
+    "kind": "r",
+    "row_security": false,
+    "force_row_security": false,
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "not_null": true,
+        "default": "gen_random_uuid()",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "username",
+        "type": "character varying(64)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "display_name",
+        "type": "character varying(100)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "password_hash",
+        "type": "character varying(255)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "is_active",
+        "type": "boolean",
+        "not_null": true,
+        "default": "true",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": "now()",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": "now()",
+        "identity": "",
+        "generated": ""
+      }
+    ],
+    "constraints": [
+      {
+        "name": "admin_users_pkey",
+        "definition": "PRIMARY KEY (id)",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      },
+      {
+        "name": "admin_users_username_unique",
+        "definition": "UNIQUE (username)",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      }
+    ],
+    "indexes": [
+      {
+        "definition": "CREATE INDEX admin_users_username_idx ON public.admin_users USING btree (username)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX admin_users_pkey ON public.admin_users USING btree (id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX admin_users_username_unique ON public.admin_users USING btree (username)",
+        "valid": true,
+        "ready": true
+      }
+    ]
+  },
+  {
+    "name": "auth_sessions",
+    "kind": "r",
+    "row_security": false,
+    "force_row_security": false,
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "not_null": true,
+        "default": "gen_random_uuid()",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "customer_id",
+        "type": "uuid",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "session_hash",
+        "type": "character varying(64)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "expires_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": "now()",
+        "identity": "",
+        "generated": ""
+      }
+    ],
+    "constraints": [
+      {
+        "name": "auth_sessions_customer_id_customers_id_fk",
+        "definition": "FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      },
+      {
+        "name": "auth_sessions_pkey",
+        "definition": "PRIMARY KEY (id)",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      }
+    ],
+    "indexes": [
+      {
+        "definition": "CREATE INDEX auth_sessions_customer_id_idx ON public.auth_sessions USING btree (customer_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX auth_sessions_hash_unique ON public.auth_sessions USING btree (session_hash)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX auth_sessions_pkey ON public.auth_sessions USING btree (id)",
+        "valid": true,
+        "ready": true
+      }
+    ]
+  },
+  {
+    "name": "bookings",
+    "kind": "r",
+    "row_security": false,
+    "force_row_security": false,
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "not_null": true,
+        "default": "gen_random_uuid()",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "booking_id",
+        "type": "character varying(24)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "customer_id",
+        "type": "uuid",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "customer_name",
+        "type": "character varying(100)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "email",
+        "type": "character varying(254)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "phone",
+        "type": "character varying(10)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "appliance_type",
+        "type": "character varying(64)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "problem_description",
+        "type": "text",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "preferred_date",
+        "type": "date",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "preferred_time",
+        "type": "character varying(100)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "address",
+        "type": "text",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "additional_notes",
+        "type": "text",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "status",
+        "type": "character varying(24)",
+        "not_null": true,
+        "default": "'pending'::character varying",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "admin_notes",
+        "type": "text",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "cancellation_reason",
+        "type": "text",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "email_status",
+        "type": "character varying(24)",
+        "not_null": true,
+        "default": "'pending'::character varying",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": "now()",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": "now()",
+        "identity": "",
+        "generated": ""
+      }
+    ],
+    "constraints": [
+      {
+        "name": "bookings_booking_id_unique",
+        "definition": "UNIQUE (booking_id)",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      },
+      {
+        "name": "bookings_customer_id_customers_id_fk",
+        "definition": "FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      },
+      {
+        "name": "bookings_pkey",
+        "definition": "PRIMARY KEY (id)",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      }
+    ],
+    "indexes": [
+      {
+        "definition": "CREATE INDEX bookings_customer_id_idx ON public.bookings USING btree (customer_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX bookings_booking_id_unique ON public.bookings USING btree (booking_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX bookings_pkey ON public.bookings USING btree (id)",
+        "valid": true,
+        "ready": true
+      }
+    ]
+  },
+  {
+    "name": "customers",
+    "kind": "r",
+    "row_security": false,
+    "force_row_security": false,
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "not_null": true,
+        "default": "gen_random_uuid()",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "full_name",
+        "type": "character varying(100)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "email",
+        "type": "character varying(254)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "password_hash",
+        "type": "character varying(255)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "email_verified",
+        "type": "boolean",
+        "not_null": true,
+        "default": "false",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": "now()",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": "now()",
+        "identity": "",
+        "generated": ""
+      }
+    ],
+    "constraints": [
+      {
+        "name": "customers_pkey",
+        "definition": "PRIMARY KEY (id)",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      }
+    ],
+    "indexes": [
+      {
+        "definition": "CREATE UNIQUE INDEX customers_email_unique ON public.customers USING btree (email)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX customers_pkey ON public.customers USING btree (id)",
+        "valid": true,
+        "ready": true
+      }
+    ]
+  },
+  {
+    "name": "password_reset_tokens",
+    "kind": "r",
+    "row_security": false,
+    "force_row_security": false,
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "not_null": true,
+        "default": "gen_random_uuid()",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "customer_id",
+        "type": "uuid",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "token_hash",
+        "type": "character varying(64)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "expires_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "used_at",
+        "type": "timestamp with time zone",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": "now()",
+        "identity": "",
+        "generated": ""
+      }
+    ],
+    "constraints": [
+      {
+        "name": "password_reset_tokens_customer_id_customers_id_fk",
+        "definition": "FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      },
+      {
+        "name": "password_reset_tokens_pkey",
+        "definition": "PRIMARY KEY (id)",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      }
+    ],
+    "indexes": [
+      {
+        "definition": "CREATE INDEX password_reset_tokens_customer_id_idx ON public.password_reset_tokens USING btree (customer_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX password_reset_tokens_hash_unique ON public.password_reset_tokens USING btree (token_hash)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX password_reset_tokens_pkey ON public.password_reset_tokens USING btree (id)",
+        "valid": true,
+        "ready": true
+      }
+    ]
+  },
+  {
+    "name": "rate_limit_buckets",
+    "kind": "r",
+    "row_security": false,
+    "force_row_security": false,
+    "columns": [
+      {
+        "name": "bucket_key",
+        "type": "character varying(64)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "attempt_timestamps",
+        "type": "timestamp with time zone[]",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "expires_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      }
+    ],
+    "constraints": [
+      {
+        "name": "rate_limit_buckets_pkey",
+        "definition": "PRIMARY KEY (bucket_key)",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      }
+    ],
+    "indexes": [
+      {
+        "definition": "CREATE INDEX rate_limit_buckets_expires_at_idx ON public.rate_limit_buckets USING btree (expires_at)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX rate_limit_buckets_pkey ON public.rate_limit_buckets USING btree (bucket_key)",
+        "valid": true,
+        "ready": true
+      }
+    ]
+  },
+  {
+    "name": "repair_requests",
+    "kind": "r",
+    "row_security": false,
+    "force_row_security": false,
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "not_null": true,
+        "default": "gen_random_uuid()",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "request_id",
+        "type": "character varying(24)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "customer_name",
+        "type": "character varying(100)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "phone",
+        "type": "character varying(10)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "email",
+        "type": "character varying(254)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "appliance_type",
+        "type": "character varying(64)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "problem_description",
+        "type": "text",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "address",
+        "type": "text",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "customer_id",
+        "type": "uuid",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "preferred_date",
+        "type": "date",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "preferred_time",
+        "type": "character varying(100)",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "status",
+        "type": "character varying(24)",
+        "not_null": true,
+        "default": "'pending'::character varying",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "admin_notes",
+        "type": "text",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "cancellation_reason",
+        "type": "text",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "email_status",
+        "type": "character varying(24)",
+        "not_null": true,
+        "default": "'pending'::character varying",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": "now()",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": "now()",
+        "identity": "",
+        "generated": ""
+      }
+    ],
+    "constraints": [
+      {
+        "name": "repair_requests_customer_id_customers_id_fk",
+        "definition": "FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      },
+      {
+        "name": "repair_requests_pkey",
+        "definition": "PRIMARY KEY (id)",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      },
+      {
+        "name": "repair_requests_request_id_unique",
+        "definition": "UNIQUE (request_id)",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      }
+    ],
+    "indexes": [
+      {
+        "definition": "CREATE INDEX repair_requests_customer_id_idx ON public.repair_requests USING btree (customer_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX repair_requests_pkey ON public.repair_requests USING btree (id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX repair_requests_request_id_unique ON public.repair_requests USING btree (request_id)",
+        "valid": true,
+        "ready": true
+      }
+    ]
+  },
+  {
+    "name": "review_invitations",
+    "kind": "r",
+    "row_security": false,
+    "force_row_security": false,
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "not_null": true,
+        "default": "gen_random_uuid()",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "token_hash",
+        "type": "character varying(64)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "customer_id",
+        "type": "uuid",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "customer_email",
+        "type": "character varying(254)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "request_id",
+        "type": "character varying(24)",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "booking_id",
+        "type": "character varying(24)",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "review_id",
+        "type": "character varying(24)",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "expires_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "used_at",
+        "type": "timestamp with time zone",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": "now()",
+        "identity": "",
+        "generated": ""
+      }
+    ],
+    "constraints": [
+      {
+        "name": "review_invitations_booking_id_bookings_booking_id_fk",
+        "definition": "FOREIGN KEY (booking_id) REFERENCES bookings(booking_id) ON DELETE CASCADE",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      },
+      {
+        "name": "review_invitations_customer_id_customers_id_fk",
+        "definition": "FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      },
+      {
+        "name": "review_invitations_pkey",
+        "definition": "PRIMARY KEY (id)",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      },
+      {
+        "name": "review_invitations_request_id_repair_requests_request_id_fk",
+        "definition": "FOREIGN KEY (request_id) REFERENCES repair_requests(request_id) ON DELETE CASCADE",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      }
+    ],
+    "indexes": [
+      {
+        "definition": "CREATE INDEX review_invitations_booking_id_idx ON public.review_invitations USING btree (booking_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE INDEX review_invitations_request_id_idx ON public.review_invitations USING btree (request_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX review_invitations_pkey ON public.review_invitations USING btree (id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX review_invitations_token_hash_unique ON public.review_invitations USING btree (token_hash)",
+        "valid": true,
+        "ready": true
+      }
+    ]
+  },
+  {
+    "name": "reviews",
+    "kind": "r",
+    "row_security": false,
+    "force_row_security": false,
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "not_null": true,
+        "default": "gen_random_uuid()",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "review_id",
+        "type": "character varying(24)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "customer_id",
+        "type": "uuid",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "request_id",
+        "type": "character varying(24)",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "booking_id",
+        "type": "character varying(24)",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "customer_name",
+        "type": "character varying(100)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "customer_email",
+        "type": "character varying(254)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "appliance_type",
+        "type": "character varying(64)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "rating",
+        "type": "integer",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "review_message",
+        "type": "text",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "show_first_name",
+        "type": "boolean",
+        "not_null": true,
+        "default": "false",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "is_verified",
+        "type": "boolean",
+        "not_null": true,
+        "default": "true",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "status",
+        "type": "character varying(16)",
+        "not_null": true,
+        "default": "'pending'::character varying",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "admin_notes",
+        "type": "text",
+        "not_null": false,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": "now()",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": "now()",
+        "identity": "",
+        "generated": ""
+      }
+    ],
+    "constraints": [
+      {
+        "name": "reviews_booking_id_bookings_booking_id_fk",
+        "definition": "FOREIGN KEY (booking_id) REFERENCES bookings(booking_id) ON DELETE CASCADE",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      },
+      {
+        "name": "reviews_customer_id_customers_id_fk",
+        "definition": "FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      },
+      {
+        "name": "reviews_pkey",
+        "definition": "PRIMARY KEY (id)",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      },
+      {
+        "name": "reviews_request_id_repair_requests_request_id_fk",
+        "definition": "FOREIGN KEY (request_id) REFERENCES repair_requests(request_id) ON DELETE CASCADE",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      },
+      {
+        "name": "reviews_review_id_unique",
+        "definition": "UNIQUE (review_id)",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      }
+    ],
+    "indexes": [
+      {
+        "definition": "CREATE INDEX reviews_customer_id_idx ON public.reviews USING btree (customer_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE INDEX reviews_status_idx ON public.reviews USING btree (status)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX reviews_booking_unique ON public.reviews USING btree (booking_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX reviews_customer_booking_unique ON public.reviews USING btree (customer_id, booking_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX reviews_customer_request_unique ON public.reviews USING btree (customer_id, request_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX reviews_pkey ON public.reviews USING btree (id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX reviews_request_unique ON public.reviews USING btree (request_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "definition": "CREATE UNIQUE INDEX reviews_review_id_unique ON public.reviews USING btree (review_id)",
+        "valid": true,
+        "ready": true
+      }
+    ]
+  },
+  {
+    "name": "site_settings",
+    "kind": "r",
+    "row_security": false,
+    "force_row_security": false,
+    "columns": [
+      {
+        "name": "key",
+        "type": "character varying(64)",
+        "not_null": true,
+        "default": null,
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "value",
+        "type": "boolean",
+        "not_null": true,
+        "default": "true",
+        "identity": "",
+        "generated": ""
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "not_null": true,
+        "default": "now()",
+        "identity": "",
+        "generated": ""
+      }
+    ],
+    "constraints": [
+      {
+        "name": "site_settings_pkey",
+        "definition": "PRIMARY KEY (key)",
+        "validated": true,
+        "deferrable": false,
+        "deferred": false
+      }
+    ],
+    "indexes": [
+      {
+        "definition": "CREATE UNIQUE INDEX site_settings_pkey ON public.site_settings USING btree (key)",
+        "valid": true,
+        "ready": true
+      }
+    ]
+  }
+]

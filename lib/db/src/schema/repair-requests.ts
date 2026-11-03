@@ -4,7 +4,7 @@ import {
   pgTable,
   text,
   timestamp,
-  uniqueIndex,
+  unique,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -43,7 +43,7 @@ export const repairRequestsTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
-    uniqueIndex("repair_requests_request_id_unique").on(table.requestId),
+    unique("repair_requests_request_id_unique").on(table.requestId),
     index("repair_requests_customer_id_idx").on(table.customerId),
   ],
 );
