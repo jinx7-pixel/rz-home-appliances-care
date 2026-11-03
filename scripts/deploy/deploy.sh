@@ -34,6 +34,11 @@ WEB_PORT="${WEB_PORT:-8080}"
 TARGET_SHA="${1:-}"
 ALLOW_ADOPT=0
 [ "${2:-}" = "--adopt-migration" ] && ALLOW_ADOPT=1
+# Switching the public traffic to the Docker stack is a separate, explicit
+# gate. Without it the stack is deployed and verified on loopback while the
+# public site keeps serving the previous deployment.
+ALLOW_TRAFFIC_SWITCH=0
+[ "${3:-}" = "--allow-traffic-switch" ] && ALLOW_TRAFFIC_SWITCH=1
 
 log()  { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
 ok()   { printf '\033[1;32m  OK\033[0m %s\n' "$*"; }
@@ -354,6 +359,65 @@ public_health_checks() {
 }
 
 # ---------------------------------------------------------------------------
+# Loopback health checks
+#
+# Used when the public traffic switch is not authorised. The stack is verified
+# on the loopback port exactly as the public edge would reach it, so the
+# X-Forwarded-Proto handling and the client address handling are exercised
+# against the real container stack before any public traffic is switched.
+# ---------------------------------------------------------------------------
+loopback_health_checks() {
+  local base="http://127.0.0.1:${WEB_PORT}"
+  log "Loopback health checks (public traffic is NOT switched)"
+
+  curl -fsS --max-time 20 "${base}/" -o /dev/null || die "the frontend container is not serving on ${base}"
+  ok "frontend container serves the site"
+
+  curl -fsS --max-time 20 "${base}/api/healthz" -o /dev/null || die "the API container is not healthy on ${base}"
+  ok "API container health check passes through the frontend"
+
+  local asset
+  asset="$(curl -fsS --max-time 20 "${base}/" | grep -oE '/assets/[A-Za-z0-9._-]+\.js' | head -1)"
+  if [ -n "$asset" ]; then
+    curl -fsS --max-time 20 "${base}${asset}" -o /dev/null || die "frontend asset ${asset} did not load"
+    ok "frontend asset loads: ${asset}"
+  else
+    warn "no frontend asset reference found in the served HTML"
+  fi
+
+  # The admin origin check must accept a same-origin request that arrives the
+  # way the public edge delivers it. A 403 here is the X-Forwarded-Proto
+  # regression and must fail the deployment.
+  local code
+  code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -X POST "${base}/api/admin/auth/login" \
+        -H "Origin: ${PUBLIC_ORIGIN}" -H 'X-Forwarded-Proto: https' -H 'X-Forwarded-For: 203.0.113.9' \
+        -H 'Content-Type: application/json' --data '{}')"
+  case "$code" in
+    403) die "admin origin validation rejected a same-origin request (403) - X-Forwarded-Proto is wrong" ;;
+    400|401|200) ok "admin origin validation accepts a same-origin request (HTTP ${code})" ;;
+    *) die "admin origin validation returned unexpected HTTP ${code}" ;;
+  esac
+
+  code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -X POST "${base}/api/admin/auth/login" \
+        -H "Origin: https://evil.example" -H 'X-Forwarded-Proto: https' -H 'X-Forwarded-For: 203.0.113.9' \
+        -H 'Content-Type: application/json' --data '{}')"
+  case "$code" in
+    403) ok "admin origin validation rejects a cross-origin request (403)" ;;
+    *) die "admin origin validation accepted a cross-origin request (HTTP ${code})" ;;
+  esac
+
+  code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -X POST "${base}/api/repair-requests" \
+        -H 'Content-Type: application/json' --data '{"customerName":"x"}')"
+  case "$code" in
+    400) ok "repair-request validation is active (HTTP 400 for an invalid body)" ;;
+    429) warn "repair-request rate limit is already exhausted" ;;
+    *) die "repair-request endpoint returned unexpected HTTP ${code}" ;;
+  esac
+
+  ok "all loopback health checks passed"
+}
+
+# ---------------------------------------------------------------------------
 # Rollback
 # ---------------------------------------------------------------------------
 rollback_restore() {
@@ -407,6 +471,7 @@ main() {
   log "env file      : ${ENV_FILE}"
   log "public origin : ${PUBLIC_ORIGIN}"
   log "adopt allowed : $([ "$ALLOW_ADOPT" -eq 1 ] && echo yes || echo no)"
+  log "traffic switch: $([ "$ALLOW_TRAFFIC_SWITCH" -eq 1 ] && echo authorised || echo 'not authorised - the public site keeps serving the previous deployment')"
 
   cd "$APP_DIR"
   DB_NAME="$(grep -E '^DATABASE_URL=' "$ENV_FILE" | head -1 | sed -E 's#.*/([^/?]+)$#\1#')"
@@ -417,13 +482,20 @@ main() {
   checkout_step
   migrate_step
   start_containers
-  switch_nginx
-  public_health_checks
+  if [ "$ALLOW_TRAFFIC_SWITCH" -eq 1 ]; then
+    switch_nginx
+    public_health_checks
+  else
+    log "TRAFFIC SWITCH NOT AUTHORISED: the public site keeps serving the previous deployment"
+    ok "the Docker stack is live on 127.0.0.1:${WEB_PORT} and verified"
+    loopback_health_checks
+  fi
 
   log "DEPLOYMENT SUCCESSFUL"
   log "  commit       : ${TARGET_SHA}"
   log "  images       : rzfixer-api:${TARGET_SHA}, rzfixer-frontend:${TARGET_SHA}"
   log "  services     : $(compose config --services | tr '\n' ' ')"
+  log "  traffic      : $([ "$ALLOW_TRAFFIC_SWITCH" -eq 1 ] && echo 'switched to the Docker stack' || echo 'NOT switched - the public site still serves the previous deployment')"
   log "  backup       : ${BACKUP_DIR}"
   log "  rollback     : bash ${APP_DIR}/scripts/deploy/deploy.sh --rollback ${BACKUP_DIR}"
   {
@@ -433,6 +505,7 @@ main() {
     echo "- Images: \`rzfixer-api:${TARGET_SHA}\`, \`rzfixer-frontend:${TARGET_SHA}\`"
     echo "- Services: $(compose config --services | tr '\n' ' ')"
     echo "- Public: ${PUBLIC_ORIGIN}"
+    echo "- Traffic: $([ "$ALLOW_TRAFFIC_SWITCH" -eq 1 ] && echo 'switched to the Docker stack' || echo 'NOT switched - the public site still serves the previous deployment')"
     echo "- Backup: \`${BACKUP_DIR}\`"
   } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 }

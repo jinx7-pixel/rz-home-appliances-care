@@ -119,6 +119,7 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           DEPLOY_SHA: ${{ steps.resolve.outputs.sha }}
           ALLOW_ADOPT: ${{ vars.ALLOW_MIGRATION_ADOPTION }}
+          ALLOW_TRAFFIC_SWITCH: ${{ vars.ALLOW_TRAFFIC_SWITCH }}
         run: |
           set -euo pipefail
           APP_DIR="${APP_DIR:-/var/www/rz-home-appliances-care}"
@@ -126,6 +127,16 @@ jobs:
           if [ "${ALLOW_ADOPT:-false}" = "true" ]; then
             ADOPT_FLAG="--adopt-migration"
             echo "Migration adoption is authorised for this run."
+          fi
+          # Switching the public traffic to the Docker stack is a separate
+          # authorisation. Without it the stack is deployed and verified on
+          # loopback while the public site keeps serving the old deployment.
+          TRAFFIC_FLAG=""
+          if [ "${ALLOW_TRAFFIC_SWITCH:-false}" = "true" ]; then
+            TRAFFIC_FLAG="--allow-traffic-switch"
+            echo "The public traffic switch is authorised for this run."
+          else
+            echo "The public traffic switch is NOT authorised for this run."
           fi
           # The deployment script is taken from the very commit being deployed,
           # so the pipeline and the running code can never diverge.
@@ -137,7 +148,7 @@ jobs:
               -o BatchMode=yes \
               -o LogLevel=ERROR \
               "${VPS_USER}@${VPS_HOST}" \
-              "set -euo pipefail; cd '${APP_DIR}'; git fetch --quiet origin '${DEPLOY_SHA}'; git show '${DEPLOY_SHA}:scripts/deploy/deploy.sh' > /tmp/rz-deploy.sh; chmod 700 /tmp/rz-deploy.sh; bash /tmp/rz-deploy.sh '${DEPLOY_SHA}' ${ADOPT_FLAG}; rm -f /tmp/rz-deploy.sh"
+              "set -euo pipefail; cd '${APP_DIR}'; git fetch --quiet origin '${DEPLOY_SHA}'; git show '${DEPLOY_SHA}:scripts/deploy/deploy.sh' > /tmp/rz-deploy.sh; chmod 700 /tmp/rz-deploy.sh; bash /tmp/rz-deploy.sh '${DEPLOY_SHA}' ${ADOPT_FLAG} ${TRAFFIC_FLAG}; rm -f /tmp/rz-deploy.sh"
 
       - name: Remove SSH material
         if: always()

@@ -397,6 +397,57 @@ test("the deployment renders the Nginx template instead of copying it verbatim",
   assert.match(hostNginx, /\$\{WEB_PORT:-8080\}/);
 });
 
+test("the public traffic switch is an explicit gate, not an implicit step", () => {
+  assert.match(
+    deployScript,
+    /ALLOW_TRAFFIC_SWITCH=0/,
+    "the traffic switch must default to not authorised",
+  );
+  assert.match(
+    deployScript,
+    /\[ "\$\{3:-\}" = "--allow-traffic-switch" \] && ALLOW_TRAFFIC_SWITCH=1/,
+  );
+  assert.match(
+    deployScript,
+    /if \[ "\$ALLOW_TRAFFIC_SWITCH" -eq 1 \]; then\s*\n\s*switch_nginx/,
+    "switch_nginx must only run when the switch is authorised",
+  );
+  assert.match(
+    deployScript,
+    /TRAFFIC SWITCH NOT AUTHORISED/,
+    "the run must state that the public traffic was left alone",
+  );
+  assert.match(
+    deployWorkflow,
+    /ALLOW_TRAFFIC_SWITCH: \$\{\{ vars\.ALLOW_TRAFFIC_SWITCH \}\}/,
+    "the workflow must take the traffic authorisation from the Environment variable",
+  );
+  assert.match(
+    deployWorkflow,
+    /--allow-traffic-switch/,
+    "the workflow must pass the switch flag to the deployment script",
+  );
+});
+
+test("the loopback checks exercise the X-Forwarded-Proto path on the real stack", () => {
+  assert.match(deployScript, /loopback_health_checks\(\)/);
+  assert.match(
+    deployScript,
+    /-H 'X-Forwarded-Proto: https'/,
+    "the same-origin check must supply the scheme the public edge sends",
+  );
+  assert.match(
+    deployScript,
+    /admin origin validation rejects a cross-origin request/,
+    "a cross-origin request must still be rejected",
+  );
+  assert.match(
+    deployScript,
+    /die "admin origin validation rejected a same-origin request \(403\) - X-Forwarded-Proto is wrong"/,
+    "a 403 on a same-origin request must fail the deployment",
+  );
+});
+
 test("the bootstrap script never migrates, switches traffic or stops PM2", () => {
   for (const forbidden of [
     /migrate\.mjs/,
