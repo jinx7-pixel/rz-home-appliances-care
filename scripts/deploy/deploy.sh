@@ -27,6 +27,9 @@ COMPOSE_FILE="${APP_DIR}/docker-compose.prod.yml"
 PUBLIC_ORIGIN="${PUBLIC_ORIGIN:-https://rzfixer.in}"
 WWW_ORIGIN="${WWW_ORIGIN:-https://www.rzfixer.in}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-180}"
+# The loopback port the frontend container publishes. It must match the port
+# in the Compose file and in the rendered host Nginx configuration.
+WEB_PORT="${WEB_PORT:-8080}"
 
 TARGET_SHA="${1:-}"
 ALLOW_ADOPT=0
@@ -284,7 +287,15 @@ switch_nginx() {
   local template="${APP_DIR}/docker/nginx.host.conf"
   [ -f "$template" ] || die "host nginx template not found at $template"
 
-  cp -a "$template" "$NGINX_SITE"
+  # The template carries a shell placeholder for the published port. Nginx
+  # cannot parse shell syntax, so the placeholder is rendered before the file
+  # is installed. Only the port placeholder is substituted: every other dollar
+  # sign in the template is an Nginx variable and must survive untouched.
+  sed "s|\${WEB_PORT:-8080}|${WEB_PORT}|g" "$template" > "$NGINX_SITE"
+  if grep -q '\${' "$NGINX_SITE"; then
+    cp -a "${BACKUP_DIR}/rz-care.nginx" "$NGINX_SITE"
+    die "the rendered nginx configuration still contains a shell placeholder - previous configuration restored"
+  fi
   nginx -t || { cp -a "${BACKUP_DIR}/rz-care.nginx" "$NGINX_SITE"; nginx -t || true; die "nginx configuration invalid - restored the previous configuration"; }
   systemctl reload nginx || { cp -a "${BACKUP_DIR}/rz-care.nginx" "$NGINX_SITE"; nginx -t && systemctl reload nginx || true; die "nginx reload failed - restored the previous configuration"; }
   ok "nginx now routes to the Docker stack"

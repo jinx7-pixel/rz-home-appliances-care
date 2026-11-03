@@ -371,6 +371,32 @@ test("the bootstrap script restarts PostgreSQL when listen_addresses must change
   );
 });
 
+test("the deployment renders the Nginx template instead of copying it verbatim", () => {
+  // Nginx cannot parse shell syntax. Copying the template verbatim would put
+  // ${WEB_PORT:-8080} into the live configuration and nginx -t would fail.
+  assert.match(
+    deployScript,
+    /sed "s\|\\\$\{WEB_PORT:-8080\}\|\$\{WEB_PORT\}\|g" "\$template" > "\$NGINX_SITE"/,
+    "the port placeholder must be rendered before the file is installed",
+  );
+  assert.doesNotMatch(
+    deployScript,
+    /cp -a "\$template" "\$NGINX_SITE"/,
+    "the template must never be installed without rendering",
+  );
+  assert.match(
+    deployScript,
+    /grep -q '\\\$\{' "\$NGINX_SITE"/,
+    "a leftover shell placeholder must fail the switch",
+  );
+  assert.match(
+    deployScript,
+    /WEB_PORT="\$\{WEB_PORT:-8080\}"/,
+    "the published port must be defined once and reused",
+  );
+  assert.match(hostNginx, /\$\{WEB_PORT:-8080\}/);
+});
+
 test("the bootstrap script never migrates, switches traffic or stops PM2", () => {
   for (const forbidden of [
     /migrate\.mjs/,
