@@ -48,18 +48,41 @@ die()  { printf '\n\033[1;31mFAILED:\033[0m %s\n' "$*" >&2; exit 1; }
 STAMP="$(date -u +%Y%m%d-%H%M%S)"
 BACKUP_DIR="${BACKUP_ROOT}/${STAMP}"
 ROLLBACK_DONE=0
+# Set once the deployment starts changing the running production resources.
+# Before that point the only changes are the working tree and, at most, the
+# migration ledger, and the database is never rolled back.
+DEPLOY_STARTED=0
+# Set when the deployment finished successfully, so the exit trap does not
+# roll back a deployment that succeeded.
+DEPLOY_COMPLETED=0
 
-on_error() {
+# The ERR trap cannot be used here: every failure path goes through die(),
+# which calls "exit 1", and an explicit exit does not fire the ERR trap. The
+# EXIT trap always runs, including on die() and on a set -e abort.
+on_exit() {
   local code=$?
-  warn "deploy.sh aborted at line ${BASH_LINENO} (exit ${code})"
-  if [ "$ROLLBACK_DONE" -eq 0 ] && [ -f "${BACKUP_DIR}/rollback.env" ]; then
-    warn "attempting automatic rollback"
-    ( set +e; source "${BACKUP_DIR}/rollback.env"; rollback_restore )
-    warn "rollback attempt finished"
+  # Prevent recursive trap execution while the rollback runs.
+  trap - EXIT
+  if [ "$code" -eq 0 ] || [ "$DEPLOY_COMPLETED" -eq 1 ]; then
+    exit "$code"
+  fi
+  if [ "$DEPLOY_STARTED" -eq 0 ]; then
+    warn "the deployment stopped before it changed the running production resources; nothing to roll back"
+    exit "$code"
+  fi
+  if [ "$ROLLBACK_DONE" -eq 1 ] || [ ! -f "${BACKUP_DIR}/rollback.env" ]; then
+    warn "no valid rollback descriptor found; nothing was rolled back"
+    exit "$code"
+  fi
+  warn "deploy.sh exited with status ${code}; attempting the rollback"
+  if ( set +e; source "${BACKUP_DIR}/rollback.env"; rollback_restore ); then
+    printf '\n\033[1;32mROLLBACK SUCCEEDED:\033[0m the previous production state is restored\n'
+  else
+    printf '\n\033[1;31mROLLBACK FAILED:\033[0m manual intervention is required\n' >&2
   fi
   exit "$code"
 }
-trap on_error ERR
+trap on_exit EXIT
 
 compose() { docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"; }
 
@@ -256,6 +279,9 @@ start_containers() {
   log "Building and starting containers for $TARGET_SHA"
 
   export DEPLOY_TAG="$TARGET_SHA"
+  # From here on the deployment changes the running production resources, so
+  # a failure must roll the previous stack back.
+  DEPLOY_STARTED=1
   compose build --pull api frontend || die "image build failed"
   ok "images built: rzfixer-api:${TARGET_SHA}, rzfixer-frontend:${TARGET_SHA}"
 
@@ -263,12 +289,12 @@ start_containers() {
   # migration step must already have run before the container can be healthy.
   compose up -d --no-build api || die "api container failed to start"
   log "waiting for the API container to become healthy"
-  wait_healthy "rzfixer-api" || die "api container did not become healthy"
+  wait_healthy "api" || die "api container did not become healthy"
   ok "api container healthy"
 
   compose up -d --no-build frontend || die "frontend container failed to start"
   log "waiting for the frontend container to become healthy"
-  wait_healthy "rzfixer-frontend" || die "frontend container did not become healthy"
+  wait_healthy "frontend" || die "frontend container did not become healthy"
   ok "frontend container healthy"
 
   # Verify the API answers on the container loopback before touching Nginx.
@@ -278,19 +304,51 @@ start_containers() {
 }
 
 wait_healthy() {
-  local name="$1" deadline=$((SECONDS + HEALTH_TIMEOUT))
+  # The container name is not predictable: Compose names containers
+  # <project>-<service>-<index>. The real container ID is resolved through
+  # Compose itself, so the check never depends on an assumed name.
+  local service="$1" deadline=$((SECONDS + HEALTH_TIMEOUT))
+  local ids count cid state all_healthy
   while [ "$SECONDS" -lt "$deadline" ]; do
-    local state
-    state="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$name" 2>/dev/null || echo missing)"
-    case "$state" in
-      healthy) return 0 ;;
-      unhealthy) warn "$name reported unhealthy"; return 1 ;;
-      exited|dead) warn "$name exited"; return 1 ;;
-    esac
+    ids="$(compose ps -q "$service" 2>/dev/null | grep -v '^[[:space:]]*$' || true)"
+    count="$(printf '%s\n' "$ids" | grep -c '[^[:space:]]' || true)"
+    if [ "${count:-0}" -eq 0 ]; then
+      state="not created yet"
+    elif [ "$count" -gt 1 ]; then
+      # More than one container for the service: every one of them must be
+      # healthy before the deployment continues.
+      all_healthy=1
+      for cid in $ids; do
+        state="$(container_state "$cid")"
+        case "$state" in
+          healthy) : ;;
+          unhealthy) warn "${service} container ${cid} reported unhealthy"; all_healthy=0 ;;
+          exited|dead) warn "${service} container ${cid} exited"; all_healthy=0 ;;
+          *) all_healthy=0 ;;
+        esac
+      done
+      if [ "$all_healthy" -eq 1 ]; then
+        ok "all ${count} ${service} containers are healthy"
+        return 0
+      fi
+      state="starting"
+    else
+      cid="$ids"
+      state="$(container_state "$cid")"
+      case "$state" in
+        healthy) ok "${service} container is healthy"; return 0 ;;
+        unhealthy) warn "${service} container reported unhealthy"; return 1 ;;
+        exited|dead) warn "${service} container exited"; return 1 ;;
+      esac
+    fi
     sleep 3
   done
-  warn "$name did not become healthy within ${HEALTH_TIMEOUT}s"
+  warn "${service} container did not become healthy within ${HEALTH_TIMEOUT}s (last state: ${state:-unknown})"
   return 1
+}
+
+container_state() {
+  docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$1" 2>/dev/null || echo missing
 }
 
 # ---------------------------------------------------------------------------
@@ -462,13 +520,16 @@ rollback_restore() {
   ok "PM2 application restarted"
 
   # 5. Verify the public site is back.
+  local recovered=1
   if curl -fsS --max-time 20 "${PUBLIC_ORIGIN}/" -o /dev/null; then
     ok "public site is serving again"
   else
     warn "public site did NOT recover - manual intervention required"
+    recovered=0
   fi
 
   ROLLBACK_DONE=1
+  [ "$recovered" -eq 1 ]
 }
 
 # ---------------------------------------------------------------------------
@@ -484,6 +545,10 @@ main() {
   log "traffic switch: $([ "$ALLOW_TRAFFIC_SWITCH" -eq 1 ] && echo authorised || echo 'not authorised - the public site keeps serving the previous deployment')"
 
   cd "$APP_DIR"
+  # The Compose file tags its images with ${DEPLOY_TAG}. It must be set
+  # before the very first Compose call, otherwise the interpolation of
+  # services.api.image fails and the deployment stops at the validation.
+  export DEPLOY_TAG="$TARGET_SHA"
   DB_NAME="$(grep -E '^DATABASE_URL=' "$ENV_FILE" | head -1 | sed -E 's#.*/([^/?]+)$#\1#')"
   [ -n "$DB_NAME" ] || die "cannot determine the database name from DATABASE_URL"
 
@@ -518,6 +583,8 @@ main() {
     echo "- Traffic: $([ "$ALLOW_TRAFFIC_SWITCH" -eq 1 ] && echo 'switched to the Docker stack' || echo 'NOT switched - the public site still serves the previous deployment')"
     echo "- Backup: \`${BACKUP_DIR}\`"
   } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+  # The deployment finished successfully: the exit trap must not roll it back.
+  DEPLOY_COMPLETED=1
 }
 
 if [ "${1:-}" = "--rollback" ]; then

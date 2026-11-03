@@ -92,6 +92,96 @@ test("the host Nginx carries the edge scheme and canonical redirect", () => {
   assert.match(hostNginx, /real_ip_header\s+X-Forwarded-For;/);
 });
 
+test("Bug A: DEPLOY_TAG is exported before the first Compose invocation", () => {
+  const mainBody = deployScript.slice(deployScript.indexOf("main() {"));
+  const exportAt = mainBody.indexOf('export DEPLOY_TAG="$TARGET_SHA"');
+  const preflightAt = mainBody.indexOf("\n  preflight\n");
+  assert.ok(exportAt > -1, "main() must export DEPLOY_TAG");
+  assert.ok(
+    exportAt < preflightAt,
+    "DEPLOY_TAG must be exported before preflight, which calls Compose",
+  );
+  // The Compose file interpolates ${DEPLOY_TAG:?...} into the image tags, so
+  // an unset DEPLOY_TAG makes every Compose command fail to interpolate.
+  assert.match(prodCompose, /\$\{DEPLOY_TAG:\?Set DEPLOY_TAG to the deployed commit SHA\}/);
+});
+
+test("Bug B: the rollback runs through an EXIT trap, not the broken ERR trap", () => {
+  assert.doesNotMatch(
+    deployScript,
+    /trap on_error ERR/,
+    "the ERR trap never fires for die(), which calls exit 1",
+  );
+  assert.match(deployScript, /trap on_exit EXIT/);
+  assert.match(
+    deployScript,
+    /trap - EXIT/,
+    "the trap must disable itself so the rollback cannot re-enter it",
+  );
+  assert.match(deployScript, /exit "\$code"/);
+  assert.match(
+    deployScript,
+    /DEPLOY_STARTED=0/,
+    "the rollback must only run once production resources were changed",
+  );
+  assert.match(
+    deployScript,
+    /DEPLOY_COMPLETED=1/,
+    "a successful deployment must not roll itself back",
+  );
+  assert.match(deployScript, /ROLLBACK SUCCEEDED/);
+  assert.match(deployScript, /ROLLBACK FAILED/);
+  // The rollback restores the checkout, the stack and Nginx. It must never
+  // touch the application data.
+  const rollbackBody = deployScript.slice(
+    deployScript.indexOf("rollback_restore() {"),
+    deployScript.indexOf("# Main"),
+  );
+  assert.doesNotMatch(
+    rollbackBody,
+    /migrate\.mjs|DROP\s|DELETE\s|ALTER\s|TRUNCATE|pg_dump|pg_restore/i,
+    "the rollback must never modify PostgreSQL application data",
+  );
+});
+
+test("Bug C: container health is checked through the resolved container ID", () => {
+  assert.match(
+    deployScript,
+    /compose ps -q "\$service"/,
+    "the container ID must be resolved through Compose",
+  );
+  assert.doesNotMatch(
+    deployScript,
+    /wait_healthy "rzfixer-/,
+    "container names must not be assumed",
+  );
+  assert.match(deployScript, /wait_healthy "api"/);
+  assert.match(deployScript, /wait_healthy "frontend"/);
+  assert.match(
+    deployScript,
+    /if \[ "\$count" -gt 1 \]; then/,
+    "several containers for one service must all be healthy",
+  );
+  assert.match(
+    deployScript,
+    /did not become healthy within \$\{HEALTH_TIMEOUT\}s/,
+    "a startup timeout must fail the deployment",
+  );
+});
+
+test("the deployment exit trap behaves correctly", () => {
+  const bash = findBash();
+  if (!bash) return;
+  execFileSync(
+    bash,
+    [
+      posixPath("scripts/ci/deploy-trap.test.sh"),
+      posixPath("scripts/deploy/deploy.sh"),
+    ],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+});
+
 test("the production Compose stack exposes no database and no public port", () => {
   assert.doesNotMatch(
     prodCompose,
@@ -187,7 +277,10 @@ test("the CD workflow is CI-gated, environment-gated and never cancels a deploy"
 
 test("the deployment script is fail-closed and provides a rollback", () => {
   assert.match(deployScript, /^set -Eeuo pipefail$/m);
-  assert.match(deployScript, /trap on_error ERR/);
+  // The rollback must be wired through the EXIT trap: die() calls exit 1,
+  // which never fires the ERR trap.
+  assert.match(deployScript, /trap on_exit EXIT/);
+  assert.doesNotMatch(deployScript, /trap on_error ERR/);
   assert.match(deployScript, /rollback_restore/);
   // Destructive operations must never appear.
   for (const forbidden of [
