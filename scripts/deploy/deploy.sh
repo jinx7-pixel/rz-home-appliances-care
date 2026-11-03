@@ -170,14 +170,23 @@ backup() {
 
   # Database backup: the safety net for every schema operation.
   if command -v pg_dump >/dev/null; then
-    local dbname
+    local dbname tmpdump
     dbname="$(grep -E '^DATABASE_URL=' "$ENV_FILE" | head -1 | sed -E 's#.*/([^/?]+)$#\1#')"
-    if [ -n "$dbname" ] && su - postgres -c "pg_dump --format=custom --file='${BACKUP_DIR}/rz_care.dump' '${dbname}'" 2>/dev/null; then
+    # The dump is produced by the postgres operating-system user, which cannot
+    # write into the root-owned backup directory. It is written to a scratch
+    # directory owned by postgres and then moved into the protected backup
+    # directory, which stays root-only.
+    tmpdump="$(mktemp -d)"
+    chown postgres:postgres "$tmpdump"
+    if [ -n "$dbname" ] && su - postgres -c "pg_dump --format=custom --file='${tmpdump}/rz_care.dump' '${dbname}'" 2>/dev/null; then
+      mv -f "${tmpdump}/rz_care.dump" "${BACKUP_DIR}/rz_care.dump"
+      rm -rf "$tmpdump"
       if [ -s "${BACKUP_DIR}/rz_care.dump" ]; then
         chmod 600 "${BACKUP_DIR}/rz_care.dump"
         ok "database dump written (${dbname})"
-        # Prove the dump is restorable before relying on it.
-        if su - postgres -c "pg_restore --list '${BACKUP_DIR}/rz_care.dump'" >/dev/null 2>&1; then
+        # Prove the dump is restorable before relying on it. Listing the
+        # archive only reads the file, so it runs as the deploying user.
+        if pg_restore --list "${BACKUP_DIR}/rz_care.dump" >/dev/null 2>&1; then
           ok "database dump verified readable by pg_restore"
         else
           die "database dump could not be listed by pg_restore - it is not a usable backup"
@@ -186,6 +195,7 @@ backup() {
         die "database dump is empty"
       fi
     else
+      rm -rf "$tmpdump"
       die "pg_dump failed - refusing to continue without a verified backup"
     fi
   else

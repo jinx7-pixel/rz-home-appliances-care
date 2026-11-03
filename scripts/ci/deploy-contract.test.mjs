@@ -397,6 +397,32 @@ test("the deployment renders the Nginx template instead of copying it verbatim",
   assert.match(hostNginx, /\$\{WEB_PORT:-8080\}/);
 });
 
+test("the database backup is written where the postgres user can write", () => {
+  // The backup directory is root-only, so a dump written into it by the
+  // postgres operating-system user fails with "Permission denied" and the
+  // deployment aborts at the backup step.
+  assert.doesNotMatch(
+    deployScript,
+    /pg_dump --format=custom --file='\$\{BACKUP_DIR\}\/rz_care\.dump'/,
+    "pg_dump must not write directly into the root-owned backup directory",
+  );
+  assert.match(
+    deployScript,
+    /chown postgres:postgres "\$tmpdump"/,
+    "the scratch directory must be owned by the postgres user",
+  );
+  assert.match(
+    deployScript,
+    /mv -f "\$\{tmpdump\}\/rz_care\.dump" "\$\{BACKUP_DIR\}\/rz_care\.dump"/,
+    "the dump must be moved into the protected backup directory afterwards",
+  );
+  assert.match(
+    deployScript,
+    /pg_restore --list "\$\{BACKUP_DIR\}\/rz_care\.dump"/,
+    "the archive must be listed by the deploying user, which can read it",
+  );
+});
+
 test("the public traffic switch is an explicit gate, not an implicit step", () => {
   assert.match(
     deployScript,
