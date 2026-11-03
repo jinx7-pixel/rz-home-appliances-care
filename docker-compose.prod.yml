@@ -1,0 +1,117 @@
+# Production Compose stack for the RZ Fixer VPS.
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml --env-file /etc/rzfixer/production.env <command>
+#
+# This file is deliberately standalone rather than an overlay of
+# docker-compose.yml: the production stack has no database service, and
+# merging the development file would force the unused development database
+# credentials to be interpolated in production.
+#
+# DATABASE STRATEGY
+# The existing native PostgreSQL 16.15 installation on the host stays the
+# database service. The data is preserved in place: no dump/restore and no
+# cross-major-version migration is performed.
+#
+# The API container reaches PostgreSQL across the Docker bridge gateway,
+# never through the container's own loopback interface (127.0.0.1 inside a
+# container is the container itself, not the host). The host PostgreSQL must
+# therefore be configured to listen on the bridge address and to accept the
+# application role only from the Docker bridge subnet.
+#
+# The `network` service exists only to hold a stable network namespace that
+# the frontend and the API share, so the API is reachable from the frontend
+# over loopback and is never published to the host or the internet.
+
+name: rzfixer
+
+services:
+  network:
+    image: node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d
+    platform: linux/amd64
+    user: '1000:1000'
+    command:
+      - node
+      - -e
+      - "process.on('SIGTERM', () => process.exit(0)); process.on('SIGINT', () => process.exit(0)); setInterval(() => {}, 2147483647);"
+    ports: ['127.0.0.1:${WEB_PORT:-8080}:8080']
+    networks: [edge, database]
+    init: true
+    read_only: true
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=16m']
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, node, -e, "process.exit(require('node:fs').existsSync('/proc/1/status') ? 0 : 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    stop_grace_period: 5s
+
+  api:
+    image: rzfixer-api:${DEPLOY_TAG:?Set DEPLOY_TAG to the deployed commit SHA}
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      # Supplied by the production environment file on the VPS. Never stored
+      # in this repository and never exposed to GitHub Actions.
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to the host PostgreSQL via the bridge gateway}
+      APP_BASE_URL: ${APP_BASE_URL:?Set APP_BASE_URL to the public https origin}
+      APP_BASE_PATH: ${APP_BASE_PATH:-/}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      OWNER_EMAIL: ${OWNER_EMAIL:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_REQUIRE_TLS: ${SMTP_REQUIRE_TLS:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_APP_PASSWORD: ${SMTP_APP_PASSWORD:-}
+      # Must mirror the API's hard-coded trusted peer list exactly.
+      PRODUCTION_PROXY_PEERS: 127.0.0.1/32,::1/128
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    network_mode: service:network
+    depends_on:
+      network:
+        condition: service_healthy
+        restart: true
+    init: true
+    read_only: true
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=16m']
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    stop_grace_period: 25s
+
+  frontend:
+    image: rzfixer-frontend:${DEPLOY_TAG:?Set DEPLOY_TAG to the deployed commit SHA}
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    network_mode: service:network
+    depends_on:
+      network:
+        condition: service_healthy
+        restart: true
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+      - /var/cache/nginx:rw,noexec,nosuid,size=16m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    stop_grace_period: 15s
+
+networks:
+  edge: {}
+  database:
+    internal: true

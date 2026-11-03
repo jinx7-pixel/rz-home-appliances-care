@@ -49,6 +49,12 @@ jobs:
       - run: node --test scripts/ci/*.test.mjs
       - name: Compose static validation (no engine startup)
         run: docker compose --env-file docker/.env.example config --quiet
+      - name: Production compose static validation (no engine startup)
+        env:
+          DEPLOY_TAG: ci-validation
+          DATABASE_URL: postgresql://rz_app:synthetic_ci_only@host.docker.internal:5432/rz_care
+          APP_BASE_URL: https://rzfixer.in
+        run: docker compose -f docker-compose.prod.yml config --quiet
 
   migrations:
     name: C - PostgreSQL baseline, upgrade and rollback
@@ -145,6 +151,12 @@ jobs:
       - run: node scripts/ci/verify-install.mjs
       - run: pnpm run build
       - run: node scripts/ci/verify-build.mjs
+      - name: Production container images build (proves the CD artefacts are buildable)
+        env:
+          DEPLOY_TAG: ci-validation
+          DATABASE_URL: postgresql://rz_app:synthetic_ci_only@host.docker.internal:5432/rz_care
+          APP_BASE_URL: https://rzfixer.in
+        run: docker compose -f docker-compose.prod.yml build api frontend
 
   # Required CI checks (not production release approval).
   #

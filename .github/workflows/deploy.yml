@@ -1,0 +1,157 @@
+name: CD (production deployment)
+
+# Deploys to the production VPS only after the CI workflow has succeeded on
+# main, and only after a human approves the production GitHub Environment.
+#
+# This workflow never contains application credentials. It needs only the SSH
+# connection details, which are stored as secrets on the `production`
+# environment so they are not readable by any other workflow or repository.
+
+on:
+  workflow_run:
+    workflows: ["CI (not release approval)"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA to deploy (defaults to the current main tip)"
+        required: false
+        type: string
+
+# Least privilege: this workflow only reads the repository.
+permissions:
+  contents: read
+
+# A production deployment must never be cancelled part-way through.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy-production
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    # The production environment carries the required-reviewer gate and the
+    # environment-scoped secrets.
+    environment:
+      name: production
+      url: https://rzfixer.in
+
+    steps:
+      - name: Resolve the exact commit to deploy
+        id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          MANUAL_SHA: ${{ inputs.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            sha="${MANUAL_SHA:-}"
+            if [ -z "$sha" ]; then
+              sha="$(git ls-remote https://github.com/${{ github.repository }}.git refs/heads/main | cut -f1)"
+            fi
+          else
+            sha="$RUN_SHA"
+          fi
+          if ! printf '%s' "$sha" | grep -qE '^[0-9a-f]{40}$'; then
+            echo "::error::resolved commit is not a full SHA: '$sha'"
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Resolved deployment commit: $sha"
+
+      - name: Set up SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh"
+          printf '%s\n' "$VPS_SSH_KEY" > "$RUNNER_TEMP/ssh/id_ed25519"
+          chmod 600 "$RUNNER_TEMP/ssh/id_ed25519"
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > "$RUNNER_TEMP/ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/ssh/known_hosts"
+          if [ ! -s "$RUNNER_TEMP/ssh/known_hosts" ]; then
+            echo "::error::VPS_KNOWN_HOSTS is empty - refusing to deploy without host key verification"
+            exit 1
+          fi
+          # The private key and known_hosts are written to the runner's temp
+          # directory only and are never echoed. They are removed at the end.
+
+      - name: Verify the VPS host key fingerprint
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          EXPECTED_FINGERPRINT: ${{ vars.VPS_SSH_FINGERPRINT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${EXPECTED_FINGERPRINT:-}" ]; then
+            echo "VPS_SSH_FINGERPRINT variable is not set - skipping the fingerprint comparison."
+            echo "Set it to the SHA256 fingerprint of the VPS host key to enable this check."
+            exit 0
+          fi
+          actual="$(ssh-keyscan -p "${VPS_PORT:-22}" -t ed25519,rsa "${VPS_HOST}" 2>/dev/null \
+            | ssh-keygen -lf - | awk '{print $2}')"
+          if [ -z "$actual" ]; then
+            echo "::error::could not read the host key fingerprint"
+            exit 1
+          fi
+          if ! printf '%s' "$actual" | grep -qi "${EXPECTED_FINGERPRINT}"; then
+            echo "::error::host key fingerprint mismatch"
+            echo "  expected: ${EXPECTED_FINGERPRINT}"
+            echo "  actual  : ${actual}"
+            exit 1
+          fi
+          echo "Host key fingerprint matches the expected value."
+
+      - name: Deploy to production
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          DEPLOY_SHA: ${{ steps.resolve.outputs.sha }}
+          ALLOW_ADOPT: ${{ vars.ALLOW_MIGRATION_ADOPTION }}
+        run: |
+          set -euo pipefail
+          APP_DIR="${APP_DIR:-/var/www/rz-home-appliances-care}"
+          ADOPT_FLAG=""
+          if [ "${ALLOW_ADOPT:-false}" = "true" ]; then
+            ADOPT_FLAG="--adopt-migration"
+            echo "Migration adoption is authorised for this run."
+          fi
+          # The deployment script is taken from the very commit being deployed,
+          # so the pipeline and the running code can never diverge.
+          ssh -i "$RUNNER_TEMP/ssh/id_ed25519" \
+              -p "${VPS_PORT:-22}" \
+              -o IdentitiesOnly=yes \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
+              -o BatchMode=yes \
+              -o LogLevel=ERROR \
+              "${VPS_USER}@${VPS_HOST}" \
+              "set -euo pipefail; cd '${APP_DIR}'; git fetch --quiet origin '${DEPLOY_SHA}'; git show '${DEPLOY_SHA}:scripts/deploy/deploy.sh' > /tmp/rz-deploy.sh; chmod 700 /tmp/rz-deploy.sh; bash /tmp/rz-deploy.sh '${DEPLOY_SHA}' ${ADOPT_FLAG}; rm -f /tmp/rz-deploy.sh"
+
+      - name: Remove SSH material
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/ssh"
+
+      - name: Summary
+        if: always()
+        env:
+          DEPLOY_SHA: ${{ steps.resolve.outputs.sha }}
+        run: |
+          {
+            echo "## RZ Fixer production deployment"
+            echo
+            echo "- Commit: \`${DEPLOY_SHA}\`"
+            echo "- Public: https://rzfixer.in"
+            echo "- Result: ${{ job.status }}"
+          } >> "$GITHUB_STEP_SUMMARY"
