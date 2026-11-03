@@ -12,6 +12,30 @@ const hostNginx = await read("docker/nginx.host.conf");
 const prodCompose = await read("docker-compose.prod.yml");
 const deployWorkflow = await read(".github/workflows/deploy.yml");
 const deployScript = await read("scripts/deploy/deploy.sh");
+const bootstrapScript = await read("scripts/deploy/bootstrap-vps.sh");
+
+// Git for Windows ships bash; on CI the system bash is used. When bash is
+// unavailable entirely the shell-based checks are skipped rather than failed.
+const findBash = () => {
+  const candidates = [
+    "C:/Program Files/Git/bin/bash.exe",
+    "C:/Program Files/Git/usr/bin/bash.exe",
+  ];
+  for (const candidate of candidates) {
+    try {
+      execFileSync(candidate, ["--version"], { stdio: "ignore" });
+      return candidate;
+    } catch {}
+  }
+  try {
+    execFileSync("bash", ["--version"], { stdio: "ignore" });
+    return "bash";
+  } catch {}
+  return null;
+};
+
+const posixPath = (relative) =>
+  fileURLToPath(new URL(`../../${relative}`, import.meta.url)).replace(/\\/g, "/");
 
 test("the container Nginx never derives the forwarded scheme from $scheme", () => {
   // $scheme inside the container is always http, which made the API compute an
@@ -181,28 +205,140 @@ test("the deployment script is fail-closed and provides a rollback", () => {
 });
 
 test("the deployment script has valid bash syntax", () => {
-  // Git for Windows ships bash; when it is unavailable the check is skipped
-  // rather than failed, because CI runs this on ubuntu.
-  const candidates = [
-    "C:/Program Files/Git/bin/bash.exe",
-    "C:/Program Files/Git/usr/bin/bash.exe",
-  ];
-  let bash = null;
-  for (const candidate of candidates) {
-    try {
-      execFileSync(candidate, ["--version"], { stdio: "ignore" });
-      bash = candidate;
-      break;
-    } catch {}
-  }
-  if (!bash) {
-    execFileSync("bash", ["--version"], { stdio: "ignore" });
-    bash = "bash";
-  }
-  const url = fileURLToPath(
-    new URL("../../scripts/deploy/deploy.sh", import.meta.url),
-  ).replace(/\\/g, "/");
+  const bash = findBash();
+  if (!bash) return;
   // execFileSync throws on a non-zero exit status, which is exactly the
   // signal we want: a bash syntax error fails the test.
-  execFileSync(bash, ["-n", url], { stdio: ["ignore", "pipe", "pipe"] });
+  execFileSync(bash, ["-n", posixPath("scripts/deploy/deploy.sh")], {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+});
+
+test("the VPS bootstrap script has valid bash syntax", () => {
+  const bash = findBash();
+  if (!bash) return;
+  execFileSync(bash, ["-n", posixPath("scripts/deploy/bootstrap-vps.sh")], {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+});
+
+test("the bootstrap script installs and enables Docker with Compose v2", () => {
+  assert.match(bootstrapScript, /apt-get install -y docker\.io docker-compose-v2/);
+  assert.match(bootstrapScript, /systemctl enable --now docker/);
+  assert.match(
+    bootstrapScript,
+    /docker compose version/,
+    "the Compose v2 plugin must be verified, not assumed",
+  );
+});
+
+test("the bootstrap script points containers at the host bridge gateway", () => {
+  assert.match(
+    bootstrapScript,
+    /DB_URL="\$\{DB_URL\/127\.0\.0\.1\/host\.docker\.internal\}"/,
+    "the database URL host must be rewritten to the bridge gateway",
+  );
+  assert.match(
+    bootstrapScript,
+    /echo "DATABASE_URL=\$\{DB_URL\}"/,
+    "the environment file must carry the rewritten URL",
+  );
+  assert.match(
+    bootstrapScript,
+    /docker network inspect bridge/,
+    "the bridge address must be discovered, not hard-coded",
+  );
+  assert.doesNotMatch(
+    bootstrapScript,
+    /DATABASE_URL=postgresql:\/\/[^"\n]*127\.0\.0\.1/,
+    "a loopback database URL would be unreachable from a container",
+  );
+});
+
+test("the bootstrap script backs up PostgreSQL configuration before changing it", () => {
+  assert.match(
+    bootstrapScript,
+    /cp -a "\$\{PG_CONF_DIR\}\/postgresql\.conf" "\$\{BACKUP_DIR\}\/postgresql\.conf\.bak"/,
+  );
+  assert.match(
+    bootstrapScript,
+    /cp -a "\$\{PG_CONF_DIR\}\/pg_hba\.conf" "\$\{BACKUP_DIR\}\/pg_hba\.conf\.bak"/,
+  );
+  assert.match(bootstrapScript, /listen_addresses/);
+  assert.match(bootstrapScript, /pg_hba\.conf/);
+});
+
+test("the bootstrap script reuses the existing production credentials on the VPS", () => {
+  assert.match(
+    bootstrapScript,
+    /pm2 env 0/,
+    "credentials must be reused from the running PM2 process, never typed by hand",
+  );
+  assert.doesNotMatch(
+    bootstrapScript,
+    /ADMIN_PASSWORD=(?!\$\{)/,
+    "no administrator password may be hard-coded in the repository",
+  );
+  assert.doesNotMatch(
+    bootstrapScript,
+    /SMTP_APP_PASSWORD=(?!\$\{)/,
+    "no SMTP password may be hard-coded in the repository",
+  );
+  assert.doesNotMatch(
+    bootstrapScript,
+    /DATABASE_URL=postgresql:\/\/[^$"\n]*:[^$"@\n]*@/,
+    "no database password may be hard-coded in the repository",
+  );
+});
+
+test("the bootstrap script never exposes a secret on stdout or in the log", () => {
+  assert.doesNotMatch(
+    bootstrapScript,
+    /set\s+-x/,
+    "shell tracing would write every secret into the deployment log",
+  );
+  assert.doesNotMatch(
+    bootstrapScript,
+    /cat\s+"?\$ENV_FILE/,
+    "dumping the environment file would print every secret",
+  );
+  assert.match(
+    bootstrapScript,
+    /sed 's\/=\.\*\/=<set>\/'/,
+    "the summary must mask every value it displays",
+  );
+  assert.match(bootstrapScript, /umask 077/);
+  assert.match(bootstrapScript, /chmod 600 "\$ENV_FILE"/);
+  assert.match(bootstrapScript, /install -d -m 750 "\$ENV_DIR"/);
+});
+
+test("the bootstrap script never migrates, switches traffic or stops PM2", () => {
+  for (const forbidden of [
+    /migrate\.mjs/,
+    /pm2 stop/,
+    /pm2 delete/,
+    /systemctl stop nginx/,
+    /nginx -s reload/,
+    /systemctl restart nginx/,
+  ]) {
+    assert.doesNotMatch(bootstrapScript, forbidden);
+  }
+});
+
+test("the bootstrap script backs up working-tree files that differ from the deploy commit", () => {
+  assert.match(bootstrapScript, /vps-local-modifications/);
+  assert.match(bootstrapScript, /cp -a "\$\{APP_DIR\}\/\$\{f\}"/);
+  assert.match(
+    bootstrapScript,
+    /git -C "\$APP_DIR" status --porcelain/,
+    "local modifications must be discovered before anything is overwritten",
+  );
+});
+
+test("the bootstrap logic suite passes", () => {
+  const bash = findBash();
+  if (!bash) return;
+  execFileSync(bash, [posixPath("scripts/ci/bootstrap-logic.test.sh")], {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 });
