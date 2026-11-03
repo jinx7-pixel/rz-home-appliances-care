@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1
+FROM node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d AS build
+WORKDIR /workspace
+RUN test "$(node -p process.arch)" = x64 && npm install --global --ignore-scripts pnpm@10.34.9
+COPY . .
+RUN --mount=type=cache,id=rz-pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile --store-dir=/pnpm/store
+RUN node scripts/ci/verify-install.mjs
+ENV NODE_ENV=production PORT=5174 BASE_PATH=/
+RUN pnpm --filter @workspace/rz-home-appliances-care run build && test -s artifacts/rz-home-appliances-care/dist/public/index.html
+
+FROM nginx:1.30.6-trixie@sha256:66b50d24288dba67f3d000b31223daefc4868c58d29aaacb6a4ff9771597b5eb AS runtime
+# The pinned official Debian image already includes curl; do not add unpinned OS packages.
+RUN command -v curl
+COPY docker/nginx.conf /etc/nginx/nginx.conf
+COPY docker/security-headers.conf /etc/nginx/security-headers.conf
+COPY --from=build /workspace/artifacts/rz-home-appliances-care/dist/public /usr/share/nginx/html
+USER 101:101
+EXPOSE 8080
+STOPSIGNAL SIGQUIT
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 CMD ["curl", "--fail", "--silent", "--show-error", "--max-time", "3", "http://127.0.0.1:8080/healthz"]
+ENTRYPOINT ["nginx", "-g", "daemon off;"]

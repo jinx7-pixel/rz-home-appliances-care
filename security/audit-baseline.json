@@ -1,0 +1,6 @@
+{
+  "purpose": "CI regression baseline only; not production risk acceptance or release approval",
+  "reviewBy": "2026-11-15",
+  "reviewOwner": "Repository maintainer",
+  "findings": []
+}

@@ -1,0 +1,35 @@
+# syntax=docker/dockerfile:1
+FROM node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d AS build
+WORKDIR /workspace
+RUN test "$(node -p process.arch)" = x64 && npm install --global --ignore-scripts pnpm@10.34.9
+COPY . .
+RUN --mount=type=cache,id=rz-pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile --store-dir=/pnpm/store
+RUN pnpm --filter @workspace/api-server run build
+RUN test -s artifacts/api-server/dist/pino-worker.mjs && test -s artifacts/api-server/dist/thread-stream-worker.mjs && test -s artifacts/api-server/dist/pino-pretty.mjs
+
+FROM node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d AS production-deps
+WORKDIR /workspace
+RUN npm install --global --ignore-scripts pnpm@10.34.9
+COPY . .
+RUN --mount=type=cache,id=rz-pnpm-store,target=/pnpm/store pnpm --filter @workspace/api-server... install --prod --frozen-lockfile --store-dir=/pnpm/store
+
+FROM node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d AS runtime
+WORKDIR /app
+ENV NODE_ENV=production PORT=3000
+COPY --from=production-deps --chown=node:node /workspace/node_modules ./node_modules
+COPY --from=production-deps --chown=node:node /workspace/artifacts/api-server/node_modules ./artifacts/api-server/node_modules
+COPY --from=production-deps --chown=node:node /workspace/lib/db/node_modules ./lib/db/node_modules
+COPY --from=production-deps --chown=node:node /workspace/lib/api-zod ./lib/api-zod
+COPY --chown=node:node lib/db/package.json ./lib/db/package.json
+COPY --chown=node:node lib/db/src ./lib/db/src
+COPY --chown=node:node lib/db/scripts ./lib/db/scripts
+COPY --chown=node:node lib/db/migrations ./lib/db/migrations
+COPY --chown=node:node docker/api-healthcheck.mjs ./docker/api-healthcheck.mjs
+COPY --from=build --chown=node:node /workspace/artifacts/api-server/dist ./artifacts/api-server/dist
+WORKDIR /app/artifacts/api-server
+RUN node -e "require('nodemailer')" && test -s dist/index.mjs && test -s dist/pino-worker.mjs
+USER 1000:1000
+EXPOSE 3000
+STOPSIGNAL SIGTERM
+HEALTHCHECK --interval=15s --timeout=10s --start-period=20s --retries=3 CMD ["node", "/app/docker/api-healthcheck.mjs"]
+CMD ["node", "--enable-source-maps", "./dist/index.mjs"]

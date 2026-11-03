@@ -1,39 +1,180 @@
-name: CI
+name: CI (not release approval)
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    
-    env:
-     PORT: 23672
-     BASE_PATH: /
-    
+  installation:
+    name: A - Installation and integrity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          version: 10
+          persist-credentials: false
+          clean: false
+      - uses: ./.github/actions/setup
+      - run: node scripts/ci/verify-install.mjs
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+  quality:
+    name: B - TypeScript and configured quality checks
+    needs: installation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 20
-          cache: pnpm
+          persist-credentials: false
+          clean: false
+      - uses: ./.github/actions/setup
+      - run: pnpm run typecheck
+      - run: node scripts/ci/lint.mjs
+      - name: Tracked Replit configuration carries no shared environment or secrets
+        run: node scripts/ci/check-replit.mjs
+      - run: node --test scripts/ci/*.test.mjs
+      - name: Compose static validation (no engine startup)
+        run: docker compose --env-file docker/.env.example config --quiet
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+  migrations:
+    name: C - PostgreSQL baseline, upgrade and rollback
+    needs: installation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16.15-bookworm@sha256:e8a07d2c7579b038938cdba6c539e580e5001caf9ea203d397b5cc83e76bd938
+        env:
+          POSTGRES_USER: rz_ci
+          POSTGRES_PASSWORD: synthetic_ci_only_not_for_production
+          POSTGRES_DB: rz_phase2_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U rz_ci -d rz_phase2_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      RZ_MIGRATION_TEST_URL: postgresql://rz_ci:synthetic_ci_only_not_for_production@127.0.0.1:5432/rz_phase2_ci
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          clean: false
+      - uses: ./.github/actions/setup
+      - name: Existing 12-test isolated migration suite
+        run: pnpm --filter @workspace/db run test:migrations
 
-      - name: Typecheck
-        run: pnpm run typecheck
+  backend:
+    name: D - Backend and strict IPv6 regressions
+    needs: installation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16.15-bookworm@sha256:e8a07d2c7579b038938cdba6c539e580e5001caf9ea203d397b5cc83e76bd938
+        env:
+          POSTGRES_USER: rz_ci
+          POSTGRES_PASSWORD: synthetic_ci_only_not_for_production
+          POSTGRES_DB: rz_phase2_backend
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U rz_ci -d rz_phase2_backend"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      DATABASE_URL: postgresql://rz_ci:synthetic_ci_only_not_for_production@127.0.0.1:5432/rz_phase2_backend
+      NODE_ENV: production
+      PRODUCTION_PROXY_PEERS: 127.0.0.1/32,::1/128
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          clean: false
+      - uses: ./.github/actions/setup
+      - name: Provision only the new CI service database
+        run: pnpm --filter @workspace/db run migrate baseline --database rz_phase2_backend
+      - name: Complete backend suite
+        run: pnpm --filter @workspace/api-server run test
+      - name: Strict IPv6 entrypoint and zero-skips assertion
+        run: |
+          set -o pipefail
+          pnpm --filter @workspace/api-server run test:release 2>&1 | tee "$RUNNER_TEMP/strict-ipv6.log"
+          node scripts/ci/verify-tests.mjs "$RUNNER_TEMP/strict-ipv6.log"
 
-      - name: Build
-        run: pnpm run build
+  security:
+    name: E - Audit regression gate (known findings remain open)
+    needs: installation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          clean: false
+      - uses: ./.github/actions/setup
+      - name: Full and production audit against exact reviewed baseline
+        run: node scripts/ci/audit.mjs
+
+  builds:
+    name: F - Production builds and runtime assets
+    needs: installation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NODE_ENV: production
+      PORT: '23672'
+      BASE_PATH: /
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          clean: false
+      - uses: ./.github/actions/setup
+      - run: node scripts/ci/verify-install.mjs
+      - run: pnpm run build
+      - run: node scripts/ci/verify-build.mjs
+
+  # Required CI checks (not production release approval).
+  #
+  # Branch protection on main requires a status-check context named exactly
+  # "check", reported by the GitHub Actions app. GitHub derives a job's
+  # check-run name from the job `name:` when one is present, and otherwise
+  # from the job id, so BOTH the id and the name below must stay exactly
+  # "check". Renaming either one stops the required context from ever being
+  # reported and silently blocks every pull request from merging.
+  #
+  # This job aggregates the six CI jobs above. It runs even when a dependency
+  # failed or was skipped (`if: always()`) and succeeds only when all six
+  # succeeded, so a failed dependency cannot be skipped past.
+  check:
+    name: check
+    if: always()
+    needs: [installation, quality, migrations, backend, security, builds]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every job to succeed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node --input-type=module <<'NODE'
+          const results = JSON.parse(process.env.RESULTS);
+          for (const [name, job] of Object.entries(results)) {
+            console.log(`${name}: ${job.result}`);
+            if (job.result !== 'success') process.exitCode = 1;
+          }
+          NODE
+      - name: Record release boundary
+        run: echo 'CI success is subject to security/audit-baseline.json. Known unresolved findings remain visible and require review; CI success is not production risk acceptance. No deployment is performed.' >> "$GITHUB_STEP_SUMMARY"

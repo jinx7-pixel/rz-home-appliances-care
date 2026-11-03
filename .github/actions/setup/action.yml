@@ -1,0 +1,23 @@
+name: Verified workspace setup
+description: Node 24 and exact pnpm, with a frozen lockfile and cached package store
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: 24.15.0
+        package-manager-cache: false
+    - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      with:
+        version: 10.34.9
+        run_install: false
+        cache: true
+    - name: Frozen installation
+      shell: bash
+      # Backend/build jobs run in production mode, but CI still needs dev/build tools.
+      env:
+        NODE_ENV: development
+      run: pnpm install --frozen-lockfile
+    - name: Verify lockfile remained unchanged
+      shell: bash
+      run: git diff --exit-code -- pnpm-lock.yaml

@@ -1,0 +1,112 @@
+name: rzfixer-local
+
+services:
+  # A stable namespace keeps app restarts from disconnecting the loopback proxy.
+  # No credentials or application traffic are handled by this process.
+  network:
+    image: node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d
+    platform: linux/amd64
+    user: '1000:1000'
+    command: [node, -e, "process.on('SIGTERM', () => process.exit(0)); process.on('SIGINT', () => process.exit(0)); setInterval(() => {}, 2147483647)"]
+    ports: ['127.0.0.1:${WEB_PORT:-8080}:8080']
+    networks: [edge, database]
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, node, -e, "process.exit(require('node:fs').existsSync('/proc/1/status') ? 0 : 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    stop_grace_period: 5s
+
+  postgres:
+    image: postgres:16.15-bookworm@sha256:e8a07d2c7579b038938cdba6c539e580e5001caf9ea203d397b5cc83e76bd938
+    platform: linux/amd64
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rz_local}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a unique local database password}
+      POSTGRES_DB: ${POSTGRES_DB:-rz_phase2_local}
+    volumes:
+      # PostgreSQL 16 stores its cluster in PGDATA=/var/lib/postgresql/data.
+      # A volume written by the PostgreSQL 18 image is not readable by this server.
+      - postgres-data:/var/lib/postgresql/data
+    networks: [database]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 30s
+    security_opt: [no-new-privileges:true]
+
+  api:
+    image: rzfixer-api:local
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rz_local}:${POSTGRES_PASSWORD:?Set a unique local database password}@postgres:5432/${POSTGRES_DB:-rz_phase2_local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set a unique local administrator bootstrap password}
+      APP_BASE_URL: ${APP_BASE_URL:-https://localhost.invalid}
+      APP_BASE_PATH: /
+      PRODUCTION_PROXY_PEERS: 127.0.0.1/32,::1/128
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: '587'
+      SMTP_SECURE: 'false'
+      SMTP_REQUIRE_TLS: 'true'
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_APP_PASSWORD: ${SMTP_APP_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      OWNER_EMAIL: ${OWNER_EMAIL:-}
+    network_mode: service:network
+    depends_on:
+      network:
+        condition: service_healthy
+        restart: true
+      postgres:
+        condition: service_healthy
+    init: true
+    read_only: true
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=16m']
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    stop_grace_period: 25s
+
+  frontend:
+    image: rzfixer-frontend:local
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    network_mode: service:network
+    depends_on:
+      network:
+        condition: service_healthy
+        restart: true
+      api:
+        condition: service_healthy
+        restart: true
+    read_only: true
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=16m', '/var/cache/nginx:rw,noexec,nosuid,size=16m']
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    stop_grace_period: 15s
+
+networks:
+  edge: {}
+  database:
+    internal: true
+
+volumes:
+  postgres-data: {}
