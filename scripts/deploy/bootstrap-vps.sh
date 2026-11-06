@@ -117,6 +117,7 @@ configure_postgres() {
 
   if [ "$CHECK_ONLY" -eq 1 ]; then
     warn "would set listen_addresses to include ${BRIDGE_GW} and add a pg_hba rule for ${BRIDGE_SUBNET}"
+    warn "would order PostgreSQL after Docker and require its bridge address before startup"
     return 0
   fi
 
@@ -152,6 +153,10 @@ configure_postgres() {
     ok "pg_hba rule already present for ${DOCKER_BRIDGE_RANGE}"
   fi
 
+  # Docker must assign its bridge before PostgreSQL tries to bind on reboot.
+  PG_VERSION="$PG_VERSION" BRIDGE_GW="$BRIDGE_GW" bash \
+    "$(dirname "${BASH_SOURCE[0]}")/repair-postgres-startup.sh" --configure-only
+
   log "applying the new PostgreSQL configuration"
   # listen_addresses is a postmaster setting: a reload cannot change it, only a
   # restart can. Read the value that is actually live and restart only when it
@@ -162,15 +167,19 @@ configure_postgres() {
     *",${BRIDGE_GW},"*) : ;;
     *) needs_restart=1 ;;
   esac
+  # Configured addresses do not prove that every requested socket was opened.
+  pg_isready -h "$BRIDGE_GW" -p 5432 -t 3 >/dev/null 2>&1 || needs_restart=1
   if [ "$needs_restart" -eq 1 ]; then
     log "restarting postgresql so that listen_addresses takes effect (a brief interruption)"
-    systemctl restart postgresql
+    systemctl restart "postgresql@${PG_VERSION}-main.service"
     ok "postgresql restarted; the bridge gateway is now accepted"
   else
-    systemctl reload postgresql
+    systemctl reload "postgresql@${PG_VERSION}-main.service"
     ok "postgresql reloaded; listen_addresses already included ${BRIDGE_GW}"
   fi
   applied="$(su - postgres -c "psql -tAc 'SHOW listen_addresses'" 2>/dev/null | tr -d '[:space:]' || true)"
+  pg_isready -h "$BRIDGE_GW" -p 5432 -t 5 >/dev/null \
+    || die "PostgreSQL is not accepting connections on the Docker bridge"
   case ",${applied}," in
     *",${BRIDGE_GW},"*) ok "runtime listen_addresses = ${applied}" ;;
     *) die "listen_addresses does not include ${BRIDGE_GW} after the change (got '${applied}')" ;;

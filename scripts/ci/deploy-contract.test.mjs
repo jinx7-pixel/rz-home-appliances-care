@@ -5,7 +5,9 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const read = (relative) =>
-  readFile(new URL(`../../${relative}`, import.meta.url), "utf8");
+  readFile(new URL(`../../${relative}`, import.meta.url), "utf8").then((text) =>
+    text.replaceAll("\r\n", "\n"),
+  );
 
 const containerNginx = await read("docker/nginx.conf");
 const hostNginx = await read("docker/nginx.host.conf");
@@ -481,7 +483,7 @@ test("the bootstrap script restarts PostgreSQL when listen_addresses must change
   // script that only reloads would leave the containers unable to connect.
   assert.match(
     bootstrapScript,
-    /systemctl restart postgresql/,
+    /systemctl restart "postgresql@\$\{PG_VERSION\}-main\.service"/,
     "PostgreSQL must be restarted so that listen_addresses takes effect",
   );
   assert.match(
